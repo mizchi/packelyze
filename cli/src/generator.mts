@@ -33,7 +33,7 @@ export async function generateBundleDts(
     input: input,
     plugins: [dts({
       respectExternal,
-      compilerOptions,
+      compilerOptions: compilerOptions as any,
     })],
   });
   const out = await bundle.generate({

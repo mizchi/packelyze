@@ -1,0 +1,14 @@
+{
+  "name": "@mizchi/optools-cli",
+  "version": "0.0.1",
+  "dependencies": {
+    "@rollup/plugin-terser": "^0.4.2",
+    "rollup": "^3.21.7",
+    "rollup-plugin-dts": "^5.3.0",
+    "rollup-plugin-ts": "^3.2.0",
+    "terser": "^5.17.4"
+  },
+  "peerDependencies": {
+    "typescript": "*"
+  }
+}

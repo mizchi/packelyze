@@ -10,20 +10,13 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
+    "@mizchi/optools-cli": "workspace:*",
+    "@mizchi/zero-runtime": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
-    "@types/node": "^20.1.0",
-    "@types/react": "^18.2.6",
-    "@types/react-dom": "^18.2.4",
-    "rimraf": "^5.0.0",
     "rollup": "^3.21.7",
-    "rollup-plugin-dts": "^5.3.0",
-    "rollup-plugin-ts": "^3.2.0",
-    "ts-loader": "^9.4.2",
-    "ts-morph": "^18.0.0",
-    "tsm": "^2.3.0",
-    "typescript": "^5.0.4"
+    "rollup-plugin-ts": "^3.2.0"
   },
   "dependencies": {
     "esbuild": "^0.17.19"

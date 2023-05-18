@@ -1,7 +1,7 @@
-## Mangler (PoC)
+## Optools (PoC)
 
 Type-aware Optimizer
 
 ## LICENSE
 
-MIT
+MIT 

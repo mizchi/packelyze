@@ -1,2 +1,4 @@
 - packages:
   - zero-runtime
+  - cli
+  - examples/*
