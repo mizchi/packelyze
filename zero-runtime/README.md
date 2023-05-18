@@ -11,7 +11,7 @@ $ npm install @mizchi/zero-runtime --save-dev
 ### Fetch
 
 ```ts
-import type { TypedFetch, JSON$StringifyT, JSON$ParseT } from "@mizchi/zero-runtime";
+import type { TypedFetch, JSON$stringifyT, JSON$parseT } from "@mizchi/zero-runtime";
 
 const stringifyT = JSON.stringify as JSON$stringifyT;
 
