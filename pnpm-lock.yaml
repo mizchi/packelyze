@@ -73,6 +73,16 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(rollup@3.21.7)(typescript@4.9.5)
 
+  examples/zero-runtime-example:
+    dependencies:
+      esbuild:
+        specifier: ^0.17.19
+        version: 0.17.19
+    devDependencies:
+      '@mizchi/zero-runtime':
+        specifier: workspace:*
+        version: link:../../zero-runtime
+
   zero-runtime: {}
 
 packages:

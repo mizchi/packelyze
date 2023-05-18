@@ -1,4 +1,13 @@
 {
   "name": "@mizchi/zero-runtime",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      }
+    }
+  }
 }
