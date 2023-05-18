@@ -1,6 +1,7 @@
 {
   "name": "@mizchi/zero-runtime",
   "version": "0.0.1",
+  "type": "module",
   "types": "./lib/index.d.ts",
   "exports": {
     ".": {
@@ -9,5 +10,11 @@
         "default": "./lib/index.js"
       }
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mizchi/optools.git",
+    "directory": "zero-runtime"
+  },
+  "files": ["lib", "src"]
 }

@@ -3,8 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib",
-    "emitDeclarationOnly": true,
     "declaration": true,
     "skipLibCheck": true
-  }
+  },
+  "files": ["src/index.ts"]
 }
