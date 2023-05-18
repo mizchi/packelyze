@@ -1,5 +1,6 @@
 {
-  "name": "minifier",
+  "name": "optimizer-core",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -23,7 +24,8 @@
     "ts-loader": "^9.4.2",
     "ts-morph": "^18.0.0",
     "tsm": "^2.3.0",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "vitest": "^0.31.1"
   },
   "dependencies": {
     "esbuild": "^0.17.19"
