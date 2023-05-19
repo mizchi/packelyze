@@ -3,15 +3,17 @@ import type {
   ExactPathPattern,
   GetHostFromInput,
   PathPattern,
+  TrimSearch,
 } from "./pathPattern";
+import type { FormDataT } from "./form";
 
 export interface RequestInitT<
   Method extends string,
-  T,
+  T extends { [key: string]: any },
   HT extends Record<string, string> = {},
 > extends RequestInit {
   method: Method;
-  body?: TypedJSONString<T>;
+  body?: TypedJSONString<T> | FormDataT<T>;
   headers?: HT;
 }
 
@@ -25,11 +27,13 @@ export type FetchEffectType<
   BodyType extends {} = any,
   HeadersType extends {} = any,
   ResponseType extends {} = any,
+  SearchType extends {} = any,
 > = {
   methodType: MethodType;
   bodyType: BodyType;
   headersType: HeadersType;
   responseType: ResponseType;
+  searchType?: SearchType;
 };
 
 export type FetchEffectMap = {
@@ -42,25 +46,26 @@ export type TypedFetch<EffectMap extends FetchEffectMap> = <
   Input extends string,
   Method extends string,
   InputHost extends keyof EffectMap = GetHostFromInput<Input>,
-  InputPath extends string = ExtractPath<
+  InputPath extends string = ExtractInputPath<
     Input,
-    _StrKey<InputHost>
+    StrKey<InputHost>
   >,
-  Context extends EffectMap[keyof EffectMap] = EffectMap[InputHost],
+  ContextMap extends EffectMap[keyof EffectMap] = EffectMap[InputHost],
   Routed extends FetchEffectType = {
-    [Pattern in keyof Context]:
-      ExactPathPattern<InputPath, PathPattern<_StrKey<Pattern>>> extends true
-        ? Context[Pattern]
+    [Pattern in keyof ContextMap]:
+      ExactPathPattern<InputPath, PathPattern<StrKey<Pattern>>> extends true
+        ? ContextMap[Pattern]
         : never;
-  }[keyof Context],
+  }[keyof ContextMap],
   Matched extends FetchEffectType = Routed extends FetchEffectType<
     infer MethodType,
     infer BodyType,
     infer HeadersType,
-    infer ResponseType
+    infer ResponseType,
+    infer SearchType
   >
     ? Method extends MethodType
-      ? FetchEffectType<Method, BodyType, HeadersType, ResponseType>
+      ? FetchEffectType<Method, BodyType, HeadersType, ResponseType, SearchType>
     : never
     : never,
 >(
@@ -72,8 +77,8 @@ export type TypedFetch<EffectMap extends FetchEffectMap> = <
   >,
 ) => Promise<ResponseT<Matched["responseType"]>>;
 
-type ExtractPath<Input extends string, Host extends string> = Input extends
-  `${Host}${infer Pattern}` ? Pattern : never;
+type ExtractInputPath<Input extends string, Host extends string> = Input extends
+  `${Host}${infer Pattern}` ? TrimSearch<Pattern> : never;
 
-type _StrKey<Key extends string | number | symbol> = Key extends string ? Key
+type StrKey<Key extends string | number | symbol> = Key extends string ? Key
   : never;

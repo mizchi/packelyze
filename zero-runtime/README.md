@@ -35,6 +35,13 @@ const fetch = window.fetch as TypedFetch<{
       headersType: { "Content-Type": "application/json" };
       responseType: { text: string; number: number; boolean: boolean };
     };
+    "/search": {
+      methodType: "GET";
+      headersType: { "Content-Type": "application/json" };
+      responseType: { text: string };
+      // NOTE: Not handle as type yet.
+      searchType: { q: string }
+    },
   },
   // with host
   "https://z.test": {
@@ -54,6 +61,15 @@ const res = await fetchT("/api/xxxeuoau", {
   body: stringifyT({ text: "text", number: 1, boolean: true }),
 });
 
+// ignore query
+const res2 = await fetchT("/search?xxx", {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+
 // Type here
 const _data: { text: string, number: number, boolean: boolean } = await res.json();
 
@@ -65,8 +81,12 @@ await fetchT("https://z.test/send", {
   },
   body: stringifyT({ text: "text" }),
 });
-
 ```
+
+## TODO
+
+- [ ] Respect query type
+- [x] Form Body
 
 ## LICENSE
 

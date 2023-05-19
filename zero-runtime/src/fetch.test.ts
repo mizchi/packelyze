@@ -1,10 +1,27 @@
-import { test } from "vitest";
-import { TypedFetch } from "./fetch";
-import { JSON$stringifyT } from "./json";
+import { expect, test } from "vitest";
+import type { TypedFetch } from "./fetch";
+import type { JSON$stringifyT } from "./json";
+import type { URLSeachParamsT } from "./url";
+import type { FormDataT } from "./form";
+
+test("URLSearchParams", async () => {
+  type Param = { query: string };
+  const params = new URLSearchParams("query=hello") as URLSeachParamsT<Param>;
+  const v1: string = params.get("query");
+  // @ts-expect-error
+  const v2 = params.get("query2");
+
+  expect(v1).toBe("hello");
+
+  const str = params.toString();
+  expect(str).toBe("query=hello");
+  const stringifyT = JSON.stringify as JSON$stringifyT;
+});
 
 test.skip("check types only", async () => {
   const stringifyT = JSON.stringify as JSON$stringifyT;
-  type Api = {
+  type LocalApi = {
+    // "/search?query=:id&xxx=:xxx": {
     "/api/:id": {
       methodType: "GET";
       bodyType: { text: string; number: number; boolean: boolean };
@@ -22,10 +39,17 @@ test.skip("check types only", async () => {
       headersType: { "Content-Type": "application/json" };
       responseType: { text: string; number: number; boolean: boolean };
     };
+    "/search": {
+      methodType: "GET";
+      headersType: { "Content-Type": "application/json" };
+      searchType: { query: string; xxx: string };
+      responseType: { ok: boolean };
+      bodyType: {};
+    };
   };
   const fetch = window.fetch as TypedFetch<{
-    "": Api;
-    "http://localhost:8080": Api;
+    "": LocalApi;
+    "http://localhost:8080": LocalApi;
     "https://z.test": {
       "/send": {
         methodType: "POST";
@@ -51,6 +75,16 @@ test.skip("check types only", async () => {
     },
     body: stringifyT({ text: "text", number: 1, boolean: true }),
   });
+
+  const d: { ok: boolean } = await fetch("/search?xxx=1", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    // search: { query: "query", xxx: "xxx" },
+    // body: undefined
+    // body: stringifyT({ text: "text", number: 1, boolean: true }),
+  }).then((x) => x.json());
 
   const response1 = await fetch("/api/xxxeuoau", {
     method: "GET",
@@ -96,4 +130,25 @@ test.skip("check types only", async () => {
     body: stringifyT({ text: "text", number: 1, boolean: true }),
   });
 });
-// }
+
+test.skip("with formData", async () => {
+  const fetch = window.fetch as TypedFetch<{
+    "": {
+      "/send": {
+        methodType: "POST";
+        bodyType: { text: string };
+        headersType: { "Content-Type": "application/json" };
+        responseType: { ok: boolean };
+      };
+    };
+  }>;
+  const formData = new FormData() as FormDataT<{ text: string }>;
+  formData.append("text", "text");
+  // @ts-expect-error
+  formData.append("text2", "text");
+
+  const _data: { ok: boolean } = await fetch("/send", {
+    method: "POST",
+    body: formData,
+  }).then((x) => x.json());
+});

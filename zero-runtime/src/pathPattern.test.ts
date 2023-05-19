@@ -3,8 +3,17 @@ import type {
   ExactPathPattern,
   FillPathPattern,
   GetHostFromInput,
+  GetSearch,
   PathPattern,
+  TrimSearch,
 } from "./pathPattern";
+
+test.skip("TrimSearch", async () => {
+  const _t: TrimSearch<"https://example.com/search?a=1"> =
+    "https://example.com/search" as const;
+  const _t1: TrimSearch<"/search?a=1"> = "/search" as const;
+  const _t2: GetSearch<"https://example.com/search?a=1"> = "a=1" as const;
+});
 
 test.skip("GetHostFromInput", async () => {
   const _t1: GetHostFromInput<"https://example.com/xxx"> =
@@ -34,41 +43,38 @@ test.skip("ExactPathPattern", async () => {
     "/users/xxx/pages/xxx",
     PathPattern<"/users/:uid">
   > = false as const;
+
+  const _7: ExactPathPattern<
+    "/search",
+    PathPattern<"/search">
+  > = true as const;
 });
 
 test.skip("FillPathPattern", async () => {
-  type F1 = FillPathPattern<
+  const f1: FillPathPattern<
     "https://test.test",
     "/api/:x",
     "https://test.test/api"
-  >;
-
-  type F2 = FillPathPattern<
+  > = false as const;
+  const f2: FillPathPattern<
     "https://test.test",
     "/api/:x",
     "https://test.test/api/aoueoa"
-  >;
-
-  type F3 = FillPathPattern<
+  > = true as const;
+  const f3: FillPathPattern<
     "https://test.test",
     "/api/:x",
     "https://test.test/api/aoueoa/xxxx"
-  >;
-
-  // host
-  type F4 = FillPathPattern<
+  > = false as const;
+  const f4: FillPathPattern<
     "https://test.tes",
     "/api/:x",
     "https://test.test/api"
-  >;
-  type F5 = FillPathPattern<
-    "https://test.test",
-    "/api/:x",
-    "https://test.test/api"
-  >;
+  > = false as const;
 
-  const f1: F1 = false;
-  const f2: F2 = true;
-  const f3: F3 = false;
-  const f4: F4 = false;
+  const f6: FillPathPattern<
+    "",
+    "/search",
+    "/search?xxx=1"
+  > = true as const;
 });
