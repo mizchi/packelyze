@@ -23,14 +23,16 @@ export function emitLibDts(
 }
 
 export async function generateBundleDts(
-  { input, compilerOptions, respectExternal = false }: {
+  { input, external, compilerOptions, respectExternal = false }: {
     input: string;
     respectExternal?: boolean;
+    external?: string[];
     compilerOptions?: ts.CompilerOptions;
   },
 ) {
   const bundle = await rollup({
     input: input,
+    external,
     plugins: [dts({
       respectExternal,
       compilerOptions: compilerOptions as any,

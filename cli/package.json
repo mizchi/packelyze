@@ -1,14 +1,27 @@
 {
-  "name": "@mizchi/optools-cli",
+  "name": "@mizchi/optools",
   "version": "0.0.1",
   "dependencies": {
-    "@rollup/plugin-terser": "^0.4.2",
     "rollup": "^3.21.7",
     "rollup-plugin-dts": "^5.3.0",
-    "rollup-plugin-ts": "^3.2.0",
-    "terser": "^5.17.4"
+    "terser": "^5.17.6"
+  },
+  "bin": {
+    "optools": "lib/cli.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p ."
   },
   "peerDependencies": {
     "typescript": "*"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mizchi/optools.git",
+    "directory": "cli"
+  },
+  "files": [
+    "lib",
+    "src"
+  ]
 }

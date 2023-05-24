@@ -8,12 +8,15 @@ export default {
     dir: "dist",
     format: "esm",
   },
+  external: ["react/jsx-runtime"],
   plugins: [
     ts(),
     terser({
+      compress: false,
       mangle: {
         properties: {
-          regex: analyzed.manglePropertiesRegex
+          regex: /^.*$/,
+          reserved: analyzed.reserved
         }
       }
     }

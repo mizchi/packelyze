@@ -46,6 +46,7 @@ class X {
 
 export class PublicClass {
   #internal = 1;
+  "A-B"(): void {}
   public publicMethod(): Output {
     return { result: { value: 1 } };
   }

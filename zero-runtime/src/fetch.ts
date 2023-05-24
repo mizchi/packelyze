@@ -7,6 +7,19 @@ import type {
 } from "./pathPattern";
 import type { FormDataT } from "./form";
 
+export interface RequestConstructorT {
+  new <T extends { [key: string]: any }, Method extends string, HT extends {}>(
+    input: string,
+    init: RequestInitT<Method, T, HT>,
+  ): RequestT<T>;
+}
+
+interface RequestT<T extends { [key: string]: any }> extends Request {
+  formData(): Promise<FormDataT<T>>;
+  json(): Promise<T>;
+  text(): Promise<TypedJSONString<T>>;
+}
+
 export interface RequestInitT<
   Method extends string,
   T extends { [key: string]: any },
@@ -20,6 +33,12 @@ export interface RequestInitT<
 export interface ResponseT<T> extends Response {
   text(): Promise<TypedJSONString<T>>;
   json(): Promise<T>;
+}
+// const t = new Response();
+
+export interface ResponseConstructorT {
+  // new <T>(): ResponseT<T>;
+  new <T>(body?: BodyInit | null, init?: ResponseInit): Response;
 }
 
 export type FetchEffectType<

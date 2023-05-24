@@ -135,3 +135,5 @@ dist
 
 lib
 lib-dts
+
+node_modules/*

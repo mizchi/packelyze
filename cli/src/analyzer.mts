@@ -1,36 +1,34 @@
 import ts from "typescript";
 
-export function isHiddenMemberOfClass(
-  node: ts.MethodDeclaration | ts.PropertyDeclaration,
-) {
-  const hasPrivateKeyword = node.modifiers?.some((m) => {
-    return m.kind === ts.SyntaxKind.PrivateKeyword;
-  });
-  return hasPrivateKeyword || ts.isPrivateIdentifier(node.name!);
-}
+export type AnalyzeResult = {
+  reserved: string[];
+  privates: string[];
+};
 
-export const collectReservedProperties = (root: ts.Node, debug: boolean = false) => {
+export const collectProperties = (
+  root: ts.Node,
+  debug: boolean = false,
+): AnalyzeResult => {
   const debugLog = (...args: any) => {
     if (debug) {
       console.log(...args);
     }
   };
-  const reserved_props: Set<string> = new Set();
+  const reservedProps: Set<string> = new Set();
+  const privateProps: Set<string> = new Set();
+
   const _traverse = (node: ts.Node, depth: number = 0) => {
     const prefix = " ".repeat(depth * 2);
     const prefix1 = " ".repeat((depth + 1) * 2);
-    // module X { class x = 1; }
     const underModule = node.parent &&
       ts.isModuleBlock(node.parent);
     debugLog(prefix, "[", ts.SyntaxKind[node.kind], "]", !!underModule);
 
-    // console.log(prefix, "isParentModule", isParentModule);
-    // TODO: internal module
-
     if (ts.isModuleDeclaration(node)) {
       if (node.name) {
         debugLog(prefix1, "-module:", node.name.getText());
-        reserved_props.add(node.name?.getText() ?? "");
+        const prop = toPropName(node.name);
+        if (prop) reservedProps.add(prop);
       }
     }
 
@@ -38,44 +36,54 @@ export const collectReservedProperties = (root: ts.Node, debug: boolean = false)
       for (const decl of node.declarationList.declarations) {
         if (ts.isIdentifier(decl.name)) {
           debugLog(prefix1, "-module-variable:", decl.name.getText());
-          reserved_props.add(decl.name?.getText() ?? "");
+          const prop = toPropName(decl.name);
+          if (prop) reservedProps.add(prop);
         }
       }
-      // console.log(node);
-      // throw "stop";
-      // if (nod ts.isIdentifier(node.initializer) {
-
-      // }
-      // if (node.name) {
-      //   debugLog(prefix1, "module-variable:", node.name.getText());
-      //   // reserved_props.add(node.name?.getText() ?? "");
-      // }
     }
 
     if (ts.isTypeLiteralNode(node)) {
-      node.members.forEach((member) => {
+      for (const member of node.members) {
         if (ts.isPropertySignature(member)) {
-          debugLog(prefix1, "-property:", member.name?.getText());
-          reserved_props.add(member.name?.getText() ?? "");
+          debugLog(
+            prefix1,
+            "-typeLiteralProperty:",
+            member.name?.getText(),
+            ts.SyntaxKind[member.name?.kind],
+          );
+          const prop = toPropName(member.name);
+          if (prop) reservedProps.add(prop);
         }
-        // member.name
-      });
+      }
     }
     if (ts.isInterfaceDeclaration(node)) {
-      node.members.forEach((member) => {
+      for (const member of node.members) {
         if (ts.isMethodSignature(member)) {
           debugLog(prefix1, "-method:", member.name?.getText());
-          reserved_props.add(member.name?.getText() ?? "");
+          const prop = toPropName(member.name);
+          if (prop) reservedProps.add(prop);
         }
         if (ts.isPropertySignature(member)) {
-          debugLog(prefix1, "-property:", member.name?.getText());
-          reserved_props.add(member.name?.getText() ?? "");
+          debugLog(
+            prefix1,
+            "-property:",
+            member.name?.getText(),
+            "xxx",
+            ts.SyntaxKind[member.name?.kind],
+          );
+          const prop = toPropName(member.name);
+          if (prop) {
+            reservedProps.add(prop);
+          }
         }
-      });
+      }
       if (underModule) {
         if (node.name) {
           debugLog(prefix1, "-interface:", node.name.getText());
-          reserved_props.add(node.name?.getText() ?? "");
+          const prop = toPropName(node.name);
+          if (prop) {
+            reservedProps.add(prop);
+          }
         }
       }
     }
@@ -83,17 +91,21 @@ export const collectReservedProperties = (root: ts.Node, debug: boolean = false)
       if (underModule) {
         if (node.name) {
           debugLog(prefix1, "-typeAlias:", node.name.getText());
-          reserved_props.add(node.name?.getText() ?? "");
+          const prop = toPropName(node.name);
+          if (prop) reservedProps.add(prop);
         }
       }
     }
 
     if (ts.isClassDeclaration(node)) {
-      node.members.forEach((member) => {
+      for (const member of node.members) {
         if (ts.isMethodDeclaration(member)) {
-          if (!isHiddenMemberOfClass(member)) {
-            debugLog(prefix1, "-method:", member.name?.getText());
-            reserved_props.add(member.name?.getText() ?? "");
+          debugLog(prefix1, "-method:", member.name?.getText());
+          const prop = toPropName(member.name);
+          if (isHiddenMemberOfClass(member)) {
+            if (prop) privateProps.add(prop);
+          } else {
+            if (prop) reservedProps.add(prop);
           }
         }
         if (ts.isPropertyDeclaration(member)) {
@@ -104,17 +116,19 @@ export const collectReservedProperties = (root: ts.Node, debug: boolean = false)
             member.name?.getText(),
             hidden,
           );
-          if (!hidden) {
-            reserved_props.add(member.name?.getText() ?? "");
+          const prop = toPropName(member.name);
+          if (hidden) {
+            if (prop) privateProps.add(prop);
+          } else {
+            if (prop) reservedProps.add(prop);
           }
         }
-        // member.name
-      });
-
+      }
       if (underModule) {
         if (node.name) {
           debugLog(prefix1, "-class:", node.name.getText());
-          reserved_props.add(node.name?.getText() ?? "");
+          const prop = toPropName(node.name);
+          if (prop) reservedProps.add(prop);
         }
       }
     }
@@ -134,5 +148,161 @@ export const collectReservedProperties = (root: ts.Node, debug: boolean = false)
     });
   };
   _traverse(root);
-  return reserved_props;
+  return {
+    reserved: Array.from(reservedProps),
+    privates: Array.from(privateProps),
+  };
 };
+
+function isHiddenMemberOfClass(
+  node: ts.MethodDeclaration | ts.PropertyDeclaration,
+) {
+  const hasPrivateKeyword = node.modifiers?.some((m) => {
+    return m.kind === ts.SyntaxKind.PrivateKeyword;
+  });
+  return hasPrivateKeyword || ts.isPrivateIdentifier(node.name!);
+}
+
+const toPropName = (node: ts.Node) => {
+  if (ts.isIdentifier(node)) {
+    return node.text;
+  }
+  if (ts.isStringLiteral(node)) {
+    return node.text;
+  }
+};
+
+if (import.meta.vitest) {
+  const { test, expect } = import.meta.vitest;
+  test("type literal", () => {
+    const source = `
+      export type X = {
+        a: number;
+        b: string;
+        "c": boolean;
+        nested: {
+          d: number;
+        }
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile);
+    expect(ret.reserved).toEqual([
+      "a",
+      "b",
+      "c",
+      "nested",
+      "d",
+    ]);
+  });
+
+  test("interface", () => {
+    const source = `
+      export interface X {
+        a: number;
+        b: string;
+        "c": boolean;
+        nested: {
+          d: number;
+        }
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile);
+    expect(ret.reserved).toEqual([
+      "a",
+      "b",
+      "c",
+      "nested",
+      "d",
+    ]);
+  });
+
+  test("class", () => {
+    const source = `
+      declare class X {
+        a: number;
+        "b": boolean;
+        f(): void;
+        "g"(): void;
+        private pf(): void;
+        private z;
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile, false);
+    expect(ret.reserved).toEqual([
+      "a",
+      "b",
+      "f",
+      "g",
+    ]);
+    expect(ret.privates).toEqual([
+      "pf",
+      "z",
+    ]);
+  });
+
+  test("function", () => {
+    const source = `
+      declare function f(i: { x: number, y: number }): { a: number; b: string; "c": boolean; };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile, false);
+    expect(ret.reserved).toEqual([
+      "x",
+      "y",
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+
+  test("module", () => {
+    const source = `
+      export module A {
+        declare const a: number;
+        declare interface I {}
+        declare class C {}
+        declare module B {
+          declare const v: number;
+        }
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile, false);
+    expect(ret.reserved).toEqual([
+      "A",
+      "a",
+      "I",
+      "C",
+      "B",
+      "v",
+    ]);
+  });
+}

@@ -1,4 +1,3 @@
-// import { PublicModule } from "./sub";
 export {
   effect,
   InterfaceType,

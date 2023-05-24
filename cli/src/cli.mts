@@ -1,42 +1,28 @@
-import path from "path";
+import path from "node:path";
 import ts from "typescript";
-import { collectReservedProperties } from './analyzer.mjs';
-import { createManglePropertiesRegexString } from "./helpers.mjs";
-import { generateBundleDts, emitLibDts } from "./generator.mjs";
-
-// CLI
-
+import fs from "node:fs";
 import { parseArgs } from "node:util";
-import fs from "fs";
+import { collectProperties } from "./analyzer.mjs";
+// import { createManglePropertiesRegexString } from "./helpers.mjs";
+import { generateBundleDts } from "./generator.mjs";
 
 const args = parseArgs({
   options: {
-    tsconfigPath: {
-      type: "string",
-      default: "tsconfig.json",
-      short: "p",
-    },
     input: {
       type: "string",
       default: "index.ts",
       short: "i",
-    },
-    skipLibDts: {
-      type: "boolean",
-      default: false,
     },
     printDts: {
       type: "boolean",
       default: false,
       short: "p",
     },
-    stopOnError: {
-      type: "boolean",
-      default: false,
-    },
-    respectExternal: {
-      type: "boolean",
-      default: true,
+    external: {
+      type: "string",
+      default: [],
+      short: "e",
+      multiple: true,
     },
     debug: {
       type: "boolean",
@@ -55,86 +41,63 @@ const args = parseArgs({
   allowPositionals: true,
 });
 
-
 async function run() {
-  const cwd = process.cwd();
-  const defaultTsConfigPath = path.join(cwd, args.values.tsconfigPath!);
-  const outputLibDir = path.join(process.cwd(), "lib-dts");
-
-  if (args.values.input == null) {
-    console.error("input (-i) is required");
-    process.exit(1);
-  }
-  const input = path.join(cwd, args.values.input!);
-  const inputBase = path.basename(input);
-  const inputDts = path.join(outputLibDir, inputBase.replace(/\.ts$/, ".d.ts"));
-
-  const files = args.positionals.map((file) => path.join(cwd, file));
-  const skipLibDts = args.values.skipLibDts;
-  const respectExternal = args.values.respectExternal!;
-  // const printDts = args.values.printDts;
-  const debug = args.values.debug;
-  const printDts = args.values.printDts;
-
-  if (debug) console.log(args);
-
-  const tsconfig = ts.parseConfigFileTextToJson(
-    defaultTsConfigPath,
-    fs.readFileSync(defaultTsConfigPath, "utf-8"),
-  );
-
-  const config = ts.convertCompilerOptionsFromJson(
-    tsconfig.config.compilerOptions,
-    ".",
-  );
-
-  if (!skipLibDts) {
-    const result = emitLibDts(files, outputLibDir, config.options);
-    if (debug) {
-      console.log("EmitResult", result);
+  const [cmd, ...rest] = args.positionals;
+  if (cmd === "analyze-dts") {
+    const cwd = process.cwd();
+    if (args.values.input == null) {
+      console.error("input (-i) is required");
+      process.exit(1);
     }
-  }
+    const input = path.join(cwd, args.values.input!);
+    // const respectExternal = args.values.includeExternal!;
+    const respectExternal = true;
+    const debug = args.values.debug;
+    const printDts = args.values.printDts;
 
-  const dtsCode = await generateBundleDts({
-    input: inputDts,
-    respectExternal,
-  });
+    if (debug) console.log(args);
 
-  if (printDts) {
-    console.log("// bundled.d.ts");
-    console.log(dtsCode);
-    process.exit(0);
-  }
+    const dtsCode = await generateBundleDts({
+      input,
+      external: args.values.external || [],
+      // respectExternal: !!args.values.external?.length,
+      respectExternal: true,
+    });
 
-  const source = ts.createSourceFile(
-    "bundle.d.ts",
-    dtsCode,
-    ts.ScriptTarget.Latest,
-    true,
-  );
-  const publicProperties = collectReservedProperties(source, debug);
-  const analyzeResult = {
-    reservedProperties: [...publicProperties],
-    manglePropertiesRegex: createManglePropertiesRegexString(publicProperties),
-  };
+    if (printDts) {
+      console.log("// bundled.d.ts");
+      console.log(dtsCode);
+      process.exit(0);
+    }
 
-  if (args.values.mode === "regex") {
-    console.log(createManglePropertiesRegexString(publicProperties));
-  } else if (args.values.mode === "json") {
-    console.log(JSON.stringify(
-      analyzeResult,
-      null,
-      2,
-    ));
-  }
+    const source = ts.createSourceFile(
+      "bundle.d.ts",
+      dtsCode,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const result = collectProperties(source, debug);
 
-  if (args.values.output) {
-    const outpath = path.join(cwd, args.values.output);
-    console.log("[gen:result]", outpath.replace(cwd + "/", ""));
-    fs.writeFileSync(outpath, JSON.stringify(analyzeResult, null, 2));
-  } else {
-    console.log(JSON.stringify(analyzeResult, null, 2));
+    if (args.values.mode === "list") {
+      console.log(result.reserved);
+    } else if (args.values.mode === "json") {
+      console.log(JSON.stringify(
+        result,
+        null,
+        2,
+      ));
+    }
+    if (args.values.output) {
+      const outpath = path.join(cwd, args.values.output);
+      console.log("[optools:generate]", outpath.replace(cwd + "/", ""));
+      fs.writeFileSync(outpath, JSON.stringify(result, null, 2));
+    } else {
+      console.log(JSON.stringify(result, null, 2));
+    }
   }
 }
 
-run();
+run().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
