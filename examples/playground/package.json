@@ -22,6 +22,7 @@
   "dependencies": {
     "esbuild": "^0.17.19",
     "lizod": "^0.2.2",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "typescript": "5"
   }
 }

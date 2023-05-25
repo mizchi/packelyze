@@ -59,6 +59,9 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.2.0
+      typescript:
+        specifier: '5'
+        version: 5.0.4
     devDependencies:
       '@mizchi/optools':
         specifier: workspace:*
