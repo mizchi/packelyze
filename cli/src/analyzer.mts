@@ -33,6 +33,15 @@ export const collectProperties = (
     }
 
     if (ts.isEnumDeclaration(node)) {
+      if (underModule) {
+        if (node.name) {
+          debugLog(prefix1, "-enum:", node.name.getText());
+          const prop = toPropName(node.name);
+          if (prop) {
+            reservedProps.add(prop);
+          }
+        }
+      }
       for (const member of node.members) {
         if (ts.isIdentifier(member.name)) {
           debugLog(prefix1, "-enum-member:", member.name.getText());
@@ -306,6 +315,7 @@ if (import.meta.vitest) {
         declare module B {
           declare const v: number;
         }
+        declare enum E {}
       };
     `;
     const sourceFile = ts.createSourceFile(
@@ -322,6 +332,7 @@ if (import.meta.vitest) {
       "C",
       "B",
       "v",
+      "E",
     ]);
   });
 
