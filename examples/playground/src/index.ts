@@ -6,4 +6,4 @@ export {
   PubType,
   sub,
 } from "./sub";
-export type { fetch } from "./fetch";
+// export type { fetch } from "./fetch";
