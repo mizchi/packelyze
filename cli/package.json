@@ -10,7 +10,8 @@
     "optools": "lib/cli.mjs"
   },
   "scripts": {
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
     "typescript": "*"

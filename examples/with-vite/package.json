@@ -5,12 +5,14 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -p . && optools analyze-dts -i lib/index.d.ts -e react/jsx-runtime -o _analyzed.json && rollup -c"
+    "build": "tsc -p . && optools analyze-dts -i lib/index.d.ts -e react/jsx-runtime -o _analyzed.json && vite build",
+    "serve": "vite serve"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@internal/react-lib": "workspace:*",
     "@mizchi/optools": "workspace:*",
     "@mizchi/zero-runtime": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
@@ -19,6 +21,7 @@
   },
   "dependencies": {
     "esbuild": "^0.17.19",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

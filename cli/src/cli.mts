@@ -50,8 +50,7 @@ async function run() {
       process.exit(1);
     }
     const input = path.join(cwd, args.values.input!);
-    // const respectExternal = args.values.includeExternal!;
-    const respectExternal = true;
+
     const debug = args.values.debug;
     const printDts = args.values.printDts;
 
@@ -60,8 +59,7 @@ async function run() {
     const dtsCode = await generateBundleDts({
       input,
       external: args.values.external || [],
-      // respectExternal: !!args.values.external?.length,
-      respectExternal: true,
+      respectExternal: args.values.external != null,
     });
 
     if (printDts) {

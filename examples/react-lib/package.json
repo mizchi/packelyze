@@ -1,0 +1,34 @@
+{
+  "name": "@internal/react-lib",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p . && optools analyze-dts -i lib/index.d.ts -o _analyzed.json -e react/jsx-runtime && rollup -c"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@mizchi/optools": "workspace:*",
+    "@mizchi/zero-runtime": "workspace:*",
+    "@rollup/plugin-terser": "^0.4.2",
+    "rollup": "^3.21.7",
+    "rollup-plugin-ts": "^3.2.0"
+  },
+  "dependencies": {
+    "esbuild": "^0.17.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

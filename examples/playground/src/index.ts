@@ -6,4 +6,4 @@ export {
   PubType,
   sub,
 } from "./sub";
-export { MyComponent } from "./external";
+export type { fetch } from "./fetch";
