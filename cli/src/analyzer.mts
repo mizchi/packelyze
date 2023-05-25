@@ -32,6 +32,25 @@ export const collectProperties = (
       }
     }
 
+    if (ts.isEnumDeclaration(node)) {
+      for (const member of node.members) {
+        if (ts.isIdentifier(member.name)) {
+          debugLog(prefix1, "-enum-member:", member.name.getText());
+          const prop = toPropName(member.name);
+          if (prop) reservedProps.add(prop);
+        }
+        if (member.initializer && ts.isStringLiteral(member.initializer)) {
+          debugLog(
+            prefix1,
+            "-enum-initializer:",
+            member.initializer.getText(),
+          );
+          const prop = toPropName(member.initializer);
+          if (prop) reservedProps.add(prop);
+        }
+      }
+    }
+
     if (ts.isVariableStatement(node) && underModule) {
       for (const decl of node.declarationList.declarations) {
         if (ts.isIdentifier(decl.name)) {
@@ -303,6 +322,29 @@ if (import.meta.vitest) {
       "C",
       "B",
       "v",
+    ]);
+  });
+
+  test("enum", () => {
+    const source = `
+      export enum MyEnum {
+        AAA,
+        BBB,
+        CCC = "StringValue",
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile);
+    expect(ret.reserved).toEqual([
+      "AAA",
+      "BBB",
+      "CCC",
+      "StringValue",
     ]);
   });
 }
