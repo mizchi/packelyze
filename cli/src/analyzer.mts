@@ -5,8 +5,75 @@ export type AnalyzeResult = {
   privates: string[];
 };
 
+export type CollectPropertiesOptions = {
+  ambient?: boolean;
+};
+
+type AnyDeclaration =
+  | ts.VariableStatement
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.ClassDeclaration
+  | ts.FunctionDeclaration
+  | ts.EnumDeclaration
+  | ts.ModuleDeclaration;
+
+function isNameableDeclaration(
+  node: ts.Node,
+): node is AnyDeclaration {
+  return (
+    ts.isVariableStatement(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isFunctionDeclaration(node) ||
+    ts.isEnumDeclaration(node) ||
+    ts.isModuleDeclaration(node)
+  );
+}
+
+function isDeclarationNameReserved(
+  node: ts.Node,
+  ambientMode: boolean,
+): node is AnyDeclaration {
+  const underModule = node.parent &&
+    ts.isModuleBlock(node.parent);
+
+  if (isNameableDeclaration(node)) {
+    if (ambientMode) {
+      return !!node.modifiers?.some((m) => {
+        return m.kind === ts.SyntaxKind.DeclareKeyword;
+      });
+    }
+    return underModule;
+  }
+  return false;
+}
+
+function isHiddenMemberOfClass(
+  node: ts.MethodDeclaration | ts.PropertyDeclaration,
+) {
+  const hasPrivateKeyword = node.modifiers?.some((m) => {
+    return m.kind === ts.SyntaxKind.PrivateKeyword;
+  });
+  return hasPrivateKeyword || ts.isPrivateIdentifier(node.name!);
+}
+
+const toPropName = (node: ts.Node) => {
+  if (ts.isIdentifier(node)) {
+    return node.text;
+  }
+  if (ts.isStringLiteral(node)) {
+    return node.text;
+  }
+  if (ts.isNumericLiteral(node)) {
+    return node.text;
+  }
+};
+
 export const collectProperties = (
   root: ts.Node,
+  { ambient: ambientMode = false }: CollectPropertiesOptions = {},
   debug: boolean = false,
 ): AnalyzeResult => {
   const debugLog = (...args: any) => {
@@ -22,10 +89,25 @@ export const collectProperties = (
     const prefix1 = " ".repeat((depth + 1) * 2);
     const underModule = node.parent &&
       ts.isModuleBlock(node.parent);
+
     debugLog(prefix, "[", ts.SyntaxKind[node.kind], "]", !!underModule);
 
-    if (ts.isModuleDeclaration(node)) {
-      if (node.name) {
+    // Reserve declaration node name first
+    if (isDeclarationNameReserved(node, ambientMode)) {
+      // variableStatement or others
+      if (ts.isVariableStatement(node)) {
+        for (const decl of node.declarationList.declarations) {
+          if (ts.isIdentifier(decl.name)) {
+            debugLog(
+              prefix1,
+              "-module-variable | -declare in dts:",
+              decl.name.getText(),
+            );
+            const prop = toPropName(decl.name);
+            if (prop) reservedProps.add(prop);
+          }
+        }
+      } else if (node.name) {
         debugLog(prefix1, "-module:", node.name.getText());
         const prop = toPropName(node.name);
         if (prop) reservedProps.add(prop);
@@ -33,57 +115,53 @@ export const collectProperties = (
     }
 
     if (ts.isEnumDeclaration(node)) {
-      if (underModule) {
-        if (node.name) {
-          debugLog(prefix1, "-enum:", node.name.getText());
-          const prop = toPropName(node.name);
-          if (prop) {
-            reservedProps.add(prop);
-          }
-        }
-      }
+      // members
+      let currentEnumValue: number | string = 0;
+      const isConstEnum = !!node.modifiers?.some((m) => {
+        return m.kind === ts.SyntaxKind.ConstKeyword;
+      }); // TODO
+
       for (const member of node.members) {
         if (ts.isIdentifier(member.name)) {
           debugLog(prefix1, "-enum-member:", member.name.getText());
           const prop = toPropName(member.name);
           if (prop) reservedProps.add(prop);
         }
-        if (member.initializer && ts.isStringLiteral(member.initializer)) {
-          debugLog(
-            prefix1,
-            "-enum-initializer:",
-            member.initializer.getText(),
-          );
-          const prop = toPropName(member.initializer);
-          if (prop) reservedProps.add(prop);
+        if (isConstEnum) continue;
+        // string literal initializer
+        if (member.initializer) {
+          if (ts.isStringLiteral(member.initializer)) {
+            debugLog(
+              prefix1,
+              "-enum-initializer(string):",
+              member.initializer.getText(),
+            );
+            const prop = toPropName(member.initializer);
+            if (prop) reservedProps.add(prop);
+          }
+          if (ts.isNumericLiteral(member.initializer)) {
+            // number literal initializer
+            debugLog(
+              prefix1,
+              "-enum-initializer(number):",
+              member.initializer.getText(),
+            );
+            const prop = toPropName(member.initializer);
+            if (prop) reservedProps.add(prop);
+
+            // reset enum value
+            currentEnumValue = Number(member.initializer.text) + 1;
+          }
+        } else {
+          // no initializer: auto increment
+          if (typeof currentEnumValue === "number") {
+            reservedProps.add(String(currentEnumValue));
+            currentEnumValue++;
+          }
         }
       }
     }
 
-    if (ts.isVariableStatement(node) && underModule) {
-      for (const decl of node.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name)) {
-          debugLog(prefix1, "-module-variable:", decl.name.getText());
-          const prop = toPropName(decl.name);
-          if (prop) reservedProps.add(prop);
-        }
-      }
-    }
-
-    if (ts.isTypeLiteralNode(node)) {
-      for (const member of node.members) {
-        if (ts.isPropertySignature(member)) {
-          debugLog(
-            prefix1,
-            "-typeLiteralProperty:",
-            member.name?.getText(),
-            ts.SyntaxKind[member.name?.kind],
-          );
-          const prop = toPropName(member.name);
-          if (prop) reservedProps.add(prop);
-        }
-      }
-    }
     if (ts.isInterfaceDeclaration(node)) {
       for (const member of node.members) {
         if (ts.isMethodSignature(member)) {
@@ -105,27 +183,15 @@ export const collectProperties = (
           }
         }
       }
-      if (underModule) {
-        if (node.name) {
-          debugLog(prefix1, "-interface:", node.name.getText());
-          const prop = toPropName(node.name);
-          if (prop) {
-            reservedProps.add(prop);
-          }
-        }
-      }
-    }
-    if (ts.isTypeAliasDeclaration(node)) {
-      if (underModule) {
-        if (node.name) {
-          debugLog(prefix1, "-typeAlias:", node.name.getText());
-          const prop = toPropName(node.name);
-          if (prop) reservedProps.add(prop);
-        }
-      }
     }
 
     if (ts.isClassDeclaration(node)) {
+      // keep name
+      debugLog(
+        prefix1,
+        "-class:",
+        node.getText(),
+      );
       for (const member of node.members) {
         if (ts.isMethodDeclaration(member)) {
           debugLog(prefix1, "-method:", member.name?.getText());
@@ -136,6 +202,7 @@ export const collectProperties = (
             if (prop) reservedProps.add(prop);
           }
         }
+
         if (ts.isPropertyDeclaration(member)) {
           const hidden = isHiddenMemberOfClass(member);
           debugLog(
@@ -152,10 +219,18 @@ export const collectProperties = (
           }
         }
       }
-      if (underModule) {
-        if (node.name) {
-          debugLog(prefix1, "-class:", node.name.getText());
-          const prop = toPropName(node.name);
+    }
+
+    if (ts.isTypeLiteralNode(node)) {
+      for (const member of node.members) {
+        if (ts.isPropertySignature(member)) {
+          debugLog(
+            prefix1,
+            "-typeLiteralProperty:",
+            member.name?.getText(),
+            ts.SyntaxKind[member.name?.kind],
+          );
+          const prop = toPropName(member.name);
           if (prop) reservedProps.add(prop);
         }
       }
@@ -170,7 +245,6 @@ export const collectProperties = (
     //     }
     //   }
     // }
-
     ts.forEachChild(node, (node) => {
       _traverse(node, depth + 1);
     });
@@ -180,24 +254,6 @@ export const collectProperties = (
     reserved: Array.from(reservedProps),
     privates: Array.from(privateProps),
   };
-};
-
-function isHiddenMemberOfClass(
-  node: ts.MethodDeclaration | ts.PropertyDeclaration,
-) {
-  const hasPrivateKeyword = node.modifiers?.some((m) => {
-    return m.kind === ts.SyntaxKind.PrivateKeyword;
-  });
-  return hasPrivateKeyword || ts.isPrivateIdentifier(node.name!);
-}
-
-const toPropName = (node: ts.Node) => {
-  if (ts.isIdentifier(node)) {
-    return node.text;
-  }
-  if (ts.isStringLiteral(node)) {
-    return node.text;
-  }
 };
 
 if (import.meta.vitest) {
@@ -273,7 +329,7 @@ if (import.meta.vitest) {
       ts.ScriptTarget.ESNext,
       true,
     );
-    const ret = collectProperties(sourceFile, false);
+    const ret = collectProperties(sourceFile);
     expect(ret.reserved).toEqual([
       "a",
       "b",
@@ -296,7 +352,7 @@ if (import.meta.vitest) {
       ts.ScriptTarget.ESNext,
       true,
     );
-    const ret = collectProperties(sourceFile, false);
+    const ret = collectProperties(sourceFile);
     expect(ret.reserved).toEqual([
       "x",
       "y",
@@ -324,9 +380,9 @@ if (import.meta.vitest) {
       ts.ScriptTarget.ESNext,
       true,
     );
-    const ret = collectProperties(sourceFile, false);
+    const ret = collectProperties(sourceFile);
     expect(ret.reserved).toEqual([
-      "A",
+      // "A",
       "a",
       "I",
       "C",
@@ -342,6 +398,38 @@ if (import.meta.vitest) {
         AAA,
         BBB,
         CCC = "StringValue",
+        DDD = 100,
+        EEE
+      };
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile);
+    expect(ret.reserved).toEqual([
+      "AAA",
+      "0",
+      "BBB",
+      "1",
+      "CCC",
+      "StringValue",
+      "DDD",
+      "100",
+      "EEE",
+      "101",
+    ]);
+  });
+  test("const enum", () => {
+    const source = `
+      export const enum MyEnum {
+        AAA,
+        BBB,
+        CCC = "StringValue",
+        DDD = 100,
+        EEE
       };
     `;
     const sourceFile = ts.createSourceFile(
@@ -355,7 +443,34 @@ if (import.meta.vitest) {
       "AAA",
       "BBB",
       "CCC",
-      "StringValue",
+      "DDD",
+      "EEE",
+    ]);
+  });
+
+  test("ambient", () => {
+    const source = `
+      var Internal: number;
+      declare var Foo: number;
+      declare class Bar {};
+      declare module Baz {};
+      declare enum Qux {};
+      declare function f(): void;
+    `;
+    const sourceFile = ts.createSourceFile(
+      "test.ts",
+      source,
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    const ret = collectProperties(sourceFile, { ambient: true });
+    // console.log("Ambient crawling", ret);
+    expect(ret.reserved).toEqual([
+      "Foo",
+      "Bar",
+      "Baz",
+      "Qux",
+      "f",
     ]);
   });
 }
