@@ -2,6 +2,7 @@
   "name": "@mizchi/optools",
   "version": "0.0.3",
   "dependencies": {
+    "@cloudflare/workers-types": "^4.20230518.0",
     "rollup": "^3.21.7",
     "rollup-plugin-dts": "^5.3.0",
     "terser": "^5.17.6"
@@ -10,7 +11,8 @@
     "optools": "lib/cli.mjs"
   },
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc -p . && node scripts/gen-builtins.mjs",
+    "test": "vitest --run",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
@@ -23,6 +25,7 @@
   },
   "files": [
     "lib",
-    "src"
+    "src",
+    "gen"
   ]
 }

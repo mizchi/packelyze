@@ -29,9 +29,15 @@ const args = parseArgs({
       default: false,
       short: "d",
     },
-    mode: {
+    // mode: {
+    //   type: "string",
+    //   short: "m",
+    // },
+    builtins: {
       type: "string",
-      short: "m",
+      multiple: true,
+      // default: ["domprops", "es", "dom", "worker"],
+      short: "b",
     },
     output: {
       type: "string",
@@ -74,17 +80,36 @@ async function run() {
       ts.ScriptTarget.Latest,
       true,
     );
-    const result = collectProperties(source, debug);
+    const result = collectProperties(source, undefined, debug);
+    // const reserved = new Set(result.reserved);
 
-    if (args.values.mode === "list") {
-      console.log(result.reserved);
-    } else if (args.values.mode === "json") {
-      console.log(JSON.stringify(
-        result,
-        null,
-        2,
-      ));
+    if (args.values.builtins) {
+      // @ts-ignore
+      const builtins = await import("../gen/builtins.mjs");
+      // const resultSet = new Set(result.reserved);
+      console.log("[optools:builtin]", args.values.builtins);
+      for (const builtinName of args.values.builtins) {
+        if (builtinName in builtins) {
+          console.log(
+            "[optools:include-builtins]",
+            builtinName,
+            builtins[builtinName].length,
+          );
+          result.reserved.push(...builtins[builtinName]);
+        }
+      }
+      result.reserved = [...(new Set(result.reserved))].sort();
     }
+
+    // if (args.values.mode === "list") {
+    //   console.log(result.reserved);
+    // } else if (args.values.mode === "json") {
+    //   console.log(JSON.stringify(
+    //     result,
+    //     null,
+    //     2,
+    //   ));
+    // }
     if (args.values.output) {
       const outpath = path.join(cwd, args.values.output);
       console.log("[optools:generate]", outpath.replace(cwd + "/", ""));
@@ -92,6 +117,9 @@ async function run() {
     } else {
       console.log(JSON.stringify(result, null, 2));
     }
+  } else {
+    console.error("Unknown command", cmd);
+    process.exit(1);
   }
 }
 
