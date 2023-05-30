@@ -72,7 +72,11 @@ requirements
     // terser's internal reserved dictionary
     "domprops",
     // well known http headers to keep request headers
-    "httpHeaders"
+    "httpHeaders",
+    // node environment
+    "node",
+    // cloudflare-workers
+    "cloudflareWorkers"
   ],
   // skip library types by analyze-dts
   "external": [
@@ -82,6 +86,18 @@ requirements
 ```
 
 Safest `builtins` are `["es", "dom", "worker", "domprops", "httpHeaders"]` but it includes many false-positive. For most projects, `["es", "dom"]` works well.
+
+### builtins: node
+
+`optools`'s builtin `node` does not include `process` and `Buffer`.
+
+```ts
+// use process and Buffer via static import
+import process from "node:process";
+import Buffer from "node:buffer";
+```
+
+TODO: provide linter
 
 ## Use analyzed props with terser
 
@@ -257,10 +273,11 @@ $ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
 ## TODO
 
 - [ ] cli: Analyze with additional ambient files
-- [ ] cli: builtins cloudflare-workers
-- [ ] cli: builtins node
+- [x] cli: builtins cloudflare-workers
+- [x] cli: builtins node
+- [x] cli: builtins httpHeaders
 - [ ] cli: builtins deno
-- [ ] cli: builtins jest/mocha
+- [ ] cli: builtins jest
 - [ ] MSW Examples
 - [ ] Keep `function.name` and `class.name` option
 

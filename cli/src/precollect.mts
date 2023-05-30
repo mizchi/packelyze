@@ -58,6 +58,41 @@ export async function getTerserDompropsReserved(terserMainPath: string) {
   return new Set<string>(mod.domprops);
 }
 
+export async function getCloudflareWorkersReserved(
+  cloudflareWorkersTypesDtsPath: string,
+) {
+  const code = await fs.readFile(cloudflareWorkersTypesDtsPath, "utf-8");
+  const source = ts.createSourceFile(
+    "a.d.ts",
+    code,
+    ts.ScriptTarget.ES2019,
+    true,
+  );
+  const result = collectProperties(source);
+  return new Set<string>(result.reserved);
+}
+
+export async function getNodeReserved(
+  nodeDtsPath: string,
+) {
+  const code = await fs.readFile(nodeDtsPath, "utf-8");
+  const source = ts.createSourceFile(
+    "a.d.ts",
+    code,
+    ts.ScriptTarget.ES2019,
+    true,
+  );
+  const result = collectProperties(source);
+  return new Set<string>(result.reserved);
+}
+
+// Analyze https://github.com/denoland/deno/tree/acc6cdc0b1c0fae5e0fba3b0110f96119c2139f7/cli/tsc/dts
+export async function getDenoReserved(
+  denoDtsDir: string,
+) {
+  throw new Error("not implemented");
+}
+
 async function getReservedFromFileList(filelist: string[]) {
   const reserved = new Set<string>();
   for (const file of filelist) {
