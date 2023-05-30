@@ -13,14 +13,13 @@ $ npm install optools -D
 - `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts`
 - High compression ratio with `mangle.properties.reserved=/^.*/` and `mangle.properties.builtins=true`
 - But you should declare your project's internal side effects like `fetch(...)`, `postMessage(...)`
-  - WIP: you can use with `zero-runtime` to catch side-effects.
+  - you can use with `zero-runtime`(WIP) to catch side-effects.
 
 ## Who is it beneficial to?
 
 - Library developper to reduce bundle
 - Performance-oriented frontend (for lighthouse today?)
 - Developers who are required to reduce build size (third party script developper)
-- If you have external effects like `fetch()` and `postMessage`, you need to declare external effect types.
 
 ## Benchmarks
 
