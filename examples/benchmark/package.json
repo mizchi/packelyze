@@ -1,19 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": ""
   },
   "devDependencies": {
-    "@mizchi/optools": "workspace:*",
-    "@rollup/plugin-commonjs": "^25.0.0",
-    "@rollup/plugin-node-resolve": "^15.0.2",
-    "@types/jquery": "^3.5.16",
+    "optools": "workspace:*",
     "hono": "^3.2.2",
-    "jquery": "^3.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "rollup": "^3.21.7",
-    "rollup-plugin-ts": "^3.2.0",
-    "zod": "^3.21.4"
+    "rollup-plugin-ts": "^3.2.0"
   }
 }

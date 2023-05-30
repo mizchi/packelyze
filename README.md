@@ -5,7 +5,7 @@ Aggressive minifying tools to reduce bundle size with terser.
 CAUTION: THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
 
 ```bash
-$ npm install @mizchi/optools -D 
+$ npm install optools -D 
 ```
 
 ## How to use
@@ -13,9 +13,9 @@ $ npm install @mizchi/optools -D
 You can skip `optools init` if you know `optools analyze-dts` requirements blow.
 
 ```bash
-$ npx @mizchi/optools init # optional: generate for lib/index.d.ts
+$ npx optools init # optional: generate for lib/index.d.ts
 $ npx tsc -p tsconfig.optools.json # generate lib/index.d.ts from src/index.ts
-$ npx @mizchi/optools analyze-dts # generate _optools-analyzed.json
+$ npx optools analyze-dts # generate _optools-analyzed.json
 ```
 
 Add analyze step before build.

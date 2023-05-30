@@ -13,9 +13,9 @@
   "license": "MIT",
   "devDependencies": {
     "@internal/react-lib": "workspace:*",
-    "@mizchi/optools": "workspace:*",
     "@mizchi/zero-runtime": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
+    "optools": "workspace:*",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0"
   },
