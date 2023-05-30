@@ -1,12 +1,30 @@
 # optools
 
-Aggressive minifying tools to reduce bundle size with terser.
+Aggressive minifying tool by typescript static analyzer.
 
-CAUTION: THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
+THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
 
 ```bash
 $ npm install optools -D 
 ```
+
+## What is it
+
+- `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts`
+- High compression ratio with `mangle.properties.reserved=/^.*/` and `mangle.properties.builtins=true`
+- But you should declare your project's internal side effects like `fetch(...)`, `postMessage(...)`
+  - WIP: you can use with `zero-runtime` to catch side-effects.
+
+## Who is it beneficial to?
+
+- Library developper to reduce bundle
+- Performance-oriented frontend (for lighthouse today?)
+- Developers who are required to reduce build size (third party script developper)
+- If you have external effects like `fetch()` and `postMessage`, you need to declare external effect types.
+
+## Benchmarks
+
+TBD
 
 ## How to use
 
@@ -16,7 +34,7 @@ $ npx tsc -p tsconfig.optools.json # generate lib/index.d.ts from src/index.ts
 $ npx optools analyze-dts # generate _optools-analyzed.json
 ```
 
-You can use analyzed result by adding `analyze` step before build in `package.json`.
+You can use analyzed result by adding `analyze` step before `build` in `package.json`.
 
 ```json
   "scripts": {
@@ -36,7 +54,7 @@ optoools requirements.
 - `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`
   - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.optools.json`.
 
-## Configuration with `optools.config.json`
+## Configuration: `optools.config.json`
 
 ```jsonc
 {
@@ -110,14 +128,7 @@ export default defineConfig({
 });
 ```
 
-Caution: esbuild does not work yet.
-
-## Who is it beneficial to?
-
-- Library developper to reduce bundle
-- Performance-oriented frontend (for lighthouse today?)
-- Developers who are required to reduce build size (third party script developper)
-- If you have external effects like `fetch()` and `postMessage`, you need to declare external effect types.
+esbuild does not work yet.
 
 ## Restrictions
 
