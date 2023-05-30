@@ -11,6 +11,7 @@
     "@cloudflare/workers-types": "^4.20230518.0",
     "@types/jest": "^29.5.1",
     "@types/node": "^20.1.0",
+    "delay": "^6.0.0",
     "typescript": "^5.0.4"
   },
   "bin": {

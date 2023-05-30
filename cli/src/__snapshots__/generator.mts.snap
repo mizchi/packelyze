@@ -1,0 +1,90 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bundleDts: simple 1`] = `
+"type Hello = {
+  world: string;
+};
+
+declare const hello: Hello;
+
+export { Hello, hello };
+"
+`;
+
+exports[`bundleDts: with-delay - respectExternal: false 1`] = `
+"import delay from 'delay';
+export { default } from 'delay';
+"
+`;
+
+exports[`bundleDts: with-delay - respectExternal: true 1`] = `
+"type Options<T> = {
+	/**
+	A value to resolve in the returned promise.
+
+	@example
+	\`\`\`
+	import delay from 'delay';
+
+	const result = await delay(100, {value: '🦄'});
+
+	// Executed after 100 milliseconds
+	console.log(result);
+	//=> '🦄'
+	\`\`\`
+	*/
+	value?: T;
+
+	/**
+	An \`AbortSignal\` to abort the delay.
+
+	The returned promise will be rejected with an \`AbortError\` if the signal is aborted.
+
+	@example
+	\`\`\`
+	import delay from 'delay';
+
+	const abortController = new AbortController();
+
+	setTimeout(() => {
+		abortController.abort();
+	}, 500);
+
+	try {
+		await delay(1000, {signal: abortController.signal});
+	} catch (error) {
+		// 500 milliseconds later
+		console.log(error.name)
+		//=> 'AbortError'
+	}
+	\`\`\`
+	*/
+	signal?: AbortSignal;
+};
+
+/**
+Create a promise which resolves after the specified \`milliseconds\`.
+
+@param milliseconds - Milliseconds to delay the promise.
+@returns A promise which resolves after the specified \`milliseconds\`.
+
+@example
+\`\`\`
+import delay from 'delay';
+
+bar();
+
+await delay(100);
+
+// Executed 100 milliseconds later
+baz();
+\`\`\`
+*/
+declare function delay<T>(
+	milliseconds: number,
+	options?: Options<T>
+): Promise<T>;
+
+export { delay as default };
+"
+`;

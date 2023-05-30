@@ -22,7 +22,7 @@ export function emitLibDts(
   return emitResult;
 }
 
-export async function generateBundleDts(
+export async function bundleDts(
   { input, external, compilerOptions, respectExternal = false }: {
     input: string;
     respectExternal?: boolean;
@@ -47,4 +47,76 @@ export async function generateBundleDts(
     }
   }) as OutputChunk;
   return dtsCode.code;
+}
+
+if (import.meta.vitest) {
+  const { test, expect } = import.meta.vitest;
+  const fs = await import("fs/promises");
+  const path = await import("node:path");
+  const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
+  test("bundleDts: simple", async () => {
+    const dtsPath = path.join(__dirname, "__fixtures/simple.d.ts");
+    const dtsCode = await bundleDts({
+      input: dtsPath,
+      external: [],
+      compilerOptions: {
+        declaration: true,
+        emitDeclarationOnly: true,
+        noEmit: false,
+      },
+    });
+    expect(dtsCode).toMatchSnapshot();
+  });
+
+  test("bundleDts: with-delay - respectExternal: true", async () => {
+    const simpleDtsPath = path.join(__dirname, "__fixtures/with-delay.d.ts");
+    const dtsCode = await bundleDts({
+      input: simpleDtsPath,
+      external: [],
+      respectExternal: true,
+      compilerOptions: {
+        declaration: true,
+        emitDeclarationOnly: true,
+        noEmit: false,
+      },
+    });
+    expect(dtsCode).includes("declare function delay<T>");
+    expect(dtsCode).toMatchSnapshot();
+  });
+
+  test("bundleDts: with-delay - respectExternal: false", async () => {
+    const dtsPath = path.join(__dirname, "__fixtures/with-delay.d.ts");
+    const dtsCode = await bundleDts({
+      input: dtsPath,
+      external: [],
+      respectExternal: false,
+      compilerOptions: {
+        declaration: true,
+        emitDeclarationOnly: true,
+        noEmit: false,
+      },
+    });
+    expect(dtsCode).not.includes("declare function delay<T>");
+    expect(dtsCode).toMatchSnapshot();
+  });
+
+  test.skip("bundleDts: with-node-process - respectExternal: true", async () => {
+    const dtsPath = path.join(
+      __dirname,
+      "__fixtures/with-node-process.d.ts",
+    );
+    const dtsCode = await bundleDts({
+      input: dtsPath,
+      external: [],
+      respectExternal: true,
+      compilerOptions: {
+        declaration: true,
+        emitDeclarationOnly: true,
+        noEmit: false,
+      },
+    });
+    // expect(dtsCode).not.includes("declare function delay<T>");
+    // expect(dtsCode).toMatchSnapshot();
+  });
 }
