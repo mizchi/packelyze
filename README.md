@@ -27,7 +27,16 @@ You can use analyzed result by adding `analyze` step before build in `package.js
   },
 ```
 
-## `optools.config.json`
+## Manual setup without `optools init`
+
+optoools requirements.
+
+- `optools.config.json` is options for `optools analyze-dts`
+  - You can skip config file with cli options: example `optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom -e react/jsx-runtime`
+- `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`
+  - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.optools.json`.
+
+## Configuration with `optools.config.json`
 
 ```jsonc
 {
@@ -39,11 +48,11 @@ You can use analyzed result by adding `analyze` step before build in `package.js
   "builtins": [
     // ECMAScript default features 
     "es",
-    // DOM env
+    // DOM enviroment
     "dom",
-    // Worker env
+    // Worker environment
     "worker",
-    // terser's internal reserved dictionary
+    // terser's internal reserved dictionary.
     "domprops"
   ],
   // skip library types by analyze-dts
@@ -53,14 +62,7 @@ You can use analyzed result by adding `analyze` step before build in `package.js
 }
 ```
 
-## Manual setup without `optools init`
-
-optoools requirements.
-
-- `optools.config.json` is options for `optools analyze-dts`
-  - You can skip by cli options: example `optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom`
-- `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`
-  - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.optools.json`.
+Safest `builtins` are `["es", "dom", "worker", "domprops"]` but it includes many false-positive. For most projects, `["es", "dom"]` work well.
 
 ## Use analyzed props with terser
 
