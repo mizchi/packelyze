@@ -18,9 +18,7 @@ $ npx tsc -p tsconfig.optools.json # generate lib/index.d.ts from src/index.ts
 $ npx optools analyze-dts # generate _optools-analyzed.json
 ```
 
-Add analyze step before build.
-
-package.json
+You can use analyzed result by adding `analyze` step before build in `package.json`.
 
 ```json
   "scripts": {
@@ -29,7 +27,7 @@ package.json
   },
 ```
 
-## Config: optools.config.json
+## `optools.config.json`
 
 ```jsonc
 {
