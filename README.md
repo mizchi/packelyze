@@ -58,13 +58,9 @@ You can use analyzed result by adding `analyze` step before build in `package.js
 optoools requirements.
 
 - `optools.config.json` is options for `optools analyze-dts`
-- `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`. If you already genarete lib/index.d.ts, you can omit `tsconfig.optools.json`.
-
-So `optools analyze-dts` does them.
-
-- `optools init` generates `optools.config.json` and `tsconfig.optools.json`.
-- `tsconfig.optools.json` has options for `optools analyze-dts`.
-- `optools.config.json` is used for `optools analyze-dts`.
+  - You can skip by cli options: example `optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom`
+- `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`
+  - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.optools.json`.
 
 ## Use analyzed props with terser
 
@@ -74,7 +70,7 @@ So `optools analyze-dts` does them.
 import {minify} from "terser";
 import analyzed from "./_optools-analyzed.json";
 
-await minify({
+const out = await minify({
   mangle: {
     properties: {
       // genarted reserved includes builtins
@@ -85,7 +81,9 @@ await minify({
       regex: /.*/,
     }
   }
-})
+});
+// use result
+console.log(out.code.length);
 ```
 
 ### Example: vite
@@ -112,7 +110,6 @@ export default defineConfig({
 
 Caution: esbuild does not work yet.
 
-
 ## Who is it beneficial to?
 
 - Library developper to reduce bundle
@@ -133,9 +130,9 @@ You can not use optools with ...
   - `fetch(...)`
   - `postMessage()`
 
-If you have side effects, see `HACK: Catch the external effects!`
+If you have side effects, see below.
 
-## HACK: Catch the external effects!
+## Include external effect types
 
 `optool analyze-dts` can keep ESM interface but can not keep internal effects from intern, like `fetch(...)`.
 
@@ -183,12 +180,6 @@ export type { fetch } from "./fetch"
 ```
 
 `optools analyze-dts` will capture `fetch()` properties.
-
-### For react developper
-
-TBD
-
-See [react example](/examples/react-lib) and [with-wite example](/examples/with-vite/)
 
 ### Check with snapshots
 
@@ -258,7 +249,6 @@ $ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
 - [ ] cli: builtins jest/mocha
 - [ ] MSW Examples
 - [ ] Keep `function.name` and `class.name` option
-
 
 ## LICENSE
 
