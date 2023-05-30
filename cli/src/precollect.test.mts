@@ -31,8 +31,6 @@ test("check reserved", async () => {
 
   const cfWorkersReserved = await getCloudflareWorkersReserved(cfWorkersPath);
 
-  console.log("nodeReserved", nodeReserved.size);
-
   const full = new Set([...esReserved, ...domReserved, ...workerReserved]);
   const fullWithDomprops = new Set([
     ...esReserved,
