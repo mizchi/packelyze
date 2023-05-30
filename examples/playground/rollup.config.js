@@ -15,6 +15,7 @@ export default {
       compress: false,
       mangle: {
         properties: {
+          builtins: false,
           regex: /^.*$/,
           reserved: analyzed.reserved
         }

@@ -1,9 +1,11 @@
+import { useState } from "react";
+
 export function MyComponent(props: {
   xxxxxx: string;
 }) {
   return <div>
-    <Sub internal="1" />
     {props.xxxxxx}
+    <Sub internal="1" />
   </div>;
 }
 

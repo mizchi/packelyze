@@ -1,22 +1,27 @@
 import path from "node:path";
-import ts from "typescript";
 import fs from "node:fs";
 import { parseArgs } from "node:util";
+import ts from "typescript";
+
 import { collectProperties } from "./analyzer.mjs";
-// import { createManglePropertiesRegexString } from "./helpers.mjs";
 import { generateBundleDts } from "./generator.mjs";
+import { validateOptoolsConfig } from "./types.js";
 
 const args = parseArgs({
   options: {
+    config: {
+      type: "string",
+      short: "c",
+      default: "optools.config.json",
+    },
     input: {
       type: "string",
       default: "index.ts",
       short: "i",
     },
-    printDts: {
-      type: "boolean",
-      default: false,
-      short: "p",
+    output: {
+      type: "string",
+      short: "o",
     },
     external: {
       type: "string",
@@ -24,48 +29,197 @@ const args = parseArgs({
       short: "e",
       multiple: true,
     },
+    builtins: {
+      type: "string",
+      multiple: true,
+      short: "b",
+    },
+    printDts: {
+      type: "boolean",
+      default: false,
+      short: "p",
+    },
     debug: {
       type: "boolean",
       default: false,
       short: "d",
-    },
-    // mode: {
-    //   type: "string",
-    //   short: "m",
-    // },
-    builtins: {
-      type: "string",
-      multiple: true,
-      // default: ["domprops", "es", "dom", "worker"],
-      short: "b",
-    },
-    output: {
-      type: "string",
-      short: "o",
     },
   },
   allowPositionals: true,
 });
 
 async function run() {
-  const [cmd, ...rest] = args.positionals;
-  if (cmd === "analyze-dts") {
-    const cwd = process.cwd();
-    if (args.values.input == null) {
+  const cwd = process.cwd();
+  const [cmd] = args.positionals;
+  if (cmd === "init") {
+    if (args.values.config != null) {
+      const configPath = path.join(cwd, args.values.config);
+      if (fs.existsSync(configPath)) {
+        console.error("[optools] config file already exists", configPath);
+        process.exit(1);
+      }
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            input: "lib/index.d.ts",
+            output: "_optools-analyzed.json",
+            builtins: ["dom", "browser", "worker", "domprops"],
+          },
+          null,
+          2,
+        ),
+      );
+      console.error("[optools] generate config >", configPath);
+      // TODO: use inquiry
+      // generate tsconfig.optools.json
+      const tsConfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
+      fs.writeFileSync(
+        tsConfigOptoolsPath,
+        JSON.stringify(
+          {
+            extends: "./tsconfig.json",
+            compilerOptions: {
+              rootDir: "src",
+              outDir: "lib",
+              declaration: true,
+              emitDeclarationOnly: true,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      console.error(
+        "[optools] generate tsconfig.optools.json >",
+        tsConfigOptoolsPath,
+      );
+
+      // check tsconfig.json exists
+      const tsconfigPath = path.join(cwd, "tsconfig.json");
+      if (!fs.existsSync(tsconfigPath)) {
+        console.info("[optools:init] warning! tsconfig.json does not exist");
+      }
+
+      // print usage example
+      console.log(`[optools:init] Ready for optimization!
+add "prebuild" scripts to package.json
+
+  "scripts": {
+    "prebuild": "tsc -p tsconfig.optools.json",
+  }
+
+// use with terser
+
+  import analyzed from "./_optools-analyzed.json";
+  // ... in terser config
+  {
+    mangle: {
+      properties: {
+        builtins: true,
+        regex: /.*/,
+        reserved: analyzed.reserved
+      }
+    }
+  }
+`);
+    }
+  } else if (cmd == "doctor") {
+    // check gitignore
+    const gitignorePath = path.join(cwd, ".gitignore");
+    if (fs.existsSync(gitignorePath)) {
+      const gitignore = fs.readFileSync(gitignorePath, "utf-8");
+      if (!gitignore.includes("_optools-analyzed.json")) {
+        console.error(
+          "[optools:doctor] .gitignore does not include _optools-analyzed.json",
+        );
+        process.exit(1);
+      }
+    }
+    // check src/index.ts or exists
+    const srcIndexTsPath = path.join(cwd, "src/index.ts");
+    const srcIndexTsxPath = path.join(cwd, "src/index.tsx");
+
+    if (!fs.existsSync(srcIndexTsPath) && !fs.existsSync(srcIndexTsxPath)) {
+      console.error("[optools:doctor] src/index.ts(x) does not exist");
+    }
+
+    // check tsconfig.json
+    // exists tsconfig.json or tsconfig.optools.json or optools.types.json
+    const tsconfigPath = path.join(cwd, "tsconfig.json");
+    const tsconfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
+    let existsAny = false;
+    for (
+      const configPath of [
+        tsconfigOptoolsPath,
+        tsconfigPath,
+      ]
+    ) {
+      if (fs.existsSync(configPath)) {
+        // TODO: check with typescript config extends
+        existsAny = true;
+        const tsconfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        const basename = path.basename(configPath);
+        // check rootDir: src
+        if (tsconfig.compilerOptions?.outDir !== "lib") {
+          console.error(
+            `[optools:doctor] ${basename} does not include "rootDir": "lib"`,
+          );
+        }
+
+        // check declaration: true
+        if (tsconfig.compilerOptions?.declaration !== true) {
+          console.error(
+            `[optools:doctor] ${basename} does not include "declaration": true`,
+          );
+        }
+        break;
+      }
+    }
+    if (!existsAny) {
+      console.error(
+        "[optools:doctor] tsconfig.optools.json / tsconfig.json does not exist",
+      );
+      process.exit(1);
+    }
+    process.exit(0);
+  } else if (cmd === "analyze-dts") {
+    // let input: string;
+    let argsValues = args.values;
+    if (args.values.config) {
+      try {
+        const configPath = path.join(cwd, args.values.config);
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        if (validateOptoolsConfig(config)) {
+          argsValues = {
+            ...config,
+            ...argsValues,
+          };
+        } else {
+          console.error("[optools] invalid config - optools.config.json");
+          process.exit(1);
+        }
+      } catch (e) {
+        console.info("[optools] skip loading config - optools.config.json", e);
+      }
+    }
+
+    if (argsValues.input == null) {
       console.error("input (-i) is required");
       process.exit(1);
     }
-    const input = path.join(cwd, args.values.input!);
 
-    const debug = args.values.debug;
-    const printDts = args.values.printDts;
+    const input = path.join(cwd, argsValues.input!);
+
+    const debug = argsValues.debug;
+    const printDts = argsValues.printDts;
 
     if (debug) console.log(args);
 
     const dtsCode = await generateBundleDts({
       input,
-      external: args.values.external || [],
-      respectExternal: args.values.external != null,
+      external: argsValues.external || [],
+      respectExternal: argsValues.external != null,
     });
 
     if (printDts) {
@@ -81,14 +235,11 @@ async function run() {
       true,
     );
     const result = collectProperties(source, undefined, debug);
-    // const reserved = new Set(result.reserved);
-
-    if (args.values.builtins) {
+    if (argsValues.builtins) {
       // @ts-ignore
       const builtins = await import("../gen/builtins.mjs");
-      // const resultSet = new Set(result.reserved);
-      console.log("[optools:builtin]", args.values.builtins);
-      for (const builtinName of args.values.builtins) {
+      console.log("[optools:builtin]", argsValues.builtins);
+      for (const builtinName of argsValues.builtins) {
         if (builtinName in builtins) {
           console.log(
             "[optools:include-builtins]",
@@ -101,17 +252,8 @@ async function run() {
       result.reserved = [...(new Set(result.reserved))].sort();
     }
 
-    // if (args.values.mode === "list") {
-    //   console.log(result.reserved);
-    // } else if (args.values.mode === "json") {
-    //   console.log(JSON.stringify(
-    //     result,
-    //     null,
-    //     2,
-    //   ));
-    // }
-    if (args.values.output) {
-      const outpath = path.join(cwd, args.values.output);
+    if (argsValues.output) {
+      const outpath = path.join(cwd, argsValues.output);
       console.log("[optools:generate]", outpath.replace(cwd + "/", ""));
       fs.writeFileSync(outpath, JSON.stringify(result, null, 2));
     } else {
