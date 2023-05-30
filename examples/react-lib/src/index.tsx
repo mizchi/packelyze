@@ -1,6 +1,9 @@
+import { useContext } from "react";
+
 export function MyComponent(props: {
   xxxxxx: string;
 }) {
+  useContext
   return <div>
     <Sub internal="1" />
     {props.xxxxxx}

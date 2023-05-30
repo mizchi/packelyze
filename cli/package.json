@@ -2,11 +2,13 @@
   "name": "@mizchi/optools",
   "version": "0.0.4",
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20230518.0",
     "lizod": "^0.2.3",
     "rollup": "^3.21.7",
     "rollup-plugin-dts": "^5.3.0",
     "terser": "^5.17.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230518.0"
   },
   "bin": {
     "optools": "lib/cli.mjs"

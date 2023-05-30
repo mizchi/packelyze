@@ -1,11 +1,12 @@
 import path from "node:path";
 import fs from "node:fs";
 import { parseArgs } from "node:util";
+
 import ts from "typescript";
 
 import { collectProperties } from "./analyzer.mjs";
 import { generateBundleDts } from "./generator.mjs";
-import { validateOptoolsConfig } from "./types.js";
+import { validateOptoolsConfig } from "./options.mjs";
 
 const args = parseArgs({
   options: {
@@ -16,7 +17,6 @@ const args = parseArgs({
     },
     input: {
       type: "string",
-      default: "index.ts",
       short: "i",
     },
     output: {
@@ -64,7 +64,8 @@ async function run() {
           {
             input: "lib/index.d.ts",
             output: "_optools-analyzed.json",
-            builtins: ["dom", "browser", "worker", "domprops"],
+            builtins: ["dom", "browser", "worker"],
+            external: [],
           },
           null,
           2,
@@ -91,7 +92,7 @@ async function run() {
         ),
       );
       console.error(
-        "[optools] generate tsconfig.optools.json >",
+        "[optools:init] generate tsconfig.optools.json >",
         tsConfigOptoolsPath,
       );
 
@@ -103,13 +104,17 @@ async function run() {
 
       // print usage example
       console.log(`[optools:init] Ready for optimization!
-add "prebuild" scripts to package.json
+
+1. Add "prebuild" scripts to package.json
 
   "scripts": {
-    "prebuild": "tsc -p tsconfig.optools.json",
+    "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
+    "build": "npm run analyze && <your build command>"
   }
 
-// use with terser
+2. Ignore _optools-analyzed.json in .gitignore
+
+3. Use with terser
 
   import analyzed from "./_optools-analyzed.json";
   // ... in terser config
@@ -122,6 +127,7 @@ add "prebuild" scripts to package.json
       }
     }
   }
+
 `);
     }
   } else if (cmd == "doctor") {
@@ -190,10 +196,14 @@ add "prebuild" scripts to package.json
       try {
         const configPath = path.join(cwd, args.values.config);
         const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        if (validateOptoolsConfig(config)) {
+        // TODO: validate config
+        if (validateOptoolsConfig(config) || true) {
           argsValues = {
-            ...config,
             ...argsValues,
+            ...config,
+            // override: prefer input and output
+            input: args.values.input || config.input,
+            output: args.values.output || config.output,
           };
         } else {
           console.error("[optools] invalid config - optools.config.json");
@@ -238,11 +248,11 @@ add "prebuild" scripts to package.json
     if (argsValues.builtins) {
       // @ts-ignore
       const builtins = await import("../gen/builtins.mjs");
-      console.log("[optools:builtin]", argsValues.builtins);
+      // console.log("[optools:analyze-dts:builtin]", argsValues.builtins);
       for (const builtinName of argsValues.builtins) {
         if (builtinName in builtins) {
           console.log(
-            "[optools:include-builtins]",
+            "[optools:analyze-dts:include-builtins]",
             builtinName,
             builtins[builtinName].length,
           );
@@ -254,7 +264,10 @@ add "prebuild" scripts to package.json
 
     if (argsValues.output) {
       const outpath = path.join(cwd, argsValues.output);
-      console.log("[optools:generate]", outpath.replace(cwd + "/", ""));
+      console.log(
+        "[optools:analyze-dts:generate]",
+        outpath.replace(cwd + "/", ""),
+      );
       fs.writeFileSync(outpath, JSON.stringify(result, null, 2));
     } else {
       console.log(JSON.stringify(result, null, 2));

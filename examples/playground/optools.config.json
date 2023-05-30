@@ -1,0 +1,10 @@
+{
+  "input": "lib/index.d.ts",
+  "output": "_optools-analyzed.json",
+  "builtins": [
+    "dom",
+    "browser",
+    "worker"
+  ],
+  "external": []
+}

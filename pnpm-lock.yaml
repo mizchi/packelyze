@@ -35,6 +35,12 @@ importers:
 
   cli:
     dependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20230518.0
+        version: 4.20230518.0
+      lizod:
+        specifier: ^0.2.3
+        version: 0.2.3(typescript@5.0.4)
       rollup:
         specifier: ^3.21.7
         version: 3.21.7
@@ -218,6 +224,10 @@ packages:
       js-tokens: 4.0.0
     dev: false
     optional: true
+
+  /@cloudflare/workers-types@4.20230518.0:
+    resolution: {integrity: sha512-A0w1V+5SUawGaaPRlhFhSC/SCDT9oQG8TMoWOKFLA4qbqagELqEAFD4KySBIkeVOvCBLT1DZSYBMCxbXddl0kw==}
+    dev: false
 
   /@esbuild/android-arm64@0.17.19:
     resolution: {integrity: sha512-KBMWvEZooR7+kzY0BtbTQn0OAYY7CsiydT63pVEaPtVYF0hXbUaOyZog37DKxK7NF3XacBJOpYT4adIJh+avxA==}
@@ -1717,6 +1727,14 @@ packages:
 
   /lizod@0.2.2(typescript@5.0.4):
     resolution: {integrity: sha512-4Z1RX3Cr1pK17xYV1Cmz3IHRIBQ2OK132sRyfoc3EOlkLrNloG0BGRgZJjmlnuRTjaAeK8EsHXxJFP2Z0d4prg==}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      typescript: 5.0.4
+    dev: false
+
+  /lizod@0.2.3(typescript@5.0.4):
+    resolution: {integrity: sha512-h0hpn/dqIRw4aTf2ELpbFIM9Zcu4jMy1/4awgFeFasss1+QUBM6J/J7+XF0FqtQaPiaLjqZTFVowFyrq2sGSLQ==}
     peerDependencies:
       typescript: '>=5'
     dependencies:

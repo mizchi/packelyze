@@ -13,5 +13,8 @@ export function MyComponent(props: {
 function Sub(props: {
   internal: string;
 }) {
-  return <div>{props.internal}</div>;
+  const [count, setCount ] = useState(0);
+  return <button onClick={() => {
+    setCount(count + 1);
+  }}>{count}</button>;
 }
