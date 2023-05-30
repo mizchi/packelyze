@@ -46,7 +46,7 @@ You can skip `optools init` if you know `optools analyze-dts` requirements blow.
 
 ## Manual setup without `optools init`
 
-optoools requirements.
+requirements
 
 - `optools.config.json` is options for `optools analyze-dts`
   - You can skip config file with cli options: example `optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom -e react/jsx-runtime`
