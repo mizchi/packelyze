@@ -40,7 +40,7 @@ optoools requirements.
 
 ```jsonc
 {
-  // entrypoint
+  // analyzer entrypoint
   "input": "lib/index.d.ts",
   // analyzed output
   "output": "_optools-analyzed.json",
