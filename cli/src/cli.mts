@@ -64,7 +64,7 @@ async function run() {
           {
             input: "lib/index.d.ts",
             output: "_optools-analyzed.json",
-            builtins: ["dom", "browser", "worker"],
+            builtins: ["dom", "browser", "worker", "httpHeaders"],
             external: [],
           },
           null,

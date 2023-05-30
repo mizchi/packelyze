@@ -69,8 +69,10 @@ requirements
     "dom",
     // Worker environment
     "worker",
-    // terser's internal reserved dictionary.
-    "domprops"
+    // terser's internal reserved dictionary
+    "domprops",
+    // well known http headers to keep request headers
+    "httpHeaders"
   ],
   // skip library types by analyze-dts
   "external": [
@@ -79,7 +81,7 @@ requirements
 }
 ```
 
-Safest `builtins` are `["es", "dom", "worker", "domprops"]` but it includes many false-positive. For most projects, `["es", "dom"]` work well.
+Safest `builtins` are `["es", "dom", "worker", "domprops", "httpHeaders"]` but it includes many false-positive. For most projects, `["es", "dom"]` works well.
 
 ## Use analyzed props with terser
 
