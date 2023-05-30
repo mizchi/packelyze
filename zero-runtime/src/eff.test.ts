@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import type { __EFF__, Eff } from "./effect";
+import type { __EFF__, Eff } from "./eff";
 
 type ThrowableEffect<T> = { type: "throwable"; constructor: T };
 
