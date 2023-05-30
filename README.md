@@ -10,8 +10,6 @@ $ npm install optools -D
 
 ## How to use
 
-You can skip `optools init` if you know `optools analyze-dts` requirements blow.
-
 ```bash
 $ npx optools init # optional: generate for lib/index.d.ts
 $ npx tsc -p tsconfig.optools.json # generate lib/index.d.ts from src/index.ts
@@ -26,6 +24,8 @@ You can use analyzed result by adding `analyze` step before build in `package.js
     "build": "npm run analyze && <your build commnad>"
   },
 ```
+
+You can skip `optools init` if you know `optools analyze-dts` requirements blow.
 
 ## Manual setup without `optools init`
 
