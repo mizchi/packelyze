@@ -1,6 +1,6 @@
 {
-  "name": "@mizchi/optools",
-  "version": "0.0.4",
+  "name": "optools",
+  "version": "0.1.0",
   "dependencies": {
     "lizod": "^0.2.3",
     "rollup": "^3.21.7",
