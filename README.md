@@ -20,6 +20,7 @@ $ npm install optools -D
 - Library developper to reduce bundle
 - Performance-oriented frontend (for lighthouse today?)
 - Developers who are required to reduce build size (third party script developper)
+
 ## Benchmarks
 
 TBD
@@ -189,6 +190,8 @@ You can not use optools with ...
 - SideEffect without type declarations
   - `fetch(...)`
   - `postMessage()`
+
+![](https://i.gyazo.com/35c576bebd9c6a938612a10fe352dced.png)
 
 If you have side effects, see below.
 
