@@ -6,5 +6,8 @@
     "browser",
     "worker"
   ],
-  "external": []
+  "external": [],
+  "ambient": [
+    "src/myglobal.d.ts"
+  ]
 }

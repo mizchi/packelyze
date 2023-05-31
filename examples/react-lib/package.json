@@ -14,7 +14,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p . && optools analyze-dts -i lib/index.d.ts -o _analyzed.json -e react/jsx-runtime && rollup -c"
+    "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
+    "build": "pnpm analyze && rollup -c"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@mizchi/zero-runtime": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
+    "@types/react": "^18.2.6",
     "optools": "workspace:*",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0"

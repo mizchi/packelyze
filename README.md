@@ -10,7 +10,7 @@ $ npm install optools -D
 
 ## What is it
 
-- `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts`
+- `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts` (or other entrypoint)
 - High compression ratio with `mangle.properties.reserved=/^.*/` and `mangle.properties.builtins=true`
 - But you should declare your project's internal side effects like `fetch(...)`, `postMessage(...)`
   - you can use with `zero-runtime`(WIP) to catch side-effects.
@@ -20,7 +20,6 @@ $ npm install optools -D
 - Library developper to reduce bundle
 - Performance-oriented frontend (for lighthouse today?)
 - Developers who are required to reduce build size (third party script developper)
-
 ## Benchmarks
 
 TBD
@@ -78,6 +77,7 @@ requirements
     // cloudflare-workers
     "cloudflareWorkers"
   ],
+  // WIP: It does not work yet.
   // skip library types by analyze-dts
   "external": [
     "react/jsx-runtime"
@@ -88,6 +88,8 @@ requirements
 Safest `builtins` are `["es", "dom", "worker", "domprops", "httpHeaders"]` but it includes many false-positive. For most projects, `["es", "dom"]` works well.
 
 ### builtins: node
+
+TODO: This fauture does not work yet.
 
 `optools`'s builtin `node` does not include `process` and `Buffer`.
 
@@ -146,6 +148,34 @@ export default defineConfig({
 ```
 
 esbuild does not work yet.
+
+## With external libraries without bundle
+
+(This section is not necessary if bundling is being processed)
+
+Now external does not work correctly.
+
+Work arround to tell types
+
+```ts
+// src/effects.ts
+export * from "./index";
+
+// listup external
+import * as _1 from "react";
+import * as _2 from "react/jsx-runtime";
+export { _1, _2 };
+```
+
+and analyze `src/effects.ts` instead of `src/index.ts`
+
+```jsonc
+// optools.config.json
+{
+  "input": "lib/effects.d.ts",
+  // ...
+}
+```
 
 ## Restrictions
 
@@ -272,14 +302,32 @@ $ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
 
 ## TODO
 
-- [ ] cli: Analyze with additional ambient files
+- [ ] CI
+- [ ] Benchmark
+- [x] cli: Analyze with additional ambient files
+- [ ] cli: Fix external
 - [x] cli: builtins cloudflare-workers
 - [x] cli: builtins node
 - [x] cli: builtins httpHeaders
 - [ ] cli: builtins deno
 - [ ] cli: builtins jest
-- [ ] MSW Examples
-- [ ] Keep `function.name` and `class.name` option
+- [ ] cli: Keep `function.name` and `class.name` option
+- [ ] zero-runtime: implement `Eff<Operation, Return>`
+- [ ] linter: check scope
+- [ ] minifier: poc
+
+## WIP: Checkseet for optools users
+
+- [ ] Reflections
+  - [ ] `eval`
+  - [ ] `new Function`
+  - [ ] Unsafe `any` casting
+- [ ] SideEffect
+  - [ ] fetch
+  - [ ] postMessage
+- [ ] External libraries
+- [ ] Ambient Types
+  - [ ] local `.d.ts`
 
 ## LICENSE
 

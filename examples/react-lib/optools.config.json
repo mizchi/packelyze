@@ -1,0 +1,8 @@
+{
+  "input": "lib/effects.d.ts",
+  "output": "_optools-analyzed.json",
+  "builtins": [
+  ],
+  "external": [
+  ]
+}

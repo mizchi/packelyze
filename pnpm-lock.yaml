@@ -57,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^20.1.0
         version: 20.1.0
+      delay:
+        specifier: ^6.0.0
+        version: 6.0.0
       typescript:
         specifier: ^5.0.4
         version: 5.0.4
@@ -131,6 +134,9 @@ importers:
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)
+      '@types/react':
+        specifier: ^18.2.6
+        version: 18.2.6
       optools:
         specifier: workspace:*
         version: link:../../cli
@@ -1082,6 +1088,11 @@ packages:
     resolution: {integrity: sha512-eFuaLoy/Rxalv2kr+lqMlUnrDWV+3j4pljOIJgLIhI058IQfWJ7vXhyEIHu+HtC738klGALYxOKDO0bQP3tg8A==}
     dependencies:
       clone: 1.0.4
+    dev: true
+
+  /delay@6.0.0:
+    resolution: {integrity: sha512-2NJozoOHQ4NuZuVIr5CWd0iiLVIRSDepakaovIN+9eIDHEhdCAEvSy2cuf1DCrPPQLvHmbqTHODlhHg8UCy4zw==}
+    engines: {node: '>=16'}
     dev: true
 
   /diff-sequences@29.4.3:

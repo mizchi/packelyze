@@ -33,9 +33,18 @@ export async function bundleDts(
   const bundle = await rollup({
     input: input,
     external,
+    onwarn: (warning, warn) => {
+      // TODO: Fixme. It occurs in react
+      if (warning.message.includes(`"JSX" is not exported by`)) {
+        return;
+      }
+    },
     plugins: [dts({
       respectExternal,
-      compilerOptions: compilerOptions as any,
+      compilerOptions: {
+        ...compilerOptions,
+        preserveSymlinks: false,
+      } as any,
     })],
   });
   const out = await bundle.generate({

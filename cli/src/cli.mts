@@ -37,6 +37,11 @@ export async function analyzeDts() {
         multiple: true,
         short: "b",
       },
+      ambient: {
+        type: "string",
+        multiple: true,
+        short: "a",
+      },
       printDts: {
         type: "boolean",
         default: false,
@@ -109,6 +114,8 @@ export async function analyzeDts() {
   const result = collectProperties(source, undefined, debug);
 
   const buitinsSet = new Set<string>();
+
+  // include builtins
   if (argsValues.builtins) {
     // @ts-ignore
     const builtins = await import("../gen/builtins.mjs");
@@ -124,6 +131,35 @@ export async function analyzeDts() {
           buitinsSet.add(builtinProp);
         }
       }
+    }
+  }
+
+  // include ambient files
+  // TODO: need active search in src/**/*.d.ts ?
+  if (Array.isArray(argsValues.ambient)) {
+    for (const ambientPath of argsValues.ambient) {
+      const filepath = path.join(cwd, ambientPath);
+      const ambientCode = fs.readFileSync(filepath, "utf-8");
+      const ambientSource = ts.createSourceFile(
+        ambientPath,
+        ambientCode,
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      const ambientResult = collectProperties(
+        ambientSource,
+        { ambient: true },
+        debug,
+      );
+      for (const builtinProp of ambientResult.reserved) {
+        buitinsSet.add(builtinProp);
+      }
+
+      console.log(
+        "[optools:analyze-dts:include-ambient]",
+        ambientPath,
+        ambientResult.reserved.length,
+      );
     }
   }
 
