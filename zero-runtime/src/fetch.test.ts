@@ -8,6 +8,7 @@ import type {
   ParsedURLPattern,
   ParseURLInput,
   ParseURLPattern,
+  SerializeURLPattern,
 } from "./URLPattern";
 import { RequestInitT, ResponseT } from "./fetch";
 import { TypedJSONString } from "./primitive";
@@ -30,23 +31,29 @@ type FetchDef<
   $response: Response;
 };
 
-// type MyExtract<T, U> = T extends U ? T : never;
-type ExtractIdType<
+type ExtractDef<
   Def extends FetchDef<any, any, any, any, any, any>,
-  InputUrl extends string,
-> = Def extends FetchDef<any, infer P, any, any, any, any>
-  ? IsAcceptableUrlPattern<P, ParseURLInput<InputUrl>> extends true ? P : never
+  Method,
+  Url,
+> = Def extends FetchDef<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
+  ? Method extends Def["$method"]
+    ? Url extends SerializeURLPattern<Def["$url"]> ? Def : never
+  : never
   : never;
 
 type TypedFetch<
   Def extends FetchDef<any, any, any, any, any, any>,
 > = <
-  InputUrl extends string,
-  InputMethod extends string,
-  Matched extends Extract<Def, {
-    $method: InputMethod;
-    // $url: AcceptableUrlPattern<Def["$url"], ParseURLInput<InputUrl>>;
-  }>,
+  InputUrl extends SerializeURLPattern<Def["$url"]>,
+  InputMethod extends ExtractDef<Def, any, InputUrl>["$method"],
+  Matched extends ExtractDef<Def, InputMethod, InputUrl>,
 > // Matched extends FetchDef<any, any, any, any, any, any> = Def extends FetchDef<
 // infer Method,
 // infer Pattern,
