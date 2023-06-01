@@ -41,27 +41,29 @@ export interface ResponseConstructorT {
   new <T>(body?: BodyInit | null, init?: ResponseInit): Response;
 }
 
-export type FetchEffectType<
+export type FetchOpPayload<
+  Pattern extends string = string,
   MethodType extends string = string,
   BodyType extends {} = any,
   HeadersType extends {} = any,
   ResponseType extends {} = any,
   SearchType extends {} = any,
 > = {
-  methodType: MethodType;
-  bodyType: BodyType;
-  headersType: HeadersType;
-  responseType: ResponseType;
-  searchType?: SearchType;
+  $url: Pattern;
+  $method: MethodType;
+  $body: BodyType;
+  $headers: HeadersType;
+  $response: ResponseType;
+  $search?: SearchType;
 };
 
 export type FetchEffectMap = {
   [host: string]: {
-    [pattern: string]: FetchEffectType;
+    [pattern: string]: FetchOpPayload;
   };
 };
 
-export type TypedFetch<EffectMap extends FetchEffectMap> = <
+export type PredefinedTypedFetch<EffectMap extends FetchEffectMap> = <
   Input extends string,
   Method extends string,
   InputHost extends keyof EffectMap = GetHostFromInput<Input>,
@@ -70,13 +72,13 @@ export type TypedFetch<EffectMap extends FetchEffectMap> = <
     StrKey<InputHost>
   >,
   ContextMap extends EffectMap[keyof EffectMap] = EffectMap[InputHost],
-  Routed extends FetchEffectType = {
+  Routed extends FetchOpPayload = {
     [Pattern in keyof ContextMap]:
       ExactPathPattern<InputPath, PathPattern<StrKey<Pattern>>> extends true
         ? ContextMap[Pattern]
         : never;
   }[keyof ContextMap],
-  Matched extends FetchEffectType = Routed extends FetchEffectType<
+  Matched extends FetchOpPayload = Routed extends FetchOpPayload<
     infer MethodType,
     infer BodyType,
     infer HeadersType,
@@ -84,17 +86,17 @@ export type TypedFetch<EffectMap extends FetchEffectMap> = <
     infer SearchType
   >
     ? Method extends MethodType
-      ? FetchEffectType<Method, BodyType, HeadersType, ResponseType, SearchType>
+      ? FetchOpPayload<Method, BodyType, HeadersType, ResponseType, SearchType>
     : never
     : never,
 >(
   input: Input,
   init: RequestInitT<
     Method,
-    Matched["bodyType"],
-    Matched["headersType"]
+    Matched["$body"],
+    Matched["$headers"]
   >,
-) => Promise<ResponseT<Matched["responseType"]>>;
+) => Promise<ResponseT<Matched["$response"]>>;
 
 type ExtractInputPath<Input extends string, Host extends string> = Input extends
   `${Host}${infer Pattern}` ? TrimSearch<Pattern> : never;

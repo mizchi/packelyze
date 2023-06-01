@@ -1,28 +1,72 @@
 import { expect, test } from "vitest";
-import type { __EFF__, Eff } from "./eff";
+import type { AnyFetchOp, DomOp, Eff, ExtractOps, ThrowOp } from "./eff";
 
-type ThrowableEffect<T> = { type: "throwable"; constructor: T };
-
-test("declare throwable return type", () => {
+test("Eff", async () => {
   class MyError extends Error {}
-  function doSomething(
-    num: number,
-  ): string & Eff<ThrowableEffect<typeof MyError>> {
-    if (Math.random() > num) {
+
+  function doSomething(): string & Eff<ThrowOp<MyError>> {
+    if (Math.random() > 0.99999) {
       throw new MyError("oops");
     }
     return "foo";
   }
 
-  try {
-    const ret = doSomething(0.8);
-    expect(ret).toBe("foo");
-    const _: string = ret satisfies string;
-  } catch (error) {
-    if (error instanceof MyError) {
-      expect(error.message).toBe("oops");
-    } else {
-      throw new Error("unexpected error");
+  function mount(): void & Eff<DomOp> {
+    // skip: type check only
+    if (true as any) {
+      return undefined as void & Eff<DomOp>;
+    }
+
+    const div = document.createElement("div");
+    div.textContent = "hello";
+    document.body.append(div);
+  }
+
+  async function doSend(): Promise<
+    & void
+    & Eff<AnyFetchOp>
+  > {
+    try {
+      // skip: type check only
+      if (true as any) {
+        return undefined as void & Eff<AnyFetchOp>;
+      }
+      const res = await fetch("/post", {});
+      const _data = await res.json();
+      console.log(_data);
+    } catch (err) {
+      console.error(err);
     }
   }
+
+  function* sub() {
+    yield doSomething();
+    const ret = doSomething();
+    yield ret;
+    const _val: string = ret;
+  }
+
+  async function* sub2() {
+    yield doSomething();
+    yield* sub3();
+    yield doSend();
+  }
+
+  async function* sub3() {
+    yield doSomething();
+    yield doSomething();
+  }
+
+  async function* main() {
+    yield mount();
+    yield* sub();
+    yield* sub2();
+  }
+
+  for await (const _op of main()) {
+    console.log("step", _op);
+  }
+
+  type MainOps = ExtractOps<typeof main>;
+  const _: DomOp | AnyFetchOp | ThrowOp<MyError> = undefined as any as MainOps;
 });
