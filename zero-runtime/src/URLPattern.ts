@@ -1,11 +1,10 @@
-import { GetSearch } from "./pathPattern";
 import { Assert, Eq } from "./utils";
 
 // Subset of https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
 
 type ParsedURLPattern<
-  Protocol extends string | undefined,
-  Host extends string | undefined,
+  Protocol extends string,
+  Host extends string,
   Path extends string,
   Search extends boolean,
 > = {
@@ -18,8 +17,8 @@ type ParsedURLPattern<
 type ParseURLPattern<T extends string> = T extends
   | `${infer Protocol}://${infer Host}/${infer RestPath}`
   | `/${infer RestPath}` ? ParsedURLPattern<
-    string extends Protocol ? undefined : Protocol,
-    string extends Host ? undefined : Host,
+    string extends Protocol ? "" : Protocol,
+    string extends Host ? "" : Host,
     RestPath extends `${infer Path}?${string}` ? ParsePath<Path>
       : ParsePath<RestPath>,
     // TODO: handle search component
@@ -54,8 +53,8 @@ type ParseURLInput<T extends string> = T extends
   | `${infer Protocol}://${infer Host}/${infer RestPath}`
   // | `${infer Protocol}://${infer Host}`
   | `/${infer RestPath}` ? ParsedURLInput<
-    string extends Protocol ? undefined : Protocol,
-    string extends Host ? undefined : Host,
+    string extends Protocol ? "" : Protocol,
+    string extends Host ? "" : Host,
     // Protocol,
     // Host,
     RestPath extends `${infer Path}?${string}` ? Path : RestPath,
@@ -63,11 +62,22 @@ type ParseURLInput<T extends string> = T extends
   >
   : never;
 
-export type IsSameSlashDepth<A extends string, B extends string> =
-  SlashDepthCounter<A> extends SlashDepthCounter<B> ? true : false;
-export type SlashDepthCounter<T extends string> = T extends
-  `${string}/${infer Tail}` ? `/${SlashDepthCounter<Tail>}`
-  : "";
+export type GetMatchedRest<Pattern extends string, Input extends string> =
+  Input extends Pattern | `${Pattern}/${infer Rest}`
+    ? string extends Rest ? never : Rest
+    : never;
+
+type IsAcceptableUrlPattern<
+  Pattern extends ParsedURLPattern<any, any, any, any>,
+  Input extends ParsedURLInput<any, any, any, any>,
+> = Input["protocol"] extends Pattern["protocol"]
+  ? Input["host"] extends Pattern["host"]
+    ? Input["path"] extends Pattern["path"]
+      ? GetMatchedRest<Pattern["path"], Input["path"]> extends never ? true
+      : false
+    : never
+  : never
+  : never;
 
 if (false as any) {
   type _cases = [
@@ -81,8 +91,8 @@ if (false as any) {
       Eq<
         ParseURLPattern<`/foo`>,
         {
-          protocol: undefined;
-          host: undefined;
+          protocol: "";
+          host: "";
           path: "foo";
           search: false;
         }
@@ -186,8 +196,8 @@ if (false as any) {
           path: `foo/${string}`;
           search: false;
         } | {
-          protocol: undefined;
-          host: undefined;
+          protocol: "";
+          host: "";
           path: `foo/${string}`;
           search: false;
         }
@@ -196,50 +206,40 @@ if (false as any) {
   ];
 
   {
-    // type ExactMatch<Acceptable extends string, Input extends string> =
-    //   Input extends Acceptable
-    //     ? IsSameSlashDepth<Acceptable, Input> extends true ? false : false
-    //     : false;
-    // type AcceptableUrlPattern = BuildURLPattern<
-    //   ParseURLPattern<`${"https://example.test" | ""}/foo/:id`>
-    // >;
-
-    type _P = ParseURLInput<`https://example.test/foo?query=1`>;
-
-    type IsAcceptableUrlPattern<
-      Pattern extends ParsedURLPattern<any, any, any, any>,
-      Input extends ParsedURLInput<any, any, any, any>,
-    > = Pattern extends ParsedURLPattern<
-      infer Protocol,
-      infer Host,
-      infer PathPattern,
-      infer HasSearch
-    > ? Input extends ParsedURLInput<
-        infer InputProtocol,
-        infer InputHost,
-        infer InputPath,
-        infer InputSearch
-      > // Check protocol
-        ? InputProtocol extends Protocol // Check Protocol
-          ? InputHost extends Host // Check Host
-            ? InputPath extends `${PathPattern}${infer Rest}` // Check PathPattern
-              // ? Rest extends ""
-              ? IsSameSlashDepth<InputPath, PathPattern> extends true ? true
-              : false
-              // : false
-            : false
-          : false
-        : false
-      : false
-      : false;
-
-    type _T1 = ParseURLPattern<`${"https://example.test" | ""}/foo`>;
-    type _T2 = ParseURLInput<`https://example.test/foo`>;
-
     type _cases = [
-      Assert<IsSameSlashDepth<"a/b/c", "a/b/c">>,
       // @ts-expect-error
-      Assert<IsSameSlashDepth<"a/b/c", "a/b">>,
+      Assert<ExactPattern<`/xxx/${string}/yyy/${string}`, "/xxx/xid">>,
+      // @ts-expect-error
+      Assert<ExactPattern<`/xxx/${string}/yyy/${string}`, "/xxx/xid/yyy">>,
+      Assert<
+        Eq<
+          GetMatchedRest<`xxx/${string}/yyy/${string}`, "xxx/xid/yyy/yid/xxx">,
+          "xxx"
+        >
+      >,
+
+      Assert<
+        // @ts-expect-error
+        IsAcceptableUrlPattern<
+          ParseURLPattern<`/foo/:id`>,
+          ParseURLInput<`/foo/x/x`>
+        >
+      >,
+      Assert<
+        // @ts-expect-error
+        IsAcceptableUrlPattern<
+          ParseURLPattern<`https://example.test/foo/:id/p/:pid`>,
+          ParseURLInput<`https://example.test/foo/xxxx/p/p/x`>
+        >
+      >,
+      // Overrun
+      Assert<
+        // @ts-expect-error
+        IsAcceptableUrlPattern<
+          ParseURLPattern<`/foo/:id`>,
+          ParseURLInput<`/foo/pid/over`>
+        >
+      >,
 
       Assert<
         IsAcceptableUrlPattern<
@@ -249,8 +249,8 @@ if (false as any) {
       >,
       Assert<
         Eq<ParseURLInput<"/foo">, {
-          protocol: undefined;
-          host: undefined;
+          protocol: "";
+          host: "";
           path: "foo";
           search: never;
         }>
@@ -262,11 +262,33 @@ if (false as any) {
           ParseURLInput<`https://example.test/foo`>
         >
       >,
+      Assert<
+        IsAcceptableUrlPattern<
+          ParseURLPattern<`${"https://example.test" | ""}/foo`>,
+          ParseURLInput<`/foo`>
+        >
+      >,
 
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`${"https://example.test" | ""}/foo`>,
           ParseURLInput<`https://example.test/foo`>
+        >
+      >,
+
+      Assert<
+        IsAcceptableUrlPattern<
+          ParseURLPattern<
+            `${"https://example.test" | "https://example2.test"}/foo`
+          >,
+          ParseURLInput<`https://example2.test/foo`>
+        >
+      >,
+
+      Assert<
+        IsAcceptableUrlPattern<
+          ParseURLPattern<`${"https://example.test" | ""}/foo`>,
+          ParseURLInput<`/foo`>
         >
       >,
 
@@ -283,18 +305,12 @@ if (false as any) {
         >
       >,
       Assert<
-        // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id`>,
-          ParseURLInput<`/foo/x/x`>
-        >
-      >,
-      Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`/foo/:id?${string}`>,
           ParseURLInput<`/foo/x?xxx`>
         >
       >,
+
       // TODO: Unacceptable search pattern
       Assert<
         IsAcceptableUrlPattern<
@@ -331,34 +347,9 @@ if (false as any) {
       >,
 
       Assert<
-        // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`https://example.test/foo/:id`>,
-          ParseURLInput<`https://example.test/foo/`>
-        >
-      >,
-
-      // Overrun
-      Assert<
-        // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`https://example.test/foo/:id`>,
-          ParseURLInput<`https://example.test/foo/xxxx/x`>
-        >
-      >,
-
-      Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`https://example.test/foo/:id/p/:pid`>,
           ParseURLInput<`https://example.test/foo/xxxx/p/p`>
-        >
-      >,
-
-      Assert<
-        // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`https://example.test/foo/:id/p/:pid`>,
-          ParseURLInput<`https://example.test/foo/xxxx/p/p/x`>
         >
       >,
     ];
