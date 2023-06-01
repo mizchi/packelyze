@@ -2,7 +2,7 @@ import { Assert, Eq } from "./utils";
 
 // Subset of https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
 
-type ParsedURLPattern<
+export type ParsedURLPattern<
   Protocol extends string,
   Host extends string,
   Path extends string,
@@ -14,7 +14,7 @@ type ParsedURLPattern<
   search: Search;
 };
 
-type ParseURLPattern<T extends string> = T extends
+export type ParseURLPattern<T extends string> = T extends
   | `${infer Protocol}://${infer Host}/${infer RestPath}`
   | `/${infer RestPath}` ? ParsedURLPattern<
     string extends Protocol ? "" : Protocol,
@@ -37,7 +37,7 @@ type ParsePath<T extends string> = T extends `/${infer Rest}` ? ParsePath<Rest>
   // foo
   : T;
 
-type ParsedURLInput<
+export type ParsedURLInput<
   Protocol extends string | undefined,
   Host extends string | undefined,
   Path extends string,
@@ -49,7 +49,7 @@ type ParsedURLInput<
   search: Search;
 };
 
-type ParseURLInput<T extends string> = T extends
+export type ParseURLInput<T extends string> = T extends
   | `${infer Protocol}://${infer Host}/${infer RestPath}`
   // | `${infer Protocol}://${infer Host}`
   | `/${infer RestPath}` ? ParsedURLInput<
@@ -67,13 +67,25 @@ export type GetMatchedRest<Pattern extends string, Input extends string> =
     ? string extends Rest ? never : Rest
     : never;
 
-type IsAcceptableUrlPattern<
+export type IsAcceptableUrlPattern<
   Pattern extends ParsedURLPattern<any, any, any, any>,
   Input extends ParsedURLInput<any, any, any, any>,
 > = Input["protocol"] extends Pattern["protocol"]
   ? Input["host"] extends Pattern["host"]
     ? Input["path"] extends Pattern["path"]
       ? GetMatchedRest<Pattern["path"], Input["path"]> extends never ? true
+      : false
+    : never
+  : never
+  : never;
+
+export type AcceptableUrlPattern<
+  Pattern extends ParsedURLPattern<any, any, any, any>,
+  Input extends ParsedURLInput<any, any, any, any>,
+> = Input["protocol"] extends Pattern["protocol"]
+  ? Input["host"] extends Pattern["host"]
+    ? Input["path"] extends Pattern["path"]
+      ? GetMatchedRest<Pattern["path"], Input["path"]> extends never ? Pattern
       : false
     : never
   : never
