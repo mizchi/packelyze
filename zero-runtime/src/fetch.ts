@@ -1,51 +1,93 @@
-import { type TypedJSONString } from "./primitive";
-import type { FormDataT } from "./form";
+import type { TypedJSONString } from "./primitive";
+import type { TypedFormData } from "./form";
+import type {
+  ExtractAcceptableURLPattern,
+  ParsedURLPattern,
+  ParseURLInput,
+  ParseURLPattern,
+} from "./url";
 
-export interface RequestConstructorT {
+export interface TypedRequestConstructor {
   new <T extends { [key: string]: any }, Method extends string, HT extends {}>(
     input: string,
-    init: RequestInitT<Method, T, HT>,
-  ): RequestT<T>;
+    init: TypedRequestInit<Method, T, HT>,
+  ): TypedRequest<T>;
 }
 
-interface RequestT<T extends { [key: string]: any }> extends Request {
-  formData(): Promise<FormDataT<T>>;
+interface TypedRequest<T extends { [key: string]: any }> extends Request {
+  formData(): Promise<TypedFormData<T>>;
   json(): Promise<T>;
   text(): Promise<TypedJSONString<T>>;
 }
 
-export interface RequestInitT<
+export interface TypedRequestInit<
   Method extends string,
   T extends { [key: string]: any },
   HT extends Record<string, string> = {},
 > extends RequestInit {
   method: Method;
-  body?: TypedJSONString<T> | FormDataT<T>;
+  body?: TypedJSONString<T> | TypedFormData<T>;
   headers?: HT;
 }
 
-export interface ResponseT<T> extends Response {
+export interface TypedResponse<T> extends Response {
   text(): Promise<TypedJSONString<T>>;
   json(): Promise<T>;
 }
 
-export interface ResponseConstructorT {
+export interface TypedResponseConstructor {
   // new <T>(): ResponseT<T>;
-  new <T>(body?: BodyInit | null, init?: ResponseInit): Response;
+  new <T>(body?: BodyInit | null, init?: ResponseInit): TypedResponse<T>;
 }
 
-export type FetchOpPayload<
-  UrlPattern extends string = string,
-  MethodType extends string = string,
-  BodyType extends {} = any,
-  HeadersType extends {} = any,
-  ResponseType extends {} = any,
-  SearchType extends {} = any,
+export type FetchRule<
+  Raw extends {
+    $method: string;
+    $url: string;
+    $headers?: {} | never;
+    $search?: {} | never;
+    $body?: {} | never;
+    $response?: {} | never;
+  },
 > = {
-  $urlPattern: UrlPattern;
-  $method: MethodType;
-  $body: BodyType;
-  $headers: HeadersType;
-  $response: ResponseType;
-  $search?: SearchType;
+  $method: Raw["$method"];
+  $url: ParseURLPattern<Raw["$url"]>;
+  $headers: Raw["$headers"];
+  $search: Raw["$search"];
+  $body: Raw["$body"];
+  $response: Raw["$response"];
 };
+
+export type FetchRuleInternal<
+  Method,
+  UrlPattern extends ParsedURLPattern<any, any, any, any>,
+  Headers,
+  Search,
+  Body,
+  Response,
+> = {
+  $method: Method;
+  $url: UrlPattern;
+  $headers: Headers;
+  $search: Search;
+  $body: Body;
+  $response: Response;
+};
+
+export type TypedFetch<
+  Op extends FetchRuleInternal<any, any, any, any, any, any>,
+> = <
+  InputUrl extends string,
+  InputMethod extends string,
+  Matched extends Extract<
+    Op,
+    { $url: ExtractAcceptableURLPattern<Op["$url"], ParseURLInput<InputUrl>> }
+  >,
+>(
+  input: InputUrl,
+  init: TypedRequestInit<
+    InputMethod,
+    Matched["$body"],
+    Matched["$headers"]
+  >,
+) => Promise<TypedResponse<Matched["$response"]>>;

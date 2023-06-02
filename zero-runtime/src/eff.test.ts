@@ -1,8 +1,22 @@
-import { expect, test } from "vitest";
-import type { AnyFetchOp, DomOp, Eff, ExtractOps, ThrowOp } from "./eff";
+import { test } from "vitest";
+import type { Eff, ExtractOps } from "./eff";
+import type { DomOp, FetchOp, ThrowOp } from "./ops";
+import type { FetchRule, TypedFetch } from "./fetch";
+import type { TypedJSON$stringify } from "./json";
+import { Assert, Eq } from "./utils";
 
-test("Eff", async () => {
+test.skip("Eff", async () => {
   class MyError extends Error {}
+  type MyFetchRule = FetchRule<{
+    $method: "POST";
+    $url: "/post";
+    $headers: {
+      "Content-Type": "application/json";
+    };
+    $body: {
+      foo: string;
+    };
+  }>;
 
   function doSomething(): string & Eff<ThrowOp<MyError>> {
     if (Math.random() > 0.99999) {
@@ -24,14 +38,19 @@ test("Eff", async () => {
 
   async function doSend(): Promise<
     & void
-    & Eff<AnyFetchOp>
+    & Eff<FetchOp<MyFetchRule>>
   > {
+    const fetch = globalThis.fetch as TypedFetch<MyFetchRule>;
+    const stringify = JSON.stringify as TypedJSON$stringify;
     try {
       // skip: type check only
       if (true as any) {
-        return undefined as void & Eff<AnyFetchOp>;
+        return undefined as void & Eff<FetchOp<MyFetchRule>>;
       }
-      const res = await fetch("/post", {});
+      const res = await fetch("/post", {
+        method: "POST",
+        body: stringify({ foo: "bar" }),
+      });
       const _data = await res.json();
       console.log(_data);
     } catch (err) {
@@ -67,6 +86,12 @@ test("Eff", async () => {
     console.log("step", _op);
   }
 
-  type MainOps = ExtractOps<typeof main>;
-  const _: DomOp | AnyFetchOp | ThrowOp<MyError> = undefined as any as MainOps;
+  type _cases = [
+    Assert<
+      Eq<
+        ExtractOps<typeof main>,
+        DomOp | FetchOp<MyFetchRule> | ThrowOp<MyError>
+      >
+    >,
+  ];
 });

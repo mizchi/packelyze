@@ -1,152 +1,38 @@
-import { expect, test } from "vitest";
-// import type { TypedFetch } from "./fetch";
-import type { JSON$stringifyT } from "./json";
-import type { FormDataT } from "./form";
-import type {
-  AcceptableUrlPattern,
-  IsAcceptableUrlPattern,
-  ParsedURLPattern,
-  ParseURLInput,
-  ParseURLPattern,
-  SerializeURLPattern,
-} from "./URLPattern";
-import { RequestInitT, ResponseT } from "./fetch";
-import { TypedJSONString } from "./primitive";
-// type TypedFetch<T> = any;
-
-type FetchDef<
-  Method,
-  // UrlPattern extends ParsedURLPattern<any, any, any, any>,
-  UrlPattern extends ParsedURLPattern<any, any, any, any>,
-  Headers,
-  Search,
-  Body,
-  Response,
-> = {
-  $method: Method;
-  $url: UrlPattern;
-  $headers?: Headers;
-  $search?: Search;
-  $body: Body;
-  $response: Response;
-};
-
-type ExtractDef<
-  Def extends FetchDef<any, any, any, any, any, any>,
-  Method extends string,
-  Url extends string,
-> = Def extends FetchDef<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->
-  ? Method extends Def["$method"]
-    ? IsAcceptableUrlPattern<Def["$url"], ParseURLInput<Url>> extends true ? Def
-    : never
-  : never
-  : never;
-
-type TypedFetch<
-  Def extends FetchDef<any, any, any, any, any, any>,
-> = <
-  InputUrl extends SerializeURLPattern<Def["$url"]>,
-  InputMethod extends ExtractDef<Def, any, InputUrl>["$method"],
-  Matched extends ExtractDef<Def, InputMethod, InputUrl>,
-> // Matched extends FetchDef<any, any, any, any, any, any> = Def extends FetchDef<
-// infer Method,
-// infer Pattern,
-// infer Headers,
-// infer Search,
-// infer Body,
-// infer Response
-// >
-// ? AcceptableUrlPattern<Pattern, ParseURLInput<InputUrl>> extends ParsedURLPattern<infer A, infer B, infer C, infer D>
-//     // ?  FetchDef<Method, Pattern, Headers, Search, Body, Response>
-//     ? Extract<Def, { $url: ParsedURLPattern<A, B, C, D>; $method: InputMethod }>
-//   : never
-//   : never,
-
-// Matched extends FetchDef<any, any, any, any, any, any> = Def extends FetchDef<
-//   infer Method,
-//   infer Pattern,
-//   infer Headers,
-//   infer Search,
-//   infer Body,
-//   infer Response
-// > ? AcceptableUrlPattern<Pattern, ParseURLInput<InputUrl>> extends ParsedURLPattern<infer A, infer B, infer C, infer D>
-//     // ?  FetchDef<Method, Pattern, Headers, Search, Body, Response>
-//     ? Extract<Def, { $url: ParsedURLPattern<A, B, C, D>; $method: InputMethod }>
-//   : never
-//   : never,
-(
-  input: InputUrl,
-  init: RequestInitT<
-    InputMethod,
-    Matched["$body"],
-    Matched["$headers"]
-  >,
-  // Matched["$body"],
-  // Matched["$headers"]
-  // ) => Promise<ResponseT<Matched["$response"]>>;
-) => Promise<ResponseT<Matched["$response"]>>;
-
-type FetchOps =
-  | {
-    $method: "POST";
-    $url: ParseURLPattern<"/api/:id">;
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $body: { text: string };
-    $response: { ok: boolean };
-  }
-  | {
-    $method: "PUT";
-    $url: ParseURLPattern<"/foo/:id">;
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $body: {};
-    $response: { result: string };
-  };
-
-// type PickedFetchOps = Extract<FetchOps, {$method: "POST"}>;
-// type PickedFetchOps = Extract<FetchOps, { $method: "POST" }>;
+import { test } from "vitest";
+import type { FetchRule, TypedFetch } from "./fetch";
+import type { TypedJSON$stringify } from "./json";
 
 test("run", async () => {
   const fetch = window.fetch as TypedFetch<
-    | {
+    | FetchRule<{
       $method: "POST";
-      $url: ParseURLPattern<"/api/:id">;
+      $url: "/api/:id";
       $headers: {
         "Content-Type": "application/json";
       };
       $body: { text: string };
       $response: { ok: boolean };
-    }
-    | {
+    }>
+    | FetchRule<{
       $method: "POST";
-      $url: ParseURLPattern<"/xxx">;
+      $url: "/xxx";
       $headers: {
         "Content-Type": "application/json";
       };
       $body: { text: string };
       $response: { error: boolean };
-    }
-    | {
+    }>
+    | FetchRule<{
       $method: "PUT";
-      $url: ParseURLPattern<"/foo/:id">;
+      $url: "/foo/:id";
       $headers: {
         "Content-Type": "application/json";
       };
       $body: {};
       $response: { result: string };
-    }
+    }>
   >;
-  const stringify = JSON.stringify as JSON$stringifyT;
+  const stringify = JSON.stringify as TypedJSON$stringify;
   const res = await fetch("/api/xxx", {
     method: "POST",
     headers: {
@@ -155,39 +41,26 @@ test("run", async () => {
     body: stringify({ text: "text" }),
   });
 
-  // shoud be valid
-  const data1: { ok: true } = await res.json();
-
+  const ret = await res.json();
+  const _data1: { ok: boolean } = ret;
+  // Do not conterminate
   // @ts-expect-error
-  const data2: { error: false } = await res.json();
-
-  const res2 = await fetch("/api/xxx", {
+  const _data2: { error: boolean } = ret;
+  const _data3: { result: string } = await fetch("/foo/xxx", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: stringify({ text: "text" }),
-  });
-  // const data2 = await res2.json();
+  }).then((r) => r.json());
 
-  // const fetch = window.fetch as TypedFetch<{
-  //   $method: "GET";
-  //   $url: {
-  //     $protocol: "http";
-  //     $host: "localhost:8080";
-  //     $path: "/api/:id";
-  //     $search: "";
-  //   };
-  //   $headers: {
-  //     "Content-Type": "application/json";
-  //   };
-  //   $body: {
-  //     text: string;
-  //   };
-  //   $response: {
-  //     ok: boolean;
-  //   };
-  // }>;
+  const _ = await fetch("/api/xxx", {
+    method: "POST",
+    // @ts-expect-error
+    headers: {},
+    // @ts-expect-error
+    body: stringify({ text: 1 }),
+  });
 });
 
 // test("URLSearchParams", async () => {

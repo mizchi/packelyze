@@ -1,104 +1,14 @@
-import { Assert, Eq } from "./utils";
+import { test } from "vitest";
+import type { Assert, Eq } from "./utils";
+import type {
+  GetMatchedRest,
+  IsAcceptableUrlPattern,
+  ParsePath,
+  ParseURLInput,
+  ParseURLPattern,
+} from "./url";
 
-// Subset of https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
-
-export type ParsedURLPattern<
-  Protocol extends string,
-  Host extends string,
-  Path extends string,
-  Search extends boolean,
-> = {
-  protocol: Protocol;
-  host: Host;
-  path: Path;
-  search: Search;
-};
-
-export type SerializeURLPattern<
-  Pattern extends ParsedURLPattern<any, any, any, any>,
-> = Pattern["protocol"] extends ""
-  ? Pattern["host"] extends "" ? `/${Pattern["path"]}`
-  : `//${Pattern["host"]}/${Pattern["path"]}`
-  : `${Pattern["protocol"]}://${Pattern["host"]}/${Pattern["path"]}`;
-
-export type ParseURLPattern<T extends string> = T extends
-  | `${infer Protocol}://${infer Host}/${infer RestPath}`
-  | `/${infer RestPath}` ? ParsedURLPattern<
-    string extends Protocol ? "" : Protocol,
-    string extends Host ? "" : Host,
-    RestPath extends `${infer Path}?${string}` ? ParsePath<Path>
-      : ParsePath<RestPath>,
-    // TODO: handle search component
-    RestPath extends `${string}?${string}` ? true : false
-  >
-  : never;
-
-type ParsePath<T extends string> = T extends `/${infer Rest}` ? ParsePath<Rest>
-  : T extends `${infer A}/${infer Rest}`
-  // :foo/...
-    ? A extends `:${string}` ? `${string}/${ParsePath<Rest>}`
-      // foo/...
-    : `${A}/${ParsePath<Rest>}`
-  // :id
-  : T extends `:${string}` ? string
-  // foo
-  : T;
-
-export type ParsedURLInput<
-  Protocol extends string | undefined,
-  Host extends string | undefined,
-  Path extends string,
-  Search extends string | undefined,
-> = {
-  protocol: Protocol;
-  host: Host;
-  path: Path;
-  search: Search;
-};
-
-export type ParseURLInput<T extends string> = T extends
-  | `${infer Protocol}://${infer Host}/${infer RestPath}`
-  // | `${infer Protocol}://${infer Host}`
-  | `/${infer RestPath}` ? ParsedURLInput<
-    string extends Protocol ? "" : Protocol,
-    string extends Host ? "" : Host,
-    // Protocol,
-    // Host,
-    RestPath extends `${infer Path}?${string}` ? Path : RestPath,
-    RestPath extends `${string}?${infer Search}` ? Search : never
-  >
-  : never;
-
-export type GetMatchedRest<Pattern extends string, Input extends string> =
-  Input extends Pattern | `${Pattern}/${infer Rest}`
-    ? string extends Rest ? never : Rest
-    : never;
-
-export type IsAcceptableUrlPattern<
-  Pattern extends ParsedURLPattern<any, any, any, any>,
-  Input extends ParsedURLInput<any, any, any, any>,
-> = Input["protocol"] extends Pattern["protocol"]
-  ? Input["host"] extends Pattern["host"]
-    ? Input["path"] extends Pattern["path"]
-      ? GetMatchedRest<Pattern["path"], Input["path"]> extends never ? true
-      : false
-    : never
-  : never
-  : never;
-
-export type AcceptableUrlPattern<
-  Pattern extends ParsedURLPattern<any, any, any, any>,
-  Input extends ParsedURLInput<any, any, any, any>,
-> = Input["protocol"] extends Pattern["protocol"]
-  ? Input["host"] extends Pattern["host"]
-    ? Input["path"] extends Pattern["path"]
-      ? GetMatchedRest<Pattern["path"], Input["path"]> extends never ? Pattern
-      : false
-    : never
-  : never
-  : never;
-
-if (false as any) {
+test("url", () => {
   type _cases = [
     Assert<Eq<ParsePath<"foo">, `foo`>>,
     Assert<Eq<ParsePath<":foo">, string>>,
@@ -232,7 +142,10 @@ if (false as any) {
       Assert<ExactPattern<`/xxx/${string}/yyy/${string}`, "/xxx/xid/yyy">>,
       Assert<
         Eq<
-          GetMatchedRest<`xxx/${string}/yyy/${string}`, "xxx/xid/yyy/yid/xxx">,
+          GetMatchedRest<
+            `xxx/${string}/yyy/${string}`,
+            "xxx/xid/yyy/yid/xxx"
+          >,
           "xxx"
         >
       >,
@@ -373,4 +286,4 @@ if (false as any) {
       >,
     ];
   }
-}
+});
