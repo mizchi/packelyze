@@ -44,7 +44,8 @@ type ExtractDef<
   any
 >
   ? Method extends Def["$method"]
-    ? IsAcceptableUrlPattern<Def["$url"], ParseURLInput<Url>> extends true ? Def : never
+    ? IsAcceptableUrlPattern<Def["$url"], ParseURLInput<Url>> extends true ? Def
+    : never
   : never
   : never;
 
@@ -113,7 +114,7 @@ type FetchOps =
   };
 
 // type PickedFetchOps = Extract<FetchOps, {$method: "POST"}>;
-type PickedFetchOps = Extract<FetchOps, { $method: "POST" }>;
+// type PickedFetchOps = Extract<FetchOps, { $method: "POST" }>;
 
 test("run", async () => {
   const fetch = window.fetch as TypedFetch<
@@ -153,7 +154,12 @@ test("run", async () => {
     },
     body: stringify({ text: "text" }),
   });
-  const data = await res.json();
+
+  // shoud be valid
+  const data1: { ok: true } = await res.json();
+
+  // @ts-expect-error
+  const data2: { error: false } = await res.json();
 
   const res2 = await fetch("/api/xxx", {
     method: "POST",
@@ -162,7 +168,7 @@ test("run", async () => {
     },
     body: stringify({ text: "text" }),
   });
-  const data2 = await res2.json();
+  // const data2 = await res2.json();
 
   // const fetch = window.fetch as TypedFetch<{
   //   $method: "GET";
