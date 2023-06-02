@@ -1,35 +1,16 @@
 import type {
-  TypedFormData,
   TypedJSON$stringify,
-  TypedJSONString,
   TypedResponse,
+  TypedResponseConstructor,
 } from "zero-runtime";
-
-// interface RequestT<T extends { [key: string]: any }> extends Request {
-//   formData(): Promise<FormDataT<T>>;
-//   json(): Promise<T>;
-//   text(): Promise<TypedJSONString<T>>;
-// }
-
-// type BodyInitT = ReadableStream | XMLHttpRequestBodyInit;
-
-export interface ResponseConstructorT {
-  new <T>(body?: TypedJSONString<T> | null, init?: ResponseInit): ResponseT<T>;
-  prototype: ResponseT<T>;
-  error(): ResponseT<T>;
-  redirect(url: string | URL, status?: number | undefined): ResponseT<T>;
-  // https://github.com/whatwg/fetch/pull/1392
-  json<T>(body: T): ResponseT<T>;
-  text<T>(body: T): ResponseT<TypedJSONString<T>>;
-}
 
 type T = { x: number };
 
-const stringify = JSON.stringify as JSON$stringifyT;
-const Response = globalThis.Response as ResponseConstructorT;
+const stringify = JSON.stringify as TypedJSON$stringify;
+const Response = globalThis.Response as unknown as TypedResponseConstructor;
 
 const x = {
-  async fetch(): Promise<ResponseT<T>> {
+  async fetch(): Promise<TypedResponse<T>> {
     // return Response.json
     return new Response<T>(stringify({ x: 1 }), {
       headers: {
