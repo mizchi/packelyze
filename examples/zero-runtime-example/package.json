@@ -12,7 +12,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@mizchi/zero-runtime": "workspace:*"
+    "zero-runtime": "workspace:*"
   },
   "dependencies": {
     "esbuild": "^0.17.19"

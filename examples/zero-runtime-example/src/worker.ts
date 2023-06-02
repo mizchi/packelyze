@@ -1,9 +1,9 @@
 import type {
-  FormDataT,
-  JSON$stringifyT,
-  ResponseT,
+  TypedFormData,
+  TypedJSON$stringify,
   TypedJSONString,
-} from "@mizchi/zero-runtime";
+  TypedResponse,
+} from "zero-runtime";
 
 // interface RequestT<T extends { [key: string]: any }> extends Request {
 //   formData(): Promise<FormDataT<T>>;

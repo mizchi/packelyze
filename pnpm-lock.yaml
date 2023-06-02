@@ -94,9 +94,6 @@ importers:
         specifier: '5'
         version: 5.0.4
     devDependencies:
-      '@mizchi/zero-runtime':
-        specifier: workspace:*
-        version: link:../../zero-runtime
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)
@@ -115,6 +112,9 @@ importers:
       terser:
         specifier: ^5.17.6
         version: 5.17.6
+      zero-runtime:
+        specifier: workspace:*
+        version: link:../../zero-runtime
 
   examples/react-lib:
     dependencies:
@@ -128,9 +128,6 @@ importers:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
     devDependencies:
-      '@mizchi/zero-runtime':
-        specifier: workspace:*
-        version: link:../../zero-runtime
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)
@@ -146,6 +143,9 @@ importers:
       rollup-plugin-ts:
         specifier: ^3.2.0
         version: 3.2.0(rollup@3.21.7)(typescript@4.9.5)
+      zero-runtime:
+        specifier: workspace:*
+        version: link:../../zero-runtime
 
   examples/with-vite:
     dependencies:
@@ -162,9 +162,6 @@ importers:
       '@internal/react-lib':
         specifier: workspace:*
         version: link:../react-lib
-      '@mizchi/zero-runtime':
-        specifier: workspace:*
-        version: link:../../zero-runtime
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)
@@ -177,6 +174,9 @@ importers:
       rollup-plugin-ts:
         specifier: ^3.2.0
         version: 3.2.0(rollup@3.21.7)(typescript@4.9.5)
+      zero-runtime:
+        specifier: workspace:*
+        version: link:../../zero-runtime
 
   examples/zero-runtime-example:
     dependencies:
@@ -184,7 +184,7 @@ importers:
         specifier: ^0.17.19
         version: 0.17.19
     devDependencies:
-      '@mizchi/zero-runtime':
+      zero-runtime:
         specifier: workspace:*
         version: link:../../zero-runtime
 

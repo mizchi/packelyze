@@ -13,11 +13,11 @@
   "license": "MIT",
   "devDependencies": {
     "@internal/react-lib": "workspace:*",
-    "@mizchi/zero-runtime": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
     "optools": "workspace:*",
     "rollup": "^3.21.7",
-    "rollup-plugin-ts": "^3.2.0"
+    "rollup-plugin-ts": "^3.2.0",
+    "zero-runtime": "workspace:*"
   },
   "dependencies": {
     "esbuild": "^0.17.19",

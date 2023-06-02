@@ -1,9 +1,9 @@
-# @mizchi/zero-runtime
+# zero-runtime
 
 Zero runtime on TypeScript
 
 ```
-$ npm install @mizchi/zero-runtime --save-dev
+$ npm install zero-runtime --save-dev
 ```
 
 ## Examples

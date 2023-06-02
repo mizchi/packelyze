@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
-import type { JSON$stringifyT } from "@mizchi/zero-runtime";
+import type { TypedJSON$stringify } from "zero-runtime";
 
-const stringifyT = JSON.stringify as JSON$stringifyT;
+const stringifyT = JSON.stringify as TypedJSON$stringify;
 
 test("keep send body", async () => {
   const body = stringifyT({ keepMe: "hello" });

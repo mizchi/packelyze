@@ -1,1 +1,1 @@
-import type { TypedFetch } from "@mizchi/zero-runtime";
+import type { TypedFetch } from "zero-runtime";
