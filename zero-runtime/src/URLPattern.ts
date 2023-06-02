@@ -14,6 +14,13 @@ export type ParsedURLPattern<
   search: Search;
 };
 
+export type SerializeURLPattern<
+  Pattern extends ParsedURLPattern<any, any, any, any>,
+> = Pattern["protocol"] extends ""
+  ? Pattern["host"] extends "" ? `/${Pattern["path"]}`
+  : `//${Pattern["host"]}/${Pattern["path"]}`
+  : `${Pattern["protocol"]}://${Pattern["host"]}/${Pattern["path"]}`;
+
 export type ParseURLPattern<T extends string> = T extends
   | `${infer Protocol}://${infer Host}/${infer RestPath}`
   | `/${infer RestPath}` ? ParsedURLPattern<
