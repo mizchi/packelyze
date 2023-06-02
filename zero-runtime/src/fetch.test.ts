@@ -31,6 +31,24 @@ test("run", async () => {
       $body: {};
       $response: { result: string };
     }>
+    | FetchRule<{
+      $method: "POST";
+      $url: "https://example.test/zzz";
+      $headers: {
+        "Content-Type": "application/json";
+      };
+      $body: {};
+      $response: { result: string };
+    }>
+    | FetchRule<{
+      $method: "GET";
+      $url: `/search`;
+      $headers: {
+        "Content-Type": "application/json";
+      };
+      $search: { q: string };
+      $response: { items: string[] };
+    }>
   >;
   const stringify = JSON.stringify as TypedJSON$stringify;
   const res = await fetch("/api/xxx", {
@@ -61,6 +79,22 @@ test("run", async () => {
     // @ts-expect-error
     body: stringify({ text: 1 }),
   });
+
+  const _1: { result: string } = await fetch("https://example.test/zzz", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: stringify({ text: 1 }),
+  }).then((r) => r.json());
+
+  // TODO: search body is not supported
+  const _2: { items: string[] } = await fetch("/search?q=hello", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  }).then((r) => r.json());
 });
 
 // test("URLSearchParams", async () => {
