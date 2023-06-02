@@ -33,8 +33,8 @@ type FetchDef<
 
 type ExtractDef<
   Def extends FetchDef<any, any, any, any, any, any>,
-  Method,
-  Url,
+  Method extends string,
+  Url extends string,
 > = Def extends FetchDef<
   any,
   any,
@@ -44,7 +44,7 @@ type ExtractDef<
   any
 >
   ? Method extends Def["$method"]
-    ? Url extends SerializeURLPattern<Def["$url"]> ? Def : never
+    ? IsAcceptableUrlPattern<Def["$url"], ParseURLInput<Url>> extends true ? Def : never
   : never
   : never;
 
