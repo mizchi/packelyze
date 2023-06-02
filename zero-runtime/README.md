@@ -41,6 +41,16 @@ const fetch = window.fetch as TypedFetch<
     $body: {};
     $response: { result: string };
   }>
+    | FetchRule<{
+    $method: "GET";
+    $url: "/search";
+    $search: {q: string},
+    $headers: {
+      "Content-Type": "application/json";
+    };
+    $response: { result: string[] };
+  }>
+
 >;
 const stringify = JSON.stringify as TypedJSON$stringify;
 const res = await fetch("/api/xxx", {

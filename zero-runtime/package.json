@@ -1,6 +1,6 @@
 {
-  "name": "@mizchi/zero-runtime",
-  "version": "0.0.3",
+  "name": "zero-runtime",
+  "version": "0.1.0",
   "type": "module",
   "types": "./lib/index.d.ts",
   "exports": {
