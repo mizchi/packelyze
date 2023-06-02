@@ -11,7 +11,7 @@ $ npm install @mizchi/zero-runtime --save-dev
 ### Fetch
 
 ```ts
-import type { FetchRule, TypedFetch, TypedJSON$stringify } from "@mizchi/zero-runtime";
+import type { FetchRule, TypedFetch, TypedJSON$stringify } from "zero-runtime";
 
 const fetch = window.fetch as TypedFetch<
   | FetchRule<{
@@ -23,25 +23,8 @@ const fetch = window.fetch as TypedFetch<
     $body: { text: string };
     $response: { ok: boolean };
   }>
+  // NOTE: You can declare search types but zero-runtime does not check it.
   | FetchRule<{
-    $method: "POST";
-    $url: "/xxx";
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $body: { text: string };
-    $response: { error: boolean };
-  }>
-  | FetchRule<{
-    $method: "PUT";
-    $url: "/foo/:id";
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $body: {};
-    $response: { result: string };
-  }>
-    | FetchRule<{
     $method: "GET";
     $url: "/search";
     $search: {q: string},
@@ -53,7 +36,7 @@ const fetch = window.fetch as TypedFetch<
 
 >;
 const stringify = JSON.stringify as TypedJSON$stringify;
-const res = await fetch("/api/xxx", {
+const res = await fetch("/api/1", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
