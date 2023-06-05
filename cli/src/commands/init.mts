@@ -27,9 +27,8 @@ export async function init() {
   if (args.values.config != null) {
     const configPath = path.join(cwd, args.values.config);
     if (fs.existsSync(configPath)) {
-      console.error("[optools] optools.config.json already exists", configPath);
       const isContinue = await confirm({
-        message: "Continue with Continue? (y/N)",
+        message: "optools.config.json already exists. Continue with override?",
         default: false,
       });
       if (!isContinue) {
@@ -37,12 +36,14 @@ export async function init() {
       }
     }
     // check src/index.ts exists
-    const indexExists = path.join(cwd, "src/index.ts");
+    const indexTsExists = path.join(cwd, "src/index.ts");
+    const indexTsxExists = path.join(cwd, "src/index.tsx");
+
     let srcEffCreated = false;
-    if (fs.existsSync(indexExists)) {
+    if (fs.existsSync(indexTsExists) || fs.existsSync(indexTsxExists)) {
       // write src/_eff.ts
       const result = await confirm({
-        message: "Create src/_eff.ts? (y/n)",
+        message: "Create src/_eff.ts for analyzer target?",
         default: true,
       });
       if (result) {
@@ -74,7 +75,7 @@ export async function init() {
     // generate tsconfig.optools.json
 
     const isCreateTsconfig = await confirm({
-      message: "Create tsconfig.optools.json? (y/n)",
+      message: "Create tsconfig.optools.json?",
       default: true,
     });
     if (isCreateTsconfig) {
