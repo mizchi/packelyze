@@ -1,6 +1,6 @@
 {
   "name": "optools",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "dependencies": {
     "lizod": "^0.2.3",
     "rollup": "^3.21.7",
