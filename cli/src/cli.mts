@@ -209,7 +209,7 @@ export async function init() {
         {
           input: "lib/index.d.ts",
           output: "_optools-analyzed.json",
-          builtins: ["dom", "browser", "worker", "httpHeaders"],
+          builtins: ["es", "dom", "worker", "httpHeaders"],
           external: [],
         },
         null,
