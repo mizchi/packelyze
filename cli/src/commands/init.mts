@@ -2,6 +2,9 @@ import path from "node:path";
 import fs from "node:fs";
 import process from "node:process";
 import { parseArgs } from "node:util";
+// import inquirer from "inquirer";
+import { input } from "@inquirer/prompts";
+import { confirm } from "@inquirer/prompts";
 
 const srcEffTemplate = `// optools analyze entrypoint
 export * from "./index";
@@ -24,23 +27,40 @@ export async function init() {
   if (args.values.config != null) {
     const configPath = path.join(cwd, args.values.config);
     if (fs.existsSync(configPath)) {
-      console.error("[optools] config file already exists", configPath);
-      process.exit(1);
+      console.error("[optools] optools.config.json already exists", configPath);
+      const isContinue = await confirm({
+        message: "Continue with Continue? (y/N)",
+        default: false,
+      });
+      if (!isContinue) {
+        process.exit(1);
+      }
     }
     // check src/index.ts exists
     const indexExists = path.join(cwd, "src/index.ts");
-    let existed = false;
+    let srcEffCreated = false;
     if (fs.existsSync(indexExists)) {
       // write src/_eff.ts
-      fs.writeFileSync(path.join(cwd, "src/_eff.ts"), srcEffTemplate);
-      existed = true;
+      const result = await confirm({
+        message: "Create src/_eff.ts? (y/n)",
+        default: true,
+      });
+      if (result) {
+        fs.writeFileSync(path.join(cwd, "src/_eff.ts"), srcEffTemplate);
+        srcEffCreated = true;
+      }
     }
+
+    const inputTarget = await input({
+      message: "Input analyzer entrypoint",
+      default: srcEffCreated ? "lib/_eff.d.ts" : "lib/index.d.ts",
+    });
 
     fs.writeFileSync(
       configPath,
       JSON.stringify(
         {
-          input: existed ? "lib/_eff.d.ts" : "lib/index.d.ts",
+          input: inputTarget,
           output: "_optools-analyzed.json",
           builtins: ["es", "dom", "worker", "httpHeaders"],
           external: [],
@@ -49,31 +69,42 @@ export async function init() {
         2,
       ),
     );
-    console.error("[optools] generate config >", configPath);
+    console.info("[optools] generate config >", configPath);
     // TODO: use inquiry
     // generate tsconfig.optools.json
-    const tsConfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
-    fs.writeFileSync(
-      tsConfigOptoolsPath,
-      JSON.stringify(
-        {
-          extends: "./tsconfig.json",
-          compilerOptions: {
-            rootDir: "src",
-            outDir: "lib",
-            declaration: true,
-            noEmit: false,
-            emitDeclarationOnly: true,
+
+    const isCreateTsconfig = await confirm({
+      message: "Create tsconfig.optools.json? (y/n)",
+      default: true,
+    });
+    if (isCreateTsconfig) {
+      const tsConfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
+      fs.writeFileSync(
+        tsConfigOptoolsPath,
+        JSON.stringify(
+          {
+            extends: "./tsconfig.json",
+            compilerOptions: {
+              rootDir: "src",
+              outDir: "lib",
+              declaration: true,
+              noEmit: false,
+              emitDeclarationOnly: true,
+            },
           },
-        },
-        null,
-        2,
-      ),
-    );
-    console.error(
-      "[optools:init] generate tsconfig.optools.json >",
-      tsConfigOptoolsPath,
-    );
+          null,
+          2,
+        ),
+      );
+      console.info(
+        "[optools:init] generate tsconfig.optools.json >",
+        tsConfigOptoolsPath,
+      );
+    } else {
+      console.info(
+        "[optools:init] skip. Ensure to emit lib/*.d.ts by yourself",
+      );
+    }
 
     // check tsconfig.json exists
     const tsconfigPath = path.join(cwd, "tsconfig.json");
