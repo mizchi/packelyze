@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import process from "node:process";
 import { parseArgs } from "node:util";
-// import inquirer from "inquirer";
+import { checkbox } from "@inquirer/prompts";
 import { input } from "@inquirer/prompts";
 import { confirm } from "@inquirer/prompts";
 
@@ -57,13 +57,26 @@ export async function init() {
       default: srcEffCreated ? "lib/_eff.d.ts" : "lib/index.d.ts",
     });
 
+    const checked = await checkbox({
+      message:
+        "Select reserved buitins. (If you use terser builtins, you don't need to select)",
+      choices: [
+        { name: "es", value: "es", checked: true },
+        { name: "dom", value: "dom", checked: true },
+        { name: "worker", value: "worker" },
+        { name: "httpHeaders", value: "httpHeaders" },
+        { name: "terser's domprops", value: "domprops" },
+        { name: "cloudflareWorkers", value: "cloudflareWorkers" },
+      ],
+    });
+
     fs.writeFileSync(
       configPath,
       JSON.stringify(
         {
           input: inputTarget,
           output: "_optools-analyzed.json",
-          builtins: ["es", "dom", "worker", "httpHeaders"],
+          builtins: checked,
           external: [],
         },
         null,
