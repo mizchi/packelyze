@@ -35,9 +35,6 @@ importers:
 
   cli:
     dependencies:
-      lizod:
-        specifier: ^0.2.3
-        version: 0.2.3(typescript@5.0.4)
       rollup:
         specifier: ^3.21.7
         version: 3.21.7
@@ -1744,14 +1741,6 @@ packages:
 
   /lizod@0.2.2(typescript@5.0.4):
     resolution: {integrity: sha512-4Z1RX3Cr1pK17xYV1Cmz3IHRIBQ2OK132sRyfoc3EOlkLrNloG0BGRgZJjmlnuRTjaAeK8EsHXxJFP2Z0d4prg==}
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      typescript: 5.0.4
-    dev: false
-
-  /lizod@0.2.3(typescript@5.0.4):
-    resolution: {integrity: sha512-h0hpn/dqIRw4aTf2ELpbFIM9Zcu4jMy1/4awgFeFasss1+QUBM6J/J7+XF0FqtQaPiaLjqZTFVowFyrq2sGSLQ==}
     peerDependencies:
       typescript: '>=5'
     dependencies:

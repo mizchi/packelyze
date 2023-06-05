@@ -7,7 +7,6 @@ import ts from "typescript";
 
 import { collectProperties } from "./analyzer.mjs";
 import { bundleDts } from "./generator.mjs";
-import { validateOptoolsConfig } from "./options.mjs";
 
 export async function analyzeDts() {
   const cwd = process.cwd();
@@ -62,19 +61,13 @@ export async function analyzeDts() {
     try {
       const configPath = path.join(cwd, args.values.config);
       const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      // TODO: validate config
-      if (validateOptoolsConfig(config) || true) {
-        argsValues = {
-          ...argsValues,
-          ...config,
-          // override: prefer input and output
-          input: args.values.input || config.input,
-          output: args.values.output || config.output,
-        };
-      } else {
-        console.error("[optools] invalid config - optools.config.json");
-        process.exit(1);
-      }
+      argsValues = {
+        ...argsValues,
+        ...config,
+        // override: prefer input and output
+        input: args.values.input || config.input,
+        output: args.values.output || config.output,
+      };
     } catch (e) {
       console.info("[optools] skip loading config - optools.config.json", e);
     }

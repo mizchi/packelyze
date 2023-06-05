@@ -2,7 +2,6 @@
   "name": "optools",
   "version": "0.1.2",
   "dependencies": {
-    "lizod": "^0.2.3",
     "rollup": "^3.21.7",
     "rollup-plugin-dts": "^5.3.0",
     "terser": "^5.17.6"
