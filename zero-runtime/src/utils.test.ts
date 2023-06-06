@@ -1,3 +1,4 @@
+import { test } from "vitest";
 import type { Assert, Eq } from "./utils";
 type _cases = [
   Assert<Eq<1, 1>>,
@@ -6,3 +7,5 @@ type _cases = [
   // @ts-expect-error
   Assert<Eq<any, never>>,
 ];
+
+test.skip("test", () => {});

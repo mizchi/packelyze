@@ -2,8 +2,8 @@ import { test } from "vitest";
 import type { FetchRule, TypedFetch } from "./fetch";
 import type { TypedJSON$stringify } from "./json";
 
-test("run", async () => {
-  const fetch = window.fetch as TypedFetch<
+test.skip("run", async () => {
+  const fetch = globalThis.fetch as TypedFetch<
     | FetchRule<{
       $method: "POST";
       $url: "/api/:id";

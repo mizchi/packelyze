@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - '*'
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '18'
+        check-latest: true
+    - run: corepack enable pnpm
+    - run: pnpm install
+    - run: pnpm build
+      working-directory: cli
+    - run: pnpm tsc -p . --noEmit
+      working-directory: cli
+    - run: pnpm test:full
+      working-directory: cli
+    - run: pnpm test
+      working-directory: zero-runtime
