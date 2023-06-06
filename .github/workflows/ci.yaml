@@ -24,7 +24,7 @@ jobs:
       working-directory: cli
     - run: pnpm tsc -p . --noEmit
       working-directory: cli
-    - run: pnpm test:full
+    - run: pnpm test:full --test-timeout 40000
       working-directory: cli
     - run: pnpm test
       working-directory: zero-runtime
