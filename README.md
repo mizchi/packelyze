@@ -1,6 +1,6 @@
 # optools
 
-Aggressive minifying tool by typescript static analyzer.
+Aggressive minification tools.
 
 THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
 
@@ -8,7 +8,7 @@ THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
 $ npm install optools -D 
 ```
 
-## What is it
+## What is `optools`?
 
 - `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts` (or other entrypoint)
 - High compression ratio with `mangle.properties.reserved=/^.*/` and `mangle.properties.builtins=true`
@@ -61,7 +61,7 @@ requirements
   "input": "lib/_eff.d.ts",
   // analyzed output
   "output": "_optools-analyzed.json",
-  // builtins default is ["es", "dom", "worker"]. If you use terser's builtin dictionary, you don't need this.
+  // predefined builtin reserved for environment
   "builtins": [
     // ECMAScript default features 
     "es",
@@ -80,12 +80,12 @@ requirements
     // cloudflare-workers
     "cloudflareWorkers"
   ],
-  // emit bundle.d.ts
+  // (Optional) emit _bundle.d.ts of entrypoint
   "writeDts": "_bundled.d.ts"
 }
 ```
 
-## Use analyzed props with terser
+## Use analyzed `reserved` with terser
 
 ### Example: terser
 
@@ -109,258 +109,84 @@ const out = await minify({
 console.log(out.code.length);
 ```
 
-### Example: vite
-
-```ts
-import { defineConfig } from "vite";
-import analyzed from "./_optools-analyzed.json";
-
-export default defineConfig({
-  build: {
-    minify: "terser",
-    terserOptions: {
-      mangle: {
-        properties: {
-          builtins: true,
-          regex: /^.*/,
-          reserved: analyzed.reserved,
-        },
-      },
-    },
-  },
-});
-```
-
-esbuild does not work yet.
-
-## With external libraries without bundle
-
-(This section is not necessary if bundling is being processed)
-
-Now external does not work correctly.
-
-Work arround to tell types
-
-```ts
-// src/effects.ts
-export * from "./index";
-
-// listup external
-import * as _1 from "react";
-import * as _2 from "react/jsx-runtime";
-export { _1, _2 };
-```
-
-and analyze `src/_eff.ts` instead of `src/index.ts`
-
-```jsonc
-// optools.config.json
-{
-  "input": "lib/_eff.d.ts",
-  // ...
-}
-```
-
-## Restrictions
-
-You can not use optools with ...
-
-- Reflection
-  - Eval: `eval(...)` or `const directEval = eval; directEval()`
-  - Function: `new Function(...)`
-  - `.name`: `class MyClass{}; MyClass.name`, `function f(){}; f.name;`
-  - Dynamic properties: `instance[dynamic as any]`
-- SideEffect without type declarations
-  - `fetch(...)`
-  - `postMessage()`
+## You should know side-effects in your codes
 
 ![](https://i.gyazo.com/35c576bebd9c6a938612a10fe352dced.png)
 
-If you have side effects, see below.
-
-## With global vars
+You can notify reserved interfaces by `export` from entrypoint. 
 
 ```ts
-// src/env.d.ts
-declare const MyGlobalVar: {
-  xxx: number;
-};
-```
-
-## Include external effect types
-
-`optool analyze-dts` can keep ESM interface but can not keep internal effects from intern, like `fetch(...)`.
-
-```ts
-// index.ts
-export type ExternalEffects = {
-  // you can keep this keepMe
-  keepMe: number;
+// src/_eff.ts or src/index.ts
+export type ___MyReservedDictionary = {
+  foo: any,
+  bar: any
 }
 ```
 
-Exported properties from entrypoint will be `reserved`.
+It's a simple way to reserve `foo` and `bar`.
 
-### with typed fetch to keep external effects
-
-`zero-runtime` library can declare fetch types.
-
-(But anything is fine as long as you export the type from entrypoint)
+### Enviroment side effects
 
 ```ts
-// src/fetch.ts
-import type { TypedFetch } from "zero-runtime";
-export const fetch = window.fetch as TypedFetch<
-  | FetchRule<{
-    $method: "POST";
-    $url: "/api/:id";
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $body: { text: string };
-    $response: { ok: boolean };
-  }>
-  // NOTE: You can declare search types but zero-runtime does not check it.
-  | FetchRule<{
-    $method: "GET";
-    $url: "/search";
-    $search: {q: string},
-    $headers: {
-      "Content-Type": "application/json";
-    };
-    $response: { result: string[] };
-  }>
->;
+// src/types.ts
+export type SendPayload = {keepMe: number};
 
-```
-
-Your entrypoint should include fetch types.
-
-```ts
-// add this
-export type { fetch } from "./fetch"
-```
-
-`optools analyze-dts` will capture `fetch()` properties.
-
-### Check with snapshots
-
-Still worried? You can check mangling result with snapshot testings.
-
-```ts
-// vite.config.ts
-import { defineConfig } from "vite";
-import analyzed from "./_analyzed.json";
-import { minify } from "terser";
-
-export default defineConfig({
-  plugins: [
-    {
-      name: "optools safety check",
-      enforce: "post",
-      async transform(code, id) {
-        if (!process.env.OPTOOLS_CHECK) return;
-        if (id.endsWith(".js")) {
-          const result = await minify(code, {
-            compress: false
-            mangle: {
-              module: true,
-              properties: {
-                regex: /^.*$/,
-                reserved: analyzed.reserved,
-              },
-            },
-          });
-          return result.code;
-        }
-      },
-    },
-  ],
+// usage in src/*
+const payload: SendPayload = {
+  keepMe: 1
+};
+fetch("/send", {
+  method: "POST",
+  body: JSON.stringify(payload)
 });
+
+// src/_eff.ts or src/index.d.ts to notify type interfaces to optools.
+export * from "./types";
 ```
 
-Put tests.
+`keepMe` will be reserved.
+
+Native side-effects are `fetch()`, `postMessage()` and others.
+
+### declare global vars
+
+Your code.
 
 ```ts
-// src/fetch.test.ts
-import { expect, test } from "vitest";
-import type { TYpedJSON$stringify } from "zero-runtime";
-
-const stringifyT = JSON.stringify as TypedJSON$stringify;
-
-test("keep send body", async () => {
-  // In this case, fetch effects types includes `keepMe`
-  const body = stringifyT({ keepMe: "hello" });
-  expect(body).toMatchSnapshot();
-});
+// MyGlobalVar is declared outside.
+console.log(MyGlobalVar.xxxx);
 ```
 
-Run test twice with `OPTOOLS_CHECK`.
-
-```bash
-$ pnpm vitest --run # it creates __snapshot__
-$ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
-```
-
-## With swc spack
+You should declare types in `src/*.d.ts`
 
 ```ts
-const { config } = require("@swc/core/spack");
-const analyzed = require('./_optools-analyzed.json');
+declare const MyGlobalVar: {
+  xxxx: number;
+  yyyy: number;
+}
+```
 
-module.exports = config({
-  options: {
-    jsc: {
-      minify: {
-        mangle: {
-          props: {
-            regex: "^.*",
-            reserved: analyzed.reserved,
-            undeclared: false
-          },
-        },
-      },
-    },
-    minify: true,
-  },
-  entry: {
-    main: __dirname + "/src/index.ts",
-  },
-  output: {
-    path: __dirname + "/dist-swc",
-  },
-  module: {
-  },
-});
+`MyGlobalVar`, `xxxx`, `yyyy` will be resereved to touch.
+
+### External Library
+
+```ts
+import { foo } from "mylib"; // external on bundle
+
+// You should keep xxx
+foo(/* external */, { xxx: 1 })
 ```
 
 ## TODO
 
 - [ ] CI
 - [ ] Benchmark
-- [x] cli: Analyze with additional ambient files
-- [ ] cli: Fix external
-- [x] cli: builtins cloudflare-workers
-- [x] cli: builtins node
-- [x] cli: builtins httpHeaders
 - [ ] cli: builtins deno
-- [ ] cli: builtins jest
+- [ ] cli: external
 - [ ] cli: Keep `function.name` and `class.name` option
-- [ ] zero-runtime: implement `Eff<Operation, Return>`
+- [ ] cli: `Eff<*>` aggregator
 - [ ] linter: check scope
 - [ ] minifier: poc
-
-## WIP: Checkseet for optools users
-
-- [ ] Reflections
-  - [ ] `eval`
-  - [ ] `new Function`
-  - [ ] Unsafe `any` casting
-- [ ] SideEffect
-  - [ ] fetch
-  - [ ] postMessage
-- [ ] External libraries
-- [ ] local `.d.ts`
 
 ## LICENSE
 
