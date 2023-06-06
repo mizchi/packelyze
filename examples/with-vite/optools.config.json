@@ -1,0 +1,11 @@
+{
+  "input": "lib/_eff.d.ts",
+  "output": "_optools-analyzed.json",
+  "builtins": [
+    "es",
+    "dom",
+    "httpHeaders"
+  ],
+  "writeDts": "_bundled.d.ts",
+  "external": []
+}
