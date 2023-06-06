@@ -73,8 +73,6 @@ requirements
     "domprops",
     // well known http headers to keep request headers
     "httpHeaders",
-    // node environment
-    "node",
     // cloudflare-workers
     "cloudflareWorkers"
   ],
@@ -88,26 +86,12 @@ requirements
 
 Safest `builtins` are `["es", "dom", "worker", "domprops", "httpHeaders"]` but it includes many false-positive. For most projects, `["es", "dom"]` works well.
 
-### builtins: node
-
-TODO: This fauture does not work yet.
-
-`optools`'s builtin `node` does not include `process` and `Buffer`.
-
-```ts
-// use process and Buffer via static import
-import process from "node:process";
-import Buffer from "node:buffer";
-```
-
-TODO: provide linter
-
 ## Use analyzed props with terser
 
 ### Example: terser
 
 ```ts
-import {minify} from "terser";
+import { minify } from "terser";
 import analyzed from "./_optools-analyzed.json";
 
 const out = await minify({
@@ -194,6 +178,15 @@ You can not use optools with ...
 ![](https://i.gyazo.com/35c576bebd9c6a938612a10fe352dced.png)
 
 If you have side effects, see below.
+
+## With global vars
+
+```ts
+// src/env.d.ts
+declare const MyGlobalVar: {
+  xxx: number;
+};
+```
 
 ## Include external effect types
 
@@ -336,8 +329,7 @@ $ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
   - [ ] fetch
   - [ ] postMessage
 - [ ] External libraries
-- [ ] Ambient Types
-  - [ ] local `.d.ts`
+- [ ] local `.d.ts`
 
 ## LICENSE
 

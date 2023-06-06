@@ -5,8 +5,16 @@ export type AnalyzeResult = {
   privates: string[];
 };
 
+export type AnalyzeMode =
+  | "module-source"
+  | "isolated-ambient"
+  | "module-ambient"
+  | "isolated-ambient";
+
 export type CollectPropertiesOptions = {
   ambient?: boolean;
+  mode?: AnalyzeMode;
+  // isolated?: boolean;
 };
 
 type AnyDeclaration =
@@ -50,6 +58,43 @@ function isDeclarationNameReserved(
   return false;
 }
 
+export function getLocalAmbientModules(
+  program: ts.Program,
+  rootDir: string,
+): Array<{ module: ts.SourceFile; isolated: boolean }> {
+  const checker = program.getTypeChecker();
+  const ambientModules = checker.getAmbientModules();
+  const sources = program.getSourceFiles();
+
+  // check from ambient modules
+  const results: { module: ts.SourceFile; isolated: boolean }[] = [];
+  for (const ambient of ambientModules) {
+    const source = ambient.valueDeclaration?.getSourceFile();
+    if (
+      source?.fileName.startsWith(rootDir) &&
+      !source?.fileName.includes("/node_modules/")
+    ) {
+      const isIsolatedAmbient = isIsolatedAmbientModule(source!);
+      results.push({ module: source, isolated: isIsolatedAmbient });
+    }
+  }
+
+  // check from sources
+  for (const source of sources) {
+    if (
+      source.fileName.startsWith(rootDir) &&
+      source.fileName.endsWith(".d.ts") &&
+      !source.fileName.includes("/node_modules/")
+    ) {
+      const isIsolatedAmbient = isIsolatedAmbientModule(source);
+      const found = results.find((r) => r.module === source);
+      if (!found) results.push({ module: source, isolated: isIsolatedAmbient });
+    }
+  }
+
+  return results;
+}
+
 function isHiddenMemberOfClass(
   node: ts.MethodDeclaration | ts.PropertyDeclaration,
 ) {
@@ -71,11 +116,38 @@ const toPropName = (node: ts.Node) => {
   }
 };
 
-export const collectProperties = (
+export function isIsolatedAmbientModule(
+  source: ts.SourceFile,
+): boolean {
+  const hasExport = source.statements.some((node) => {
+    return ts.isExportDeclaration(node);
+  });
+  if (hasExport) return false;
+  const hasImport = source.statements.some((node) => {
+    return ts.isImportDeclaration(node);
+  });
+  if (hasImport) return false;
+
+  const hasExportedDeclaration = source.statements.some(
+    (node) => {
+      return isNameableDeclaration(node) && node.modifiers?.some((mod) => {
+        return mod.kind === ts.SyntaxKind.ExportKeyword;
+      });
+    },
+  );
+  if (hasExportedDeclaration) return false;
+  if (isNameableDeclaration(source)) {
+    return false;
+  }
+  return true;
+}
+
+export function collectProperties(
   root: ts.Node,
-  { ambient: ambientMode = false }: CollectPropertiesOptions = {},
+  { ambient: ambientMode = false, mode = "module-source" }:
+    CollectPropertiesOptions = {},
   debug: boolean = false,
-): AnalyzeResult => {
+): AnalyzeResult {
   const debugLog = (...args: any) => {
     if (debug) {
       console.log(...args);
@@ -246,7 +318,17 @@ export const collectProperties = (
     //   }
     // }
     ts.forEachChild(node, (node) => {
-      _traverse(node, depth + 1);
+      if (
+        ambientMode && mode === "isolated-ambient" &&
+        ts.isModuleDeclaration(root)
+      ) {
+        // skip isolated inner module analyze
+        // Example:
+        //   declare const globalvar: number;
+        //   declare module "foo" {...} // <- skip
+      } else {
+        _traverse(node, depth + 1);
+      }
     });
   };
   _traverse(root);
@@ -254,7 +336,7 @@ export const collectProperties = (
     reserved: Array.from(reservedProps),
     privates: Array.from(privateProps),
   };
-};
+}
 
 if (import.meta.vitest) {
   const { test, expect } = import.meta.vitest;
