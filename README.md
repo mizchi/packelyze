@@ -302,6 +302,38 @@ $ pnpm vitest --run # it creates __snapshot__
 $ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
 ```
 
+## With swc spack
+
+```ts
+const { config } = require("@swc/core/spack");
+const analyzed = require('./_optools-analyzed.json');
+
+module.exports = config({
+  options: {
+    jsc: {
+      minify: {
+        mangle: {
+          props: {
+            regex: "^.*",
+            reserved: analyzed.reserved,
+            undeclared: false
+          },
+        },
+      },
+    },
+    minify: true,
+  },
+  entry: {
+    main: __dirname + "/src/index.ts",
+  },
+  output: {
+    path: __dirname + "/dist-swc",
+  },
+  module: {
+  },
+});
+```
+
 ## TODO
 
 - [ ] CI

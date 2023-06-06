@@ -2,7 +2,6 @@
   "private": true,
   "version": "1.0.0",
   "description": "",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
@@ -13,8 +12,10 @@
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.2",
-    "optools": "workspace:*",
+    "@swc/cli": "^0.1.62",
+    "@swc/core": "^1.3.62",
     "msw": "^1.2.1",
+    "optools": "workspace:*",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0",
     "terser": "^5.17.6",
