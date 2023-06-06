@@ -2,12 +2,10 @@
   "input": "lib/index.d.ts",
   "output": "_optools-analyzed.json",
   "builtins": [
+    "es",
     "dom",
-    "browser",
     "worker"
   ],
-  "external": [],
-  "ambient": [
-    "src/myglobal.d.ts"
-  ]
+  "writeDts": "_bundled.d.ts",
+  "external": []
 }
