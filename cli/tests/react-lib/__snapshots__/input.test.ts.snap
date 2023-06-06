@@ -1,0 +1,6 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compile with analyze 1`] = `
+"import{jsxs as n,jsx as e}from\\"react/jsx-runtime\\";import{useRef as r}from\\"react\\";function t(t){const c=r(null);return n(\\"div\\",{ref:c,style:{display:\\"flex\\",justifyContent:\\"center\\",alignItems:\\"center\\"},children:[e(\\"h1\\",{children:t.title}),e(i,{n:42})]})}function i(n){return e(\\"span\\",{children:n.n})}export{t as MyApp};
+"
+`;

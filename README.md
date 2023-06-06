@@ -58,10 +58,10 @@ requirements
 ```jsonc
 {
   // analyzer entrypoint
-  "input": "lib/index.d.ts",
+  "input": "lib/_eff.d.ts",
   // analyzed output
   "output": "_optools-analyzed.json",
-  // builtins default is ["es", "dom", "worker"]
+  // builtins default is ["es", "dom", "worker"]. If you use terser's builtin dictionary, you don't need this.
   "builtins": [
     // ECMAScript default features 
     "es",
@@ -69,22 +69,21 @@ requirements
     "dom",
     // Worker environment
     "worker",
-    // terser's internal reserved dictionary
+    // terser's internal reserved dictionary. equivalent to es, dom, worker
     "domprops",
     // well known http headers to keep request headers
     "httpHeaders",
+    // node standard modules
+    "node",
+    // react's JSX interfaces
+    "react",
     // cloudflare-workers
     "cloudflareWorkers"
   ],
-  // WIP: It does not work yet.
-  // skip library types by analyze-dts
-  "external": [
-    "react/jsx-runtime"
-  ]
+  // emit bundle.d.ts
+  "writeDts": "_bundled.d.ts"
 }
 ```
-
-Safest `builtins` are `["es", "dom", "worker", "domprops", "httpHeaders"]` but it includes many false-positive. For most projects, `["es", "dom"]` works well.
 
 ## Use analyzed props with terser
 
@@ -152,12 +151,12 @@ import * as _2 from "react/jsx-runtime";
 export { _1, _2 };
 ```
 
-and analyze `src/effects.ts` instead of `src/index.ts`
+and analyze `src/_eff.ts` instead of `src/index.ts`
 
 ```jsonc
 // optools.config.json
 {
-  "input": "lib/effects.d.ts",
+  "input": "lib/_eff.d.ts",
   // ...
 }
 ```

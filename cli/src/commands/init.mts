@@ -2,9 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import process from "node:process";
 import { parseArgs } from "node:util";
-import { checkbox } from "@inquirer/prompts";
-import { input } from "@inquirer/prompts";
-import { confirm } from "@inquirer/prompts";
+import { checkbox, confirm, input } from "@inquirer/prompts";
 
 const srcEffTemplate = `// optools analyze entrypoint
 export * from "./index";
@@ -64,6 +62,9 @@ export async function init() {
         { name: "es", value: "es", checked: true },
         { name: "dom", value: "dom", checked: true },
         { name: "worker", value: "worker" },
+        { name: "css", value: "css" },
+        { name: "node", value: "node" },
+        { name: "react", value: "react" },
         { name: "httpHeaders", value: "httpHeaders" },
         { name: "terser's domprops", value: "domprops" },
         { name: "cloudflareWorkers", value: "cloudflareWorkers" },
@@ -84,9 +85,6 @@ export async function init() {
       ),
     );
     console.info("[optools] generate config >", configPath);
-    // TODO: use inquiry
-    // generate tsconfig.optools.json
-
     const isCreateTsconfig = await confirm({
       message: "Create tsconfig.optools.json?",
       default: true,

@@ -1,0 +1,6 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compile with analyze 1`] = `
+"import{parseArgs as o}from\\"node:util\\";console.log(o({args:process.argv.slice(2),options:{debug:{type:\\"boolean\\",short:\\"d\\"}}})),console.log(process.env.NODE_ENV);
+"
+`;

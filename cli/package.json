@@ -1,12 +1,19 @@
 {
   "name": "optools",
-  "version": "0.1.4",
+  "version": "0.2.0",
+  "bin": {
+    "optools": "lib/cli.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p . && node scripts/gen-builtins.mjs",
+    "test": "vitest --run src",
+    "test:full": "vitest --run src tests",
+    "prepublishOnly": "pnpm build"
+  },
   "dependencies": {
     "@inquirer/prompts": "^2.1.0",
-    "glob": "^10.2.6",
     "rollup": "^3.21.7",
-    "rollup-plugin-dts": "^5.3.0",
-    "terser": "^5.17.6"
+    "rollup-plugin-dts": "^5.3.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20230518.0",
@@ -14,21 +21,16 @@
     "@rollup/plugin-node-resolve": "^15.1.0",
     "@rollup/plugin-terser": "^0.4.2",
     "@types/node": "^20.1.0",
+    "@types/react": "^18.2.6",
+    "csstype": "^3.1.2",
     "delay": "^6.0.0",
     "hono": "^3.2.4",
     "rollup-plugin-ts": "^3.2.0",
+    "terser": "^5.17.7",
     "typescript": "^5.0.4"
   },
-  "bin": {
-    "optools": "lib/cli.mjs"
-  },
-  "scripts": {
-    "build": "tsc -p . && node scripts/gen-builtins.mjs",
-    "test": "vitest --run src",
-    "test:integ": "vitest --run tests",
-    "prepublishOnly": "pnpm build"
-  },
   "peerDependencies": {
+    "terser": "*",
     "typescript": "*"
   },
   "repository": {

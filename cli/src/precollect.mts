@@ -27,7 +27,10 @@ export async function getEsReserved(tsLibDir: string) {
   return reserved;
 }
 
-export async function getDomReserved(tsLibDir: string) {
+export async function getDomReserved(
+  tsLibDir: string,
+  cssReserved: Set<string>,
+) {
   const filepaths = await fs.readdir(tsLibDir);
   const dtsPaths = filepaths
     .filter((t) => t.startsWith("lib.") && t.endsWith(".d.ts"))
@@ -35,7 +38,7 @@ export async function getDomReserved(tsLibDir: string) {
     .map((filepath) => path.join(tsLibDir, filepath));
 
   const reserved = await getReservedFromFileList(dtsPaths);
-  return reserved;
+  return new Set<string>([...reserved, ...cssReserved]);
 }
 
 export async function getWorkerReserved(tsLibDir: string) {
@@ -73,9 +76,35 @@ export async function getCloudflareWorkersReserved(
 }
 
 export async function getNodeReserved(
-  nodeDtsPath: string,
+  nodeDtsDir: string,
 ) {
-  const code = await fs.readFile(nodeDtsPath, "utf-8");
+  const filesInNode = await fs.readdir(nodeDtsDir, {
+    withFileTypes: true,
+  });
+  const nodeDtsPathList = filesInNode.filter((x) =>
+    x.isFile() && x.name.endsWith(".d.ts")
+  ).map((x) => path.join(nodeDtsDir, x.name));
+
+  const reserved: string[] = [];
+  for (const nodeDtsPath of nodeDtsPathList) {
+    const code = await fs.readFile(nodeDtsPath, "utf-8");
+    const source = ts.createSourceFile(
+      nodeDtsPath,
+      code,
+      ts.ScriptTarget.ES2019,
+      true,
+    );
+    const result = collectProperties(source);
+    reserved.push(...result.reserved);
+  }
+
+  return new Set<string>(reserved);
+}
+
+export async function getCssReserved(
+  cssDtsPath: string,
+) {
+  const code = await fs.readFile(cssDtsPath, "utf-8");
   const source = ts.createSourceFile(
     "a.d.ts",
     code,
@@ -84,6 +113,33 @@ export async function getNodeReserved(
   );
   const result = collectProperties(source);
   return new Set<string>(result.reserved);
+}
+
+export async function getReactReserved(
+  reactDtsDir: string,
+  cssReserved: Set<string>,
+) {
+  const filesInReact = await fs.readdir(reactDtsDir, {
+    withFileTypes: true,
+  });
+  const reactDtsPathList = filesInReact.filter((x) =>
+    x.isFile() && x.name.endsWith(".d.ts")
+  ).map((x) => path.join(reactDtsDir, x.name));
+
+  const reserved: string[] = [];
+  for (const reactDtsPath of reactDtsPathList) {
+    const code = await fs.readFile(reactDtsPath, "utf-8");
+    const source = ts.createSourceFile(
+      reactDtsPath,
+      code,
+      ts.ScriptTarget.ES2019,
+      true,
+    );
+    const result = collectProperties(source);
+    reserved.push(...result.reserved);
+  }
+
+  return new Set<string>([...reserved, ...cssReserved]);
 }
 
 // Analyze https://github.com/denoland/deno/tree/acc6cdc0b1c0fae5e0fba3b0110f96119c2139f7/cli/tsc/dts

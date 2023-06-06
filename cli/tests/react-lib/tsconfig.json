@@ -1,0 +1,8 @@
+{
+  "include": ["input.tsx"],
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "jsx": "react-jsx"
+  }
+}
