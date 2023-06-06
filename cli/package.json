@@ -10,8 +10,13 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20230518.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@rollup/plugin-terser": "^0.4.2",
     "@types/node": "^20.1.0",
     "delay": "^6.0.0",
+    "hono": "^3.2.4",
+    "rollup-plugin-ts": "^3.2.0",
     "typescript": "^5.0.4"
   },
   "bin": {
@@ -19,7 +24,8 @@
   },
   "scripts": {
     "build": "tsc -p . && node scripts/gen-builtins.mjs",
-    "test": "vitest --run",
+    "test": "vitest --run src",
+    "test:integ": "vitest --run tests",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {

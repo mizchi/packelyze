@@ -58,18 +58,25 @@ export async function analyzeDts() {
     // let input: string;
     let argsValues = args.values;
     if (args.values.config) {
-      try {
-        const configPath = path.join(cwd, args.values.config);
-        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-        argsValues = {
-          ...argsValues,
-          ...config,
-          // override: prefer input and output
-          input: args.values.input || config.input,
-          output: args.values.output || config.output,
-        };
-      } catch (e) {
-        console.info("[optools] skip loading config - optools.config.json", e);
+      const configPath = path.join(cwd, args.values.config);
+      if (fs.existsSync(configPath)) {
+        try {
+          const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+          argsValues = {
+            ...argsValues,
+            ...config,
+            // override: prefer input and output
+            input: args.values.input || config.input,
+            output: args.values.output || config.output,
+          };
+        } catch (e) {
+          console.info(
+            "[optools] skip by parse error - optools.config.json",
+            e,
+          );
+        }
+      } else {
+        console.info("[optools] skip loading optools.config.json");
       }
     }
 

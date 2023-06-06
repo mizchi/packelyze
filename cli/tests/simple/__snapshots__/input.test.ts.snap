@@ -1,0 +1,6 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compile with analyze 1`] = `
+"const n={bar:1};function o(){return[].filter((n=>n))}class c{a=1;b;f(){}g(){}o(){}z=null}var r;!function(n){n[n.A=0]=\\"A\\",n[n.B=1]=\\"B\\",n[n.C=100]=\\"C\\"}(r||(r={}));console.log(1);export{r as MyEnum,c as X,o as f,n as foo};
+"
+`;

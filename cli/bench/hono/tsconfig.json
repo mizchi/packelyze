@@ -1,0 +1,9 @@
+{
+  "include": ["input.ts"],
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "types": ["@cloudflare/workers-types"],
+    "skipLibCheck": true
+  }
+}
