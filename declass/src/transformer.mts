@@ -240,8 +240,19 @@ export const declassTransformerFactory: ts.TransformerFactory<ts.SourceFile> = (
           if (ts.isSetAccessorDeclaration(node)) {
             return node;
           }
-
           if (
+            ts.isNewExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === classDecl.name!.text
+          ) {
+            return ts.factory.createCallExpression(
+              ts.factory.createIdentifier(`${classDecl.name!.text}$new`),
+              node.typeArguments,
+              node.arguments,
+            );
+          }
+          if (
+            // this.foo() => Foo$foo(self)
             ts.isCallExpression(node) &&
             ts.isPropertyAccessExpression(node.expression) &&
             node.expression.expression.kind === ts.SyntaxKind.ThisKeyword
@@ -694,6 +705,46 @@ export class X {
     x: number;
 };
 export function X$new(): X { const self: X = { x: 1 }; return self; }
+`);
+  });
+
+  test("transform with new", () => {
+    const code = `// input
+export class X {
+  static create() {
+    return new X();
+  }
+
+  clone(): X {
+    return new X();
+  }
+}
+`;
+    const source = ts.createSourceFile(
+      "input.ts",
+      code,
+      ts.ScriptTarget.ES2019,
+      true,
+    );
+
+    const thisTransformed = ts.transform(source, [
+      declassTransformerFactory,
+    ]);
+
+    const printer = ts.createPrinter({
+      newLine: ts.NewLineKind.LineFeed,
+    });
+    const result = printer.printFile(
+      thisTransformed.transformed[0],
+    );
+    expect(result).toBe(`export function X$static$create() {
+    return X$new();
+}
+export type X = {};
+export function X$new(): X { const self: X = {}; return self; }
+export function X$clone(self: X): X {
+    return X$new();
+}
 `);
   });
 }
