@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "Node16",
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "lib",
+    "types": [
+      "vitest/importMeta"
+    ],
+    "skipLibCheck": true
+  },
+  "include": ["src/*.mts"]
+}
