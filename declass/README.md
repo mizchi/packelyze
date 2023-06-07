@@ -14,9 +14,6 @@ $ npx declass input.ts -o input.ts
 
 `@mizchi/declass` converts `classDeclaration` to `typeAlias` and `functiondeclaration`
 
-- You need constructor
-- class static method does not supported
-
 Input
 
 ```ts
@@ -42,6 +39,25 @@ export class Point3d {
     this.z = z;
   }
 }
+
+export class Complex {
+  static staticV: number = 1;
+  static staticFuncA(){
+    this.staticFuncB();
+  };
+  static staticFuncB(){
+    console.log('called');
+  };
+
+  _v: number = 1;
+  get v(): number {
+    this._v;
+  };
+  set v(value: number) {
+    this._v = value;
+  };
+  // no constructor
+}
 ```
 
 Output
@@ -65,6 +81,31 @@ export type Point3d = {
     z: number;
 };
 export function Point3d$new(x: number, y: number, z: number): Point3d { const self: Point3d = { x: x, y: y, z: z }; return self; }
+
+export const Complex$static$staticV: number = 1;
+export function Complex$static$staticFuncA() {
+  Complex$static$staticFuncB();
+}
+export function Complex$static$staticFuncB() {
+  console.log("called");
+}
+export type Complex = {
+  get v(): number;
+  set v(value: number);
+  _v: number;
+};
+export function Complex$new(): Complex {
+  const self: Complex = {
+    get v(): number {
+      return this._v;
+    },
+    set v(value: number) {
+      this._v = value;
+    },
+    _v: 1,
+  };
+  return self;
+}
 ```
 
 ## Use declass as typescript transformer

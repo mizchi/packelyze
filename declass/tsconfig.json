@@ -3,6 +3,7 @@
     "target": "es2019",
     "module": "Node16",
     "declaration": true,
+    "strict": true,
     "rootDir": "src",
     "outDir": "lib",
     "types": [

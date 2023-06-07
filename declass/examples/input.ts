@@ -15,3 +15,22 @@ export class Point {
 export class Point3d {
   constructor(public x: number, public y: number, public z: number) {}
 }
+
+export class Complex {
+  static staticV: number = 1;
+  static staticFuncA() {
+    this.staticFuncB();
+  }
+  static staticFuncB() {
+    console.log("called");
+  }
+
+  _v: number = 1;
+  get v(): number {
+    return this._v;
+  }
+  set v(value: number) {
+    this._v = value;
+  }
+  // no constructor
+}
