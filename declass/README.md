@@ -30,14 +30,7 @@ export class Point {
   }
 }
 export class Point3d {
-  x: number;
-  y: number;
-  z: number;
-  constructor(x: number, y: number, private z: number) {
-    this.x = x;
-    this.y = y;
-    this.z = z;
-  }
+  constructor(public x: number, public y: number, public z: number) {}
 }
 
 export class Complex {

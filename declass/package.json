@@ -1,7 +1,7 @@
 {
   "name": "@mizchi/declass",
   "license": "MIT",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "types": "./lib/index.d.ts",
   "module": "./lib/index.mjs",
   "scripts": {
