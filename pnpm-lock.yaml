@@ -119,6 +119,9 @@ importers:
         specifier: '5'
         version: 5.0.4
     devDependencies:
+      '@mizchi/declass':
+        specifier: workspace:*
+        version: link:../../declass
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)

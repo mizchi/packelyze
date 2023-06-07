@@ -10,18 +10,8 @@ function transformCstrToNewFunc(
   decl: ts.ClassDeclaration,
   properties: ts.PropertyDeclaration[],
   classCstrInitializers: ts.ParameterDeclaration[],
-  context: ts.TransformationContext,
+  selfRewriter: (node: ts.Node) => ts.Node,
 ): ts.FunctionDeclaration {
-  const selfRewriter = <T extends ts.Node>(node: T): ts.Node => {
-    if (ts.isFunctionDeclaration(node)) {
-      return node;
-    }
-    if (node.kind === ts.SyntaxKind.ThisKeyword) {
-      return ts.factory.createIdentifier("self");
-    }
-    return ts.visitEachChild(node, selfRewriter, context);
-  };
-
   const className = cstr.parent.name.getText();
 
   const thisAssignments = cstr.body.statements.filter((stmt) => {
@@ -171,13 +161,29 @@ export const declassTransformerFactory: ts.TransformerFactory<ts.SourceFile> = (
             return true;
           }
           return false;
-          // if (ts.is(t)) {
-          // }
         });
 
         const selfRewriter = <T extends ts.Node>(node: T): ts.Node => {
           if (ts.isFunctionDeclaration(node)) {
             return node;
+          }
+          if (
+            // this.func();
+            ts.isCallExpression(node) &&
+            ts.isPropertyAccessExpression(node.expression) &&
+            node.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+          ) {
+            const className = classCstr.parent.name.getText();
+            return ts.factory.createCallExpression(
+              ts.factory.createIdentifier(
+                `${className}$${node.expression.name.text}`,
+              ),
+              node.typeArguments,
+              [
+                ts.factory.createIdentifier("self"),
+                ...node.arguments,
+              ],
+            );
           }
           if (node.kind === ts.SyntaxKind.ThisKeyword) {
             return ts.factory.createIdentifier("self");
@@ -219,7 +225,7 @@ export const declassTransformerFactory: ts.TransformerFactory<ts.SourceFile> = (
             node,
             classProperties,
             classCstrInitializers,
-            context,
+            selfRewriter,
           ),
           ...classMethods.map((m) => {
             if (!ts.isIdentifier(m.name)) {
@@ -298,7 +304,7 @@ export class Point3d {
     const result = printer.printFile(
       thisTransformed.transformed[0],
     );
-    console.log(result);
+    // console.log(result);
     expect(result).toBe(`export type Point = {
     x: number;
     y: number;
@@ -346,7 +352,7 @@ export class X<T> {
     const result = printer.printFile(
       thisTransformed.transformed[0],
     );
-    console.log(result);
+    // console.log(result);
     expect(result).toBe(`export type X<T> = {
     value: T;
 };
@@ -379,11 +385,48 @@ export class C {
     const result = printer.printFile(
       thisTransformed.transformed[0],
     );
-    console.log(result);
+    // console.log(result);
     expect(result).toBe(`export type C = {
     x: number;
 };
 export function C$new(x: number): C { const self: C = { x: x }; return self; }
+`);
+  });
+
+  test("transform internal call other methods", () => {
+    const code = `// input
+export class C {
+  constructor() {
+    this.internal();
+  }
+  private internal() {}
+}
+`;
+    const source = ts.createSourceFile(
+      "input.ts",
+      code,
+      ts.ScriptTarget.ES2019,
+      true,
+    );
+
+    const thisTransformed = ts.transform(source, [
+      declassTransformerFactory,
+    ]);
+
+    const printer = ts.createPrinter({
+      newLine: ts.NewLineKind.LineFeed,
+    });
+    const result = printer.printFile(
+      thisTransformed.transformed[0],
+    );
+    // console.log(result);
+    expect(result).toBe(`export type C = {};
+export function C$new(): C {
+    const self: C = {};
+    C$internal(self);
+    return self;
+}
+function C$internal(self: C) { }
 `);
   });
 }
