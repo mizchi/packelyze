@@ -3,10 +3,11 @@
 ## How to use
 
 ```bash
-$ npx @mizchi/declass src/input.ts # print stdout
+$ npm insntall @mizchi/declass -D
+$ npx declass input.ts
 
 # Write
-$ npx @mizchi/declass src/input.ts -o src/output.ts
+$ npx declass input.ts -o input.ts
 ```
 
 ## What is this?
