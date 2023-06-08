@@ -12,7 +12,7 @@ $ npx declass input.ts -o input.ts
 
 ## What is this?
 
-`@mizchi/declass` converts `classDeclaration` to `typeAlias` and `functiondeclaration`
+`@mizchi/declass` converts `classDeclaration` to `typeAlias` and `functionDeclaration`
 
 Input
 
@@ -105,7 +105,7 @@ export function Complex$new(): Complex {
 
 ```ts
 import ts from "typescript";
-import {declassTransformerFactory} from "@mizchi/declass";
+import { declassTransformerFactory } from "@mizchi/declass";
 
 const code = `class X {}`;
 
@@ -116,7 +116,7 @@ const source = ts.createSourceFile(
   true,
 );
 
-const thisTransformed = ts.transform(source, [
+const transformed = ts.transform(source, [
   declassTransformerFactory,
 ]);
 
@@ -124,9 +124,35 @@ const printer = ts.createPrinter({
   newLine: ts.NewLineKind.LineFeed,
 });
 const result = printer.printFile(
-  thisTransformed.transformed[0],
+  transformed.transformed[0],
 );
 ```
+
+## Supports
+
+- [x] Class to TypeAlias
+- [x] methods to functions
+- [x] properties to type member
+- [x] Constructor to `Class$new()` function
+- [x] internal `new Class` to `Class$new`
+- [x] internal `this.foo(...args)` to `Class$foo(self, ...args)`
+- [x] constructor internal `this.x = ...` to `const self = { x: ...}`
+- [x] consturctor `public/private` initializer to type properties
+- [x] static properties to const variables
+- [x] static methods to funcions
+- [x] static properties to const variables
+- [x] getters/setters to properties
+- [x] unnamed class `const C = class {}`
+- [x] keep readonly
+- [ ] avoid scope identifier confliction: `self` to `self1`, `self2`...
+- [ ] nested local classes in converted class
+- [x] type with `extends E` to `{} & E` in same file
+- [ ] `extends E` with `super()` to `const self = { ...E$new() }` in constuctor body
+- [x] alert `extends` from out of file
+- [ ] converted getter/setter internal `this.func()` to `Class$func(self)`
+- [ ] static getter / setter
+
+See [transformer](./src/transformer.mts)'s test cases.
 
 ## Why?
 

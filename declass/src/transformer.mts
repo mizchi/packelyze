@@ -1,20 +1,51 @@
 import ts from "typescript";
 
 const hasModifier = (
-  modifiers: ts.NodeArray<ts.ModifierLike>,
+  modifiers: ts.NodeArray<ts.ModifierLike> | undefined,
   predicate: ts.SyntaxKind,
-) => modifiers?.some((m) => m.kind === predicate);
+): boolean => !!modifiers?.some((m) => m.kind === predicate);
 
 function transformCstrToNewFunc(
   cstr: ts.ConstructorDeclaration | undefined,
-  decl: ts.ClassDeclaration,
-  properties: ts.PropertyDeclaration[],
-  classCstrInitializers: ts.ParameterDeclaration[],
-  getters: ts.GetAccessorDeclaration[],
-  setters: ts.SetAccessorDeclaration[],
-  selfRewriter: (node: ts.Node) => ts.Node,
+  decl: ts.ClassDeclaration | ts.ClassExpression,
+  rewriteInternal: (node: ts.Node) => ts.Node,
+  givenName: ts.Identifier | undefined = undefined,
 ): ts.FunctionDeclaration {
-  const className = decl.name?.getText()!;
+  const className = decl.name?.getText() ?? givenName?.getText() ??
+    "_AnonymousClass";
+  const properties = decl.members.filter((t) =>
+    ts.isPropertyDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.PropertyDeclaration[];
+
+  const getters = decl.members.filter((t) =>
+    ts.isGetAccessorDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.GetAccessorDeclaration[];
+
+  const setters = decl.members.filter((t) =>
+    ts.isSetAccessorDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.SetAccessorDeclaration[];
+
+  const classCstr = decl.members.find((t) => ts.isConstructorDeclaration(t)) as
+    | ts.ConstructorDeclaration
+    | undefined;
+
+  const classCstrInitializers = classCstr?.parameters.filter((t) => {
+    const isPrivate = hasModifier(
+      t.modifiers,
+      ts.SyntaxKind.PrivateKeyword,
+    );
+    const isPublic = hasModifier(
+      t.modifiers,
+      ts.SyntaxKind.PublicKeyword,
+    );
+    if (isPrivate || isPublic) {
+      return true;
+    }
+    return false;
+  }) ?? [];
 
   const thisAssignStatements = cstr?.body?.statements.filter((stmt) => {
     if (
@@ -29,6 +60,20 @@ function transformCstrToNewFunc(
     return false;
   }) ?? [];
 
+  /**
+    convert constructor body
+      {
+        this.x = x;
+        this.y = y;
+        // ...body
+      }
+
+      {
+        const self = { x, y };
+        // ...body
+        return self
+      }
+   */
   const transformedBody = ts.factory.updateBlock(
     cstr?.body ?? ts.factory.createBlock([]),
     [
@@ -110,7 +155,6 @@ function transformCstrToNewFunc(
                     );
                   }),
                   ...classCstrInitializers.map((p) => {
-                    // for (const stmt of thisAssignments) {
                     if (!ts.isIdentifier(p.name)) {
                       throw new Error(
                         `Not supported: ${
@@ -146,7 +190,7 @@ function transformCstrToNewFunc(
   );
 
   return ts.factory.createFunctionDeclaration(
-    hasModifier(decl.modifiers!, ts.SyntaxKind.ExportKeyword)
+    hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
       ? [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)]
       : [],
     undefined,
@@ -165,269 +209,352 @@ function transformCstrToNewFunc(
     ts.factory.createTypeReferenceNode(
       ts.factory.createIdentifier(className),
     ),
-    selfRewriter(transformedBody) as ts.Block,
+    rewriteInternal(transformedBody) as ts.Block,
   );
 }
 
+function classToTypeAliasAndFunctions(
+  ctx: ts.TransformationContext,
+  transformed: Map<
+    string,
+    ts.ClassDeclaration | ts.ClassExpression
+  >,
+  node: ts.ClassDeclaration | ts.ClassExpression,
+  givenName: ts.Identifier | undefined = undefined,
+) {
+  const resolvedClassName = node.name?.getText() ?? givenName?.getText() ??
+    "_AnonymousClass";
+
+  const properties = node.members.filter((t) =>
+    ts.isPropertyDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.PropertyDeclaration[];
+
+  const staticProperties = node.members.filter((t) =>
+    ts.isPropertyDeclaration(t) &&
+    hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.PropertyDeclaration[];
+
+  const methods = node.members.filter((t) =>
+    ts.isMethodDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.MethodDeclaration[];
+
+  const staticMethods = node.members.filter((t) =>
+    ts.isMethodDeclaration(t) &&
+    hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.MethodDeclaration[];
+
+  const getters = node.members.filter((t) =>
+    ts.isGetAccessorDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.GetAccessorDeclaration[];
+
+  const setters = node.members.filter((t) =>
+    ts.isSetAccessorDeclaration(t) &&
+    !hasModifier(t.modifiers, ts.SyntaxKind.StaticKeyword)
+  ) as ts.SetAccessorDeclaration[];
+
+  const classCstr = node.members.find((t) => ts.isConstructorDeclaration(t)) as
+    | ts.ConstructorDeclaration
+    | undefined;
+
+  const classCstrInitializers = classCstr?.parameters.filter((t) => {
+    const isPrivate = hasModifier(
+      t.modifiers,
+      ts.SyntaxKind.PrivateKeyword,
+    );
+    const isPublic = hasModifier(
+      t.modifiers,
+      ts.SyntaxKind.PublicKeyword,
+    );
+    if (isPrivate || isPublic) {
+      return true;
+    }
+    return false;
+  }) ?? [];
+
+  const classDecl = node;
+
+  const scopeRewriter = <T extends ts.Node>(node: T): ts.Node => {
+    if (ts.isFunctionDeclaration(node)) {
+      return node;
+    }
+    if (ts.isGetAccessorDeclaration(node)) {
+      return node;
+    }
+    if (ts.isSetAccessorDeclaration(node)) {
+      return node;
+    }
+    // new Foo() => Foo$new()
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === classDecl.name!.text
+    ) {
+      return ts.factory.createCallExpression(
+        ts.factory.createIdentifier(`${resolvedClassName}$new`),
+        node.typeArguments,
+        node.arguments,
+      );
+    }
+    // this.foo(arg) => Class$foo(self, arg)
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+    ) {
+      const className = classDecl.name?.getText()!;
+      const caller = node.expression.name.text;
+      const isCallerStatic = staticMethods.some((m) => {
+        return m.name.getText() === caller;
+      });
+      return ts.factory.createCallExpression(
+        ts.factory.createIdentifier(
+          isCallerStatic
+            ? `${className}$static$${caller}`
+            : `${className}$${caller}`,
+        ),
+        node.typeArguments,
+        isCallerStatic ? node.arguments : [
+          ts.factory.createIdentifier("self"),
+          ...node.arguments,
+        ],
+      );
+    }
+    if (node.kind === ts.SyntaxKind.ThisKeyword) {
+      return ts.factory.createIdentifier("self");
+    }
+    return ts.visitEachChild(node, scopeRewriter, ctx);
+  };
+
+  const transformedTypeLiteral = ts.factory.createTypeLiteralNode([
+    ...getters.map((p) => {
+      return ts.factory.createGetAccessorDeclaration(
+        [],
+        p.name,
+        p.parameters,
+        p.type,
+        undefined,
+      );
+    }),
+
+    ...setters.map((p) => {
+      return ts.factory.createSetAccessorDeclaration(
+        [],
+        p.name,
+        p.parameters,
+        undefined,
+      );
+    }),
+
+    ...properties.map((p) => {
+      return ts.factory.createPropertySignature(
+        // [],
+        p.modifiers?.filter((m) => {
+          return [ts.SyntaxKind.ReadonlyKeyword].includes(m.kind);
+        }) as ts.Modifier[] ?? [],
+        p.name,
+        p.questionToken,
+        p.type,
+      );
+    }),
+    ...classCstrInitializers.map((p) => {
+      return ts.factory.createPropertySignature(
+        [],
+        p.name as ts.Identifier,
+        p.questionToken,
+        p.type,
+      );
+    }),
+  ]);
+
+  return [
+    // class static property
+    ...staticProperties.map((staticProperty) => {
+      return ts.factory.createVariableStatement(
+        hasModifier(
+            staticProperty.modifiers,
+            ts.SyntaxKind.PrivateKeyword,
+          )
+          ? []
+          : [
+            ts.factory.createModifier(ts.SyntaxKind.ExportKeyword),
+          ],
+        ts.factory.createVariableDeclarationList(
+          [
+            ts.factory.createVariableDeclaration(
+              ts.factory.createIdentifier(
+                `${resolvedClassName}$static$${staticProperty.name.getText()}`,
+              ),
+              undefined,
+              staticProperty.type,
+              staticProperty.initializer
+                ? scopeRewriter(
+                  staticProperty.initializer,
+                ) as ts.Expression
+                : undefined,
+            ),
+          ],
+          ts.NodeFlags.Const,
+        ),
+      );
+    }),
+    // class static method
+    ...staticMethods.map((staticMethod) => {
+      return ts.factory.createFunctionDeclaration(
+        hasModifier(
+            staticMethod.modifiers,
+            ts.SyntaxKind.PrivateKeyword,
+          )
+          ? []
+          : [
+            ts.factory.createModifier(ts.SyntaxKind.ExportKeyword),
+          ],
+        staticMethod.asteriskToken,
+        ts.factory.createIdentifier(
+          `${resolvedClassName}$static$${staticMethod.name.getText()}`,
+        ),
+        staticMethod.typeParameters,
+        staticMethod.parameters,
+        staticMethod.type,
+        staticMethod.body && scopeRewriter(staticMethod.body) as ts.Block,
+      );
+    }),
+
+    // export type Class = {...}
+    ts.factory.createTypeAliasDeclaration(
+      node &&
+        hasModifier(node.modifiers, ts.SyntaxKind.ExportKeyword)
+        ? [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)]
+        : [],
+      resolvedClassName,
+      node.typeParameters,
+      node.heritageClauses
+        ? ts.factory.createIntersectionTypeNode([
+          transformedTypeLiteral,
+          ...node.heritageClauses.map((h) => {
+            return h.types.map((t) => {
+              if (!ts.isIdentifier(t.expression)) {
+                throw new Error(
+                  `Not supported: ${ts.SyntaxKind[t.expression.kind]}`,
+                );
+              }
+              if (!transformed.has(t.expression.text)) {
+                throw new Error(
+                  `Not supported: extends to outer symbol - ${t.expression.text}`,
+                );
+              }
+              return ts.factory.createTypeReferenceNode(
+                t.expression,
+                t.typeArguments,
+              );
+            });
+          }).flat(),
+        ])
+        : transformedTypeLiteral,
+    ),
+    // Constructor
+    transformCstrToNewFunc(
+      classCstr,
+      node,
+      scopeRewriter,
+      givenName,
+    ),
+    ...methods.map((m) => {
+      if (!ts.isIdentifier(m.name)) {
+        throw new Error(`Not supported: ${ts.SyntaxKind[m.name.kind]}`);
+      }
+
+      // const vars = checker.getSymbolsInScope(
+      //   node.getSourceFile(),
+      //   ts.SymbolFlags.Variable,
+      // );
+      // const vars: [] = [];
+      // console.log("vars", node.getSourceFile(), vars.map((v) => v.name));
+      // console.log(node.getSy)
+
+      const name = m.name.text === "constructor" ? "new" : m.name.text;
+      const fname = ts.factory.createIdentifier(
+        `${resolvedClassName}$${name}`,
+      );
+      return ts.factory.createFunctionDeclaration(
+        hasModifier(m.modifiers, ts.SyntaxKind.PrivateKeyword)
+          ? []
+          : [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+        m.asteriskToken,
+        fname,
+        m.typeParameters,
+        [
+          ts.factory.createParameterDeclaration(
+            [],
+            undefined,
+            "self",
+            undefined,
+            ts.factory.createTypeReferenceNode(
+              ts.factory.createIdentifier(node.name!.text),
+            ),
+          ),
+          ...m.parameters,
+        ],
+        m.type,
+        m.body && scopeRewriter(m.body) as ts.Block,
+      );
+    }),
+  ];
+}
+
 export const declassTransformerFactory: ts.TransformerFactory<ts.SourceFile> = (
-  context,
+  ctx,
 ) => {
+  // TODO: use program to get type and scope information
+  // const host = ts.createCompilerHost(context.getCompilerOptions(), true);
+  // const program = ts.createProgram({
+  //   rootNames: ["input.ts"],
+  //   options: context.getCompilerOptions(),
+  //   host,
+  // });
+
+  // const checker = program.getTypeChecker();
   return ((sourceFile: ts.SourceFile) => {
+    const transformedClasses: Map<
+      string,
+      ts.ClassDeclaration | ts.ClassExpression
+    > = new Map();
     const visitor: ts.Visitor = (node: ts.Node) => {
       // is this keyword
       if (node.kind === ts.SyntaxKind.ThisKeyword) {
         return ts.factory.createIdentifier("self");
       }
-
-      if (ts.isClassDeclaration(node)) {
-        const classProperties = node.members.filter((t) =>
-          ts.isPropertyDeclaration(t) &&
-          !hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.PropertyDeclaration[];
-
-        const classStaticProperties = node.members.filter((t) =>
-          ts.isPropertyDeclaration(t) &&
-          hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.PropertyDeclaration[];
-
-        const classMethods = node.members.filter((t) =>
-          ts.isMethodDeclaration(t) &&
-          !hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.MethodDeclaration[];
-
-        const classStaticMethods = node.members.filter((t) =>
-          ts.isMethodDeclaration(t) &&
-          hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.MethodDeclaration[];
-
-        const classGetters = node.members.filter((t) =>
-          ts.isGetAccessorDeclaration(t) &&
-          !hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.GetAccessorDeclaration[];
-
-        const classSetters = node.members.filter((t) =>
-          ts.isSetAccessorDeclaration(t) &&
-          !hasModifier(t.modifiers!, ts.SyntaxKind.StaticKeyword)
-        ) as ts.SetAccessorDeclaration[];
-
-        const classCstr = node.members.find((t) =>
-          ts.isConstructorDeclaration(t)
-        ) as ts.ConstructorDeclaration | undefined;
-
-        const classCstrInitializers = classCstr?.parameters.filter((t) => {
-          const isPrivate = hasModifier(
-            t.modifiers!,
-            ts.SyntaxKind.PrivateKeyword,
-          );
-          const isPublic = hasModifier(
-            t.modifiers!,
-            ts.SyntaxKind.PublicKeyword,
-          );
-          if (isPrivate || isPublic) {
-            return true;
-          }
-          return false;
-        }) ?? [];
-
-        const classDecl = node;
-        const selfRewriter = <T extends ts.Node>(node: T): ts.Node => {
-          if (ts.isFunctionDeclaration(node)) {
-            return node;
-          }
-          if (ts.isGetAccessorDeclaration(node)) {
-            return node;
-          }
-          if (ts.isSetAccessorDeclaration(node)) {
-            return node;
-          }
+      // detect: const x = class {}
+      if (ts.isVariableStatement(node)) {
+        for (const decl of node.declarationList.declarations) {
           if (
-            ts.isNewExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            node.expression.text === classDecl.name!.text
+            decl.initializer && ts.isIdentifier(decl.name) &&
+            ts.isClassExpression(decl.initializer)
           ) {
-            return ts.factory.createCallExpression(
-              ts.factory.createIdentifier(`${classDecl.name!.text}$new`),
-              node.typeArguments,
-              node.arguments,
+            const className = decl.name.getText();
+            const transformed = classToTypeAliasAndFunctions(
+              ctx,
+              transformedClasses,
+              decl.initializer,
+              decl.name,
             );
+            transformedClasses.set(className, decl.initializer);
+            return transformed;
           }
-          if (
-            // this.foo() => Foo$foo(self)
-            ts.isCallExpression(node) &&
-            ts.isPropertyAccessExpression(node.expression) &&
-            node.expression.expression.kind === ts.SyntaxKind.ThisKeyword
-          ) {
-            const className = classDecl.name?.getText()!;
-            const caller = node.expression.name.text;
-            const isCallerStatic = classStaticMethods.some((m) => {
-              return m.name.getText() === caller;
-            });
-            return ts.factory.createCallExpression(
-              ts.factory.createIdentifier(
-                isCallerStatic
-                  ? `${className}$static$${caller}`
-                  : `${className}$${caller}`,
-              ),
-              node.typeArguments,
-              isCallerStatic ? node.arguments : [
-                ts.factory.createIdentifier("self"),
-                ...node.arguments,
-              ],
-            );
-          }
-          if (node.kind === ts.SyntaxKind.ThisKeyword) {
-            return ts.factory.createIdentifier("self");
-          }
-          return ts.visitEachChild(node, selfRewriter, context);
-        };
-
-        return [
-          // class static property
-          ...classStaticProperties.map((staticProperty) => {
-            return ts.factory.createVariableStatement(
-              hasModifier(
-                  staticProperty.modifiers!,
-                  ts.SyntaxKind.PrivateKeyword,
-                )
-                ? []
-                : [
-                  ts.factory.createModifier(ts.SyntaxKind.ExportKeyword),
-                ],
-              ts.factory.createVariableDeclarationList(
-                [
-                  ts.factory.createVariableDeclaration(
-                    ts.factory.createIdentifier(
-                      `${
-                        classDecl.name!.text
-                      }$static$${staticProperty.name.getText()}`,
-                    ),
-                    undefined,
-                    staticProperty.type,
-                    staticProperty.initializer
-                      ? selfRewriter(
-                        staticProperty.initializer,
-                      ) as ts.Expression
-                      : undefined,
-                  ),
-                ],
-                ts.NodeFlags.Const,
-              ),
-            );
-          }),
-          // class static method
-          ...classStaticMethods.map((staticMethod) => {
-            return ts.factory.createFunctionDeclaration(
-              hasModifier(
-                  staticMethod.modifiers!,
-                  ts.SyntaxKind.PrivateKeyword,
-                )
-                ? []
-                : [
-                  ts.factory.createModifier(ts.SyntaxKind.ExportKeyword),
-                ],
-              staticMethod.asteriskToken,
-              ts.factory.createIdentifier(
-                `${classDecl.name!.text}$static$${staticMethod.name.getText()}`,
-              ),
-              staticMethod.typeParameters,
-              staticMethod.parameters,
-              staticMethod.type,
-              staticMethod.body && selfRewriter(staticMethod.body) as ts.Block,
-            );
-          }),
-
-          // export type Point = {}
-          ts.factory.createTypeAliasDeclaration(
-            node &&
-              hasModifier(node.modifiers!, ts.SyntaxKind.ExportKeyword)
-              ? [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)]
-              : [],
-            node.name!,
-            node.typeParameters,
-            ts.factory.createTypeLiteralNode([
-              ...classGetters.map((p) => {
-                return ts.factory.createGetAccessorDeclaration(
-                  [],
-                  p.name,
-                  p.parameters,
-                  p.type,
-                  undefined,
-                );
-              }),
-
-              ...classSetters.map((p) => {
-                return ts.factory.createSetAccessorDeclaration(
-                  [],
-                  p.name,
-                  p.parameters,
-                  undefined,
-                );
-              }),
-
-              ...classProperties.map((p) => {
-                return ts.factory.createPropertySignature(
-                  [],
-                  p.name,
-                  p.questionToken,
-                  p.type,
-                );
-              }),
-              ...classCstrInitializers.map((p) => {
-                return ts.factory.createPropertySignature(
-                  [],
-                  p.name as ts.Identifier,
-                  p.questionToken,
-                  p.type,
-                );
-              }),
-            ]),
-          ),
-          // Constructor
-          // TODO: No constructor
-          transformCstrToNewFunc(
-            classCstr,
-            node,
-            classProperties,
-            classCstrInitializers,
-            classGetters,
-            classSetters,
-            selfRewriter,
-          ),
-          ...classMethods.map((m) => {
-            if (!ts.isIdentifier(m.name)) {
-              throw new Error(`Not supported: ${ts.SyntaxKind[m.name.kind]}`);
-            }
-
-            const name = m.name.text === "constructor" ? "new" : m.name.text;
-            const fname = ts.factory.createIdentifier(
-              `${node.name!.text}$${name}`,
-            );
-            return ts.factory.createFunctionDeclaration(
-              hasModifier(m.modifiers!, ts.SyntaxKind.PrivateKeyword)
-                ? []
-                : [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-              m.asteriskToken,
-              fname,
-              m.typeParameters,
-              [
-                ts.factory.createParameterDeclaration(
-                  [],
-                  undefined,
-                  "self",
-                  undefined,
-                  ts.factory.createTypeReferenceNode(
-                    ts.factory.createIdentifier(node.name!.text),
-                  ),
-                ),
-                ...m.parameters,
-              ],
-              m.type,
-              m.body && selfRewriter(m.body) as ts.Block,
-            );
-          }),
-        ];
+        }
       }
-      return ts.visitEachChild(node, visitor, context);
+      if (ts.isClassDeclaration(node)) {
+        const transformed = classToTypeAliasAndFunctions(
+          ctx,
+          transformedClasses,
+          node,
+        );
+        transformedClasses.set(node.name!.getText(), node);
+        return transformed;
+      }
+      return ts.visitEachChild(node, visitor, ctx);
     };
     return ts.visitNode(sourceFile, visitor);
   }) as any;
@@ -435,6 +562,27 @@ export const declassTransformerFactory: ts.TransformerFactory<ts.SourceFile> = (
 
 if (import.meta.vitest) {
   const { test, expect } = import.meta.vitest;
+
+  const print = (code: string) => {
+    const source = ts.createSourceFile(
+      "input.ts",
+      code,
+      ts.ScriptTarget.ES2019,
+      true,
+    );
+
+    const transformed = ts.transform(source, [
+      declassTransformerFactory,
+    ]);
+
+    const printer = ts.createPrinter({
+      newLine: ts.NewLineKind.LineFeed,
+    });
+    const result = printer.printFile(
+      transformed.transformed[0],
+    );
+    return result;
+  };
   test("transform", () => {
     const code = `// input
 export class Point {
@@ -453,23 +601,7 @@ export class Point3d {
   constructor(public x: number, public y: number, public z: number) {}
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
-
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
+    const result = print(code);
     // console.log(result);
     expect(result).toBe(`export type Point = {
     x: number;
@@ -492,6 +624,27 @@ export function Point3d$new(x: number, y: number, z: number): Point3d { const se
 `);
   });
 
+  test("transform with readonly", () => {
+    const code = `// input
+export class Value {
+  readonly v: number;
+  constructor(v: number) {
+    this.v = v;
+  }
+}
+`;
+    const result = print(code);
+    // console.log(result);
+    expect(result).toBe(`export type Value = {
+    readonly v: number;
+};
+export function Value$new(v: number): Value {
+    const self: Value = { v: v };
+    return self;
+}
+`);
+  });
+
   test("transform with type parameter", () => {
     const code = `// input
 export class X<T> {
@@ -501,23 +654,8 @@ export class X<T> {
   }
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
+    const result = print(code);
 
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
     // console.log(result);
     expect(result).toBe(`export type X<T> = {
     value: T;
@@ -534,23 +672,8 @@ export class C {
   constructor(private x: number) {}
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
+    const result = print(code);
 
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
     // console.log(result);
     expect(result).toBe(`export type C = {
     x: number;
@@ -607,23 +730,9 @@ export class X {
   constructor() {}
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
 
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
+    const result = print(code);
 
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
     // console.log(result);
     expect(result).toBe(`export const X$static$v = 1;
 export function X$static$x() {
@@ -647,23 +756,8 @@ export class X {
   constructor(private _v: number) {}
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
+    const result = print(code);
 
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
     // console.log(result);
     expect(result).toBe(`export type X = {
     get v();
@@ -684,23 +778,8 @@ export class X {
   const x: number = 1;
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
+    const result = print(code);
 
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
     expect(result).toBe(`export type X = {
     x: number;
 };
@@ -708,42 +787,93 @@ export function X$new(): X { const self: X = { x: 1 }; return self; }
 `);
   });
 
-  test("transform with new", () => {
+  test("transform with class expression assignment", () => {
     const code = `// input
-export class X {
-  static create() {
-    return new X();
-  }
+export const Class = class {
+  constructor(public x: number, public y: number) {}
+}
+console.log(1);
+`;
+    const result = print(code);
 
-  clone(): X {
-    return new X();
+    // TODO: support super to `self = {...Other$new(), ...}`
+    expect(result).toBe(`type Class = {
+    x: number;
+    y: number;
+};
+function Class$new(x: number, y: number): Class { const self: Class = { x: x, y: y }; return self; }
+console.log(1);
+`);
+  });
+
+  test("transform with extend", () => {
+    const code = `// input
+export class Position {
+  constructor(public x: number, public y: number) {}
+}
+export class Entity extends Position {
+  getPosition(): Position {
+    return this;
   }
 }
 `;
-    const source = ts.createSourceFile(
-      "input.ts",
-      code,
-      ts.ScriptTarget.ES2019,
-      true,
-    );
-
-    const thisTransformed = ts.transform(source, [
-      declassTransformerFactory,
-    ]);
-
-    const printer = ts.createPrinter({
-      newLine: ts.NewLineKind.LineFeed,
-    });
-    const result = printer.printFile(
-      thisTransformed.transformed[0],
-    );
-    expect(result).toBe(`export function X$static$create() {
-    return X$new();
+    const result = print(code);
+    // console.log(result);
+    expect(result).toBe(`export type Position = {
+    x: number;
+    y: number;
+};
+export function Position$new(x: number, y: number): Position { const self: Position = { x: x, y: y }; return self; }
+export type Entity = {} & Position;
+export function Entity$new(): Entity { const self: Entity = {}; return self; }
+export function Entity$getPosition(self: Entity): Position {
+    return self;
 }
-export type X = {};
-export function X$new(): X { const self: X = {}; return self; }
-export function X$clone(self: X): X {
-    return X$new();
+`);
+  });
+
+  test("throw error to outside class extends", () => {
+    try {
+      const code = `// input
+      class X extends External {
+        constructor(public x: number, public y: number) {}
+      }
+      `;
+      const _result = print(code);
+      throw new Error("unreachable");
+    } catch (err) {
+      if (err instanceof Error) {
+        expect(err.message).toBe(
+          "Not supported: extends to outer symbol - External",
+        );
+      } else {
+        throw err;
+      }
+    }
+  });
+
+  test("transform with extend", () => {
+    const code = `// input
+export class Position {
+  constructor(public x: number, public y: number) {}
+}
+export class Entity extends Position {
+  getPosition(): Position {
+    return this;
+  }
+}
+`;
+    const result = print(code);
+    // console.log(result);
+    expect(result).toBe(`export type Position = {
+    x: number;
+    y: number;
+};
+export function Position$new(x: number, y: number): Position { const self: Position = { x: x, y: y }; return self; }
+export type Entity = {} & Position;
+export function Entity$new(): Entity { const self: Entity = {}; return self; }
+export function Entity$getPosition(self: Entity): Position {
+    return self;
 }
 `);
   });
