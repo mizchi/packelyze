@@ -1,6 +1,6 @@
 {
   "input": "lib/effects.d.ts",
-  "output": "_optools-analyzed.json",
+  "output": "_packelyze-analyzed.json",
   "builtins": [
   ],
   "external": [

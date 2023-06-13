@@ -1,6 +1,6 @@
 // import { MyAppGlobal } from "./env";
 
-// optools analyze entrypoint
+// packelyze analyze entrypoint
 export * from "./index";
 
 // MyAppGlobal.yyyyy

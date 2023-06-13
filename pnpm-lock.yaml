@@ -134,7 +134,7 @@ importers:
       msw:
         specifier: ^1.2.1
         version: 1.2.1(typescript@5.0.4)
-      optools:
+      packelyze:
         specifier: workspace:*
         version: link:../../cli
       rollup:
@@ -168,7 +168,7 @@ importers:
       '@types/react':
         specifier: ^18.2.6
         version: 18.2.6
-      optools:
+      packelyze:
         specifier: workspace:*
         version: link:../../cli
       rollup:
@@ -199,7 +199,7 @@ importers:
       '@rollup/plugin-terser':
         specifier: ^0.4.2
         version: 0.4.2(rollup@3.21.7)
-      optools:
+      packelyze:
         specifier: workspace:*
         version: link:../../cli
       rollup:

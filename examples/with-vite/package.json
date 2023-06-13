@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -p . && optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom && vite build",
+    "build": "tsc -p . && packelyze analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom && vite build",
     "serve": "vite serve"
   },
   "keywords": [],
@@ -14,7 +14,7 @@
   "devDependencies": {
     "@internal/react-lib": "workspace:*",
     "@rollup/plugin-terser": "^0.4.2",
-    "optools": "workspace:*",
+    "packelyze": "workspace:*",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0",
     "zero-runtime": "workspace:*"

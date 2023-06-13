@@ -15,10 +15,10 @@ import { minify } from "terser";
 export default defineConfig({
   plugins: [
     {
-      name: "optools safety check",
+      name: "packelyze safety check",
       enforce: "post",
       async transform(code, id) {
-        if (!process.env.OPTOOLS_CHECK) return;
+        if (!process.env.packelyze_CHECK) return;
         if (id.endsWith(".js")) {
           const result = await minify(code, {
             compress: false
@@ -54,10 +54,10 @@ test("keep send body", async () => {
 });
 ```
 
-Run test twice with `OPTOOLS_CHECK`.
+Run test twice with `packelyze_CHECK`.
 
 ```bash
 $ pnpm vitest --run # it creates __snapshot__
-$ OPTOOLS_CHECK=1 pnpm vitest --run # should match with result with mangling
+$ packelyze_CHECK=1 pnpm vitest --run # should match with result with mangling
 ```
 

@@ -1,10 +1,10 @@
 {
-  "input": "lib/_eff.d.ts",
-  "output": "_optools-analyzed.json",
+  "input": "lib/index.d.ts",
+  "output": "_packelyze-analyzed.json",
   "builtins": [
     "es",
     "dom",
-    "httpHeaders"
+    "worker"
   ],
   "writeDts": "_bundled.d.ts",
   "external": []

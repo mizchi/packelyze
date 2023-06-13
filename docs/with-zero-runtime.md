@@ -42,5 +42,5 @@ Your entrypoint should include fetch types.
 export type { fetch } from "./fetch"
 ```
 
-`optools analyze-dts` will capture `fetch()` properties.
+`packelyze analyze-dts` will capture `fetch()` properties.
 

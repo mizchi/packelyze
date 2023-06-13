@@ -4,7 +4,7 @@ import process from "node:process";
 import { parseArgs } from "node:util";
 import { checkbox, confirm, input } from "@inquirer/prompts";
 
-const srcEffTemplate = `// optools analyze entrypoint
+const srcEffTemplate = `// packelyze analyze entrypoint
 export * from "./index";
 `;
 
@@ -17,7 +17,7 @@ export async function init() {
       config: {
         type: "string",
         short: "c",
-        default: "optools.config.json",
+        default: "packelyze.config.json",
       },
     },
   });
@@ -26,7 +26,8 @@ export async function init() {
     const configPath = path.join(cwd, args.values.config);
     if (fs.existsSync(configPath)) {
       const isContinue = await confirm({
-        message: "optools.config.json already exists. Continue with override?",
+        message:
+          "packelyze.config.json already exists. Continue with override?",
         default: false,
       });
       if (!isContinue) {
@@ -76,7 +77,7 @@ export async function init() {
       JSON.stringify(
         {
           input: inputTarget,
-          output: "_optools-analyzed.json",
+          output: "_packelyze-analyzed.json",
           builtins: checked,
           external: [],
         },
@@ -84,15 +85,15 @@ export async function init() {
         2,
       ),
     );
-    console.info("[optools] generate config >", configPath);
+    console.info("[packelyze] generate config >", configPath);
     const isCreateTsconfig = await confirm({
-      message: "Create tsconfig.optools.json?",
+      message: "Create tsconfig.packelyze.json?",
       default: true,
     });
     if (isCreateTsconfig) {
-      const tsConfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
+      const tsConfigpackelyzePath = path.join(cwd, "tsconfig.packelyze.json");
       fs.writeFileSync(
-        tsConfigOptoolsPath,
+        tsConfigpackelyzePath,
         JSON.stringify(
           {
             extends: "./tsconfig.json",
@@ -109,36 +110,36 @@ export async function init() {
         ),
       );
       console.info(
-        "[optools:init] generate tsconfig.optools.json >",
-        tsConfigOptoolsPath,
+        "[packelyze:init] generate tsconfig.packelyze.json >",
+        tsConfigpackelyzePath,
       );
     } else {
       console.info(
-        "[optools:init] skip. Ensure to emit lib/*.d.ts by yourself",
+        "[packelyze:init] skip. Ensure to emit lib/*.d.ts by yourself",
       );
     }
 
     // check tsconfig.json exists
     const tsconfigPath = path.join(cwd, "tsconfig.json");
     if (!fs.existsSync(tsconfigPath)) {
-      console.info("[optools:init] warning! tsconfig.json does not exist");
+      console.info("[packelyze:init] warning! tsconfig.json does not exist");
     }
 
     // print usage example
-    console.log(`[optools:init] Ready for optimization!
+    console.log(`[packelyze:init] Ready for optimization!
 
 1. Add "prebuild" scripts to package.json
 
 "scripts": {
-  "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
+  "analyze": "tsc -p tsconfig.packelyze.json && packelyze analyze-dts",
   "build": "npm run analyze && <your build command>"
 }
 
-2. Ignore _optools-analyzed.json in .gitignore
+2. Ignore _packelyze-analyzed.json in .gitignore
 
 3. Use with terser
 
-import analyzed from "./_optools-analyzed.json";
+import analyzed from "./_packelyze-analyzed.json";
 // ... in terser config
 {
   mangle: {

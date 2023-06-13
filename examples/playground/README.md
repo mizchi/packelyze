@@ -1,4 +1,4 @@
-# optools playground
+# packelyze playground
 
 ```bash
 $ pnpm build

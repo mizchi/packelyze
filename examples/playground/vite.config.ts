@@ -1,15 +1,15 @@
 import { defineConfig } from "vite";
-import analyzed from "./_optools-analyzed.json";
+import analyzed from "./_packelyze-analyzed.json";
 import { minify } from "terser";
 
 export default defineConfig({
   plugins: [
     {
       // test
-      name: "optools safety check",
+      name: "packelyze safety check",
       enforce: "post",
       async transform(code, id) {
-        if (!process.env.OPTOOLS_CHECK) return;
+        if (!process.env.packelyze_CHECK) return;
         if (id.endsWith(".js")) {
           const result = await minify(code, {
             mangle: {

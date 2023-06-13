@@ -1,5 +1,5 @@
 import swc from "@swc/core";
-import analyzed from "./_optools-analyzed.json";
+import analyzed from "./_packelyze-analyzed.json";
 
 const out = await swc
   .transform("export const obj = {xxx: 1}", {

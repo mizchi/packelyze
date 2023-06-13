@@ -20,13 +20,13 @@ export async function createLoadedProjectWatcher(tsconfigPath: string) {
 }
 
 export function getTsconfigPath() {
-  const configOptoolsPath = ts.findConfigFile(
+  const configpackelyzePath = ts.findConfigFile(
     "./",
     ts.sys.fileExists,
     "tsconfig.json",
   );
-  if (configOptoolsPath) {
-    return configOptoolsPath;
+  if (configpackelyzePath) {
+    return configpackelyzePath;
   }
 
   const configPath = ts.findConfigFile(

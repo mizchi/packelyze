@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
+    "analyze": "tsc -p tsconfig.packelyze.json && packelyze analyze-dts",
     "build": "pnpm analyze && rollup -c"
   },
   "keywords": [],
@@ -23,7 +23,7 @@
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.2",
     "@types/react": "^18.2.6",
-    "optools": "workspace:*",
+    "packelyze": "workspace:*",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0",
     "zero-runtime": "workspace:*"

@@ -1,5 +1,5 @@
 const { config } = require("@swc/core/spack");
-const analyzed = require('./_optools-analyzed.json');
+const analyzed = require('./_packelyze-analyzed.json');
 
 module.exports = config({
   options: {

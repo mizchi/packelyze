@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import analyzed from "./_optools-analyzed.json";
+import analyzed from "./_packelyze-analyzed.json";
 
 export default defineConfig({
   build: {

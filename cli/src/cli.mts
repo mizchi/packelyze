@@ -19,7 +19,7 @@ async function run(cmd: string) {
       break;
     }
     default: {
-      console.error("[optools] Unknown command", cmd);
+      console.error("[packelyze] Unknown command", cmd);
     }
   }
 }

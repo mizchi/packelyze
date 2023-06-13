@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mizchi/optools.git",
+    "url": "https://github.com/mizchi/packelyze.git",
     "directory": "declass"
   },
   "files": [

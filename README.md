@@ -1,16 +1,16 @@
-# optools
+# packelyze
 
 Aggressive minification tools.
 
 THIS LIBRARY IS HIGHLY EXPERIMENTAL. USE AT YOUR OWN RISK.
 
 ```bash
-$ npm install optools -D 
+$ npm install packelyze -D 
 ```
 
-## What is `optools`?
+## What is `packelyze`?
 
-- `optools` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts` (or other entrypoint)
+- `packelyze` generates `mangle.properties.reserved` for terser by analyzing your `lib/index.d.ts` (or other entrypoint)
 - High compression ratio with `mangle.properties.reserved=/^.*/` and `mangle.properties.builtins=true`
 - But you should declare your project's internal side effects like `fetch(...)`, `postMessage(...)`
   - you can use with `zero-runtime`(WIP) to catch side-effects.
@@ -28,39 +28,39 @@ TBD
 ## How to use
 
 ```bash
-$ npx optools init # optional: generate for lib/index.d.ts
-$ npx tsc -p tsconfig.optools.json # generate lib/index.d.ts from src/index.ts
-$ npx optools analyze-dts # generate _optools-analyzed.json
+$ npx packelyze init # optional: generate for lib/index.d.ts
+$ npx tsc -p tsconfig.packelyze.json # generate lib/index.d.ts from src/index.ts
+$ npx packelyze analyze-dts # generate _packelyze-analyzed.json
 ```
 
 You can use analyzed result by adding `analyze` step before `build` in `package.json`.
 
 ```json
   "scripts": {
-    "analyze": "tsc -p tsconfig.optools.json && optools analyze-dts",
+    "analyze": "tsc -p tsconfig.packelyze.json && packelyze analyze-dts",
     "build": "npm run analyze && <your build commnad>"
   },
 ```
 
-You can skip `optools init` if you know `optools analyze-dts` requirements blow.
+You can skip `packelyze init` if you know `packelyze analyze-dts` requirements blow.
 
-## Manual setup without `optools init`
+## Manual setup without `packelyze init`
 
 requirements
 
-- `optools.config.json` is options for `optools analyze-dts`
-  - You can skip config file with cli options: example `optools analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom -e react/jsx-runtime`
-- `optools analyze-dts` analyzes `lib/index.d.ts` to generate `_optools-analyzed.json`
-  - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.optools.json`.
+- `packelyze.config.json` is options for `packelyze analyze-dts`
+  - You can skip config file with cli options: example `packelyze analyze-dts -i lib/index.d.ts -o _analyzed.json -b es -b dom -e react/jsx-runtime`
+- `packelyze analyze-dts` analyzes `lib/index.d.ts` to generate `_packelyze-analyzed.json`
+  - If you already genarete `lib/index.d.ts`, you can omit `tsconfig.packelyze.json`.
 
-## Configuration: `optools.config.json`
+## Configuration: `packelyze.config.json`
 
 ```jsonc
 {
   // analyzer entrypoint
   "input": "lib/_eff.d.ts",
   // analyzed output
-  "output": "_optools-analyzed.json",
+  "output": "_packelyze-analyzed.json",
   // predefined builtin reserved for environment
   "builtins": [
     // ECMAScript default features 
@@ -91,7 +91,7 @@ requirements
 
 ```ts
 import { minify } from "terser";
-import analyzed from "./_optools-analyzed.json";
+import analyzed from "./_packelyze-analyzed.json";
 
 const out = await minify({
   mangle: {
@@ -140,7 +140,7 @@ fetch("/send", {
   body: JSON.stringify(payload)
 });
 
-// src/_eff.ts or src/index.d.ts to notify type interfaces to optools.
+// src/_eff.ts or src/index.d.ts to notify type interfaces to packelyze.
 export * from "./types";
 ```
 

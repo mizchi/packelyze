@@ -8,9 +8,9 @@ export async function doctor() {
   const gitignorePath = path.join(cwd, ".gitignore");
   if (fs.existsSync(gitignorePath)) {
     const gitignore = fs.readFileSync(gitignorePath, "utf-8");
-    if (!gitignore.includes("_optools-analyzed.json")) {
+    if (!gitignore.includes("_packelyze-analyzed.json")) {
       console.error(
-        "[optools:doctor] .gitignore does not include _optools-analyzed.json",
+        "[packelyze:doctor] .gitignore does not include _packelyze-analyzed.json",
       );
       process.exit(1);
     }
@@ -20,17 +20,17 @@ export async function doctor() {
   const srcIndexTsxPath = path.join(cwd, "src/index.tsx");
 
   if (!fs.existsSync(srcIndexTsPath) && !fs.existsSync(srcIndexTsxPath)) {
-    console.error("[optools:doctor] src/index.ts(x) does not exist");
+    console.error("[packelyze:doctor] src/index.ts(x) does not exist");
   }
 
   // check tsconfig.json
-  // exists tsconfig.json or tsconfig.optools.json or optools.types.json
+  // exists tsconfig.json or tsconfig.packelyze.json or packelyze.types.json
   const tsconfigPath = path.join(cwd, "tsconfig.json");
-  const tsconfigOptoolsPath = path.join(cwd, "tsconfig.optools.json");
+  const tsconfigpackelyzePath = path.join(cwd, "tsconfig.packelyze.json");
   let existsAny = false;
   for (
     const configPath of [
-      tsconfigOptoolsPath,
+      tsconfigpackelyzePath,
       tsconfigPath,
     ]
   ) {
@@ -42,14 +42,14 @@ export async function doctor() {
       // check rootDir: src
       if (tsconfig.compilerOptions?.outDir !== "lib") {
         console.error(
-          `[optools:doctor] ${basename} does not include "rootDir": "lib"`,
+          `[packelyze:doctor] ${basename} does not include "rootDir": "lib"`,
         );
       }
 
       // check declaration: true
       if (tsconfig.compilerOptions?.declaration !== true) {
         console.error(
-          `[optools:doctor] ${basename} does not include "declaration": true`,
+          `[packelyze:doctor] ${basename} does not include "declaration": true`,
         );
       }
       break;
@@ -57,7 +57,7 @@ export async function doctor() {
   }
   if (!existsAny) {
     console.error(
-      "[optools:doctor] tsconfig.optools.json / tsconfig.json does not exist",
+      "[packelyze:doctor] tsconfig.packelyze.json / tsconfig.json does not exist",
     );
     process.exit(1);
   }
