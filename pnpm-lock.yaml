@@ -94,6 +94,12 @@ importers:
 
   cli/tests/simple: {}
 
+  compiler:
+    dependencies:
+      typescript:
+        specifier: 5.1.3
+        version: 5.1.3
+
   declass:
     dependencies:
       typescript:

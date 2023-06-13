@@ -2,4 +2,5 @@
   - zero-runtime
   - cli
   - declass
+  - compiler
   - examples/*
