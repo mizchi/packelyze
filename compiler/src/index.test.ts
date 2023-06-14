@@ -2,11 +2,11 @@ import { expect, test } from "vitest";
 import ts from "typescript";
 import path from "node:path";
 
-import { applyRenameLocations, createInMemoryLanguageServiceHost } from ".";
+import { createInMemoryLanguageServiceHost } from ".";
+import { getRenameAppliedState } from "./rename";
 
-test("basic ugase", () => {
+test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");
-
   const tsconfig = ts.readConfigFile(
     path.join(projectPath, "tsconfig.json"),
     ts.sys.readFile,
@@ -16,9 +16,6 @@ test("basic ugase", () => {
     ts.sys,
     projectPath,
   );
-
-  // console.log("options", options);
-
   // usage
   const prefs: ts.UserPreferences = {};
   const registory = ts.createDocumentRegistry();
@@ -26,7 +23,6 @@ test("basic ugase", () => {
     projectPath,
     options.fileNames,
     options.options,
-    // expandPath,
   );
   const languageService = ts.createLanguageService(
     serviceHost,
@@ -41,104 +37,65 @@ test("basic ugase", () => {
     return path.join(root, fname);
   };
 
-  // languageService.
   const snapshotManager = serviceHost.getSnapshotManager(registory);
 
-  // write src/index.ts and check types
-  const raw = snapshotManager.readFileSnapshot(expandPath("src/index.ts"));
   const newSource = snapshotManager.writeFileSnapshot(
     "src/index.ts",
-    raw + "\nconst y: number = x;",
+    "const x: number = '';\nconst y: number = x;",
   );
 
-  // find scoped variables
-
-  // languageService.getSemanticDiagnostics("src/index.ts");
   const program = languageService.getProgram()!;
   const checker = program.getTypeChecker();
   const localVariables = checker.getSymbolsInScope(
     newSource,
     ts.SymbolFlags.BlockScopedVariable,
   );
-
-  // console.log("localVariables", localVariables);
-
-  // rename x to x_?
-  const symbol = localVariables.find((s) => s.name === "x")!;
-  const renameLocations = languageService.findRenameLocations(
+  const xSymbol = localVariables.find((s) => s.name === "x")!;
+  const xRenameLocs = languageService.findRenameLocations(
     expandPath("src/index.ts"),
-    symbol.valueDeclaration!.getStart(),
+    xSymbol.valueDeclaration!.getStart(),
     false,
     false,
     prefs,
   );
-  const targets = new Set(renameLocations!.map((loc) => loc.fileName));
 
-  let current = snapshotManager.readFileSnapshot(expandPath("src/index.ts"))!;
-  for (const target of targets) {
-    const renameLocationsToTarget = renameLocations!.filter(
-      (loc) => expandPath(target) === expandPath(loc.fileName),
-    );
-    const newSymbolName = `${symbol.name}_${
-      Math.random().toString(36).slice(2)
-    }`;
-    current = applyRenameLocations(
-      current,
-      newSymbolName,
-      renameLocationsToTarget,
-    );
-  }
-  snapshotManager.writeFileSnapshot("src/index.ts", current);
-  const result = languageService.getSemanticDiagnostics(
+  const ySymbol = localVariables.find((s) => s.name === "y")!;
+  const yRenameLocs = languageService.findRenameLocations(
     expandPath("src/index.ts"),
+    ySymbol.valueDeclaration!.getStart(),
+    false,
+    false,
+    prefs,
   );
-  console.log("post error", result.length);
-  console.log(snapshotManager.readFileSnapshot(expandPath("src/index.ts")));
 
-  const oldProgram = program;
-  {
-    // rename y to y_?
-    const program = languageService.getProgram()!;
-    const program2 = languageService.getProgram()!;
-    console.log(
-      "------- program updated",
-      program !== oldProgram,
-      program2 === program,
-    );
-    const checker = program.getTypeChecker();
-    const newSource = program.getSourceFile(expandPath("src/index.ts"))!;
-    const localVariables = checker.getSymbolsInScope(
-      newSource,
-      ts.SymbolFlags.BlockScopedVariable,
-    );
-    const symbol = localVariables.find((s) => s.name === "y")!;
-    const renameLocations = languageService.findRenameLocations(
-      expandPath("src/index.ts"),
-      symbol.valueDeclaration!.getStart(),
-      false,
-      false,
-      prefs,
-    );
-    const targets = new Set(renameLocations!.map((loc) => loc.fileName));
-    let current = snapshotManager.readFileSnapshot("src/index.ts")!;
-    for (const target of targets) {
-      const renameLocationsToTarget = renameLocations!.filter(
-        (loc) => expandPath(target) === expandPath(loc.fileName),
-      );
-      const newSymbolName = `${symbol.name}_${
-        Math.random().toString(36).slice(2)
-      }`;
-      current = applyRenameLocations(
-        current,
-        newSymbolName,
-        renameLocationsToTarget,
-      );
-    }
-    snapshotManager.writeFileSnapshot(expandPath("src/index.ts"), current);
-    const result = languageService.getSemanticDiagnostics(
-      expandPath("src/index.ts"),
-    );
-    console.log("post error", result.length);
-    console.log(snapshotManager.readFileSnapshot(expandPath("src/index.ts")));
+  const changedFiles = getRenameAppliedState(
+    [
+      {
+        original: "x",
+        to: "x_changed",
+        locations: xRenameLocs!,
+      },
+      {
+        original: "y",
+        to: "y_changed",
+        locations: yRenameLocs!,
+      },
+    ],
+    snapshotManager.readFileSnapshot,
+    expandPath,
+  );
+  for (const [fname, content] of changedFiles) {
+    const [changed, changedStart, changedEnd] = content;
+    // TODO: use changedStart and changedEnd
+    snapshotManager.writeFileSnapshot(fname, changed);
   }
+  expect(
+    languageService.getSemanticDiagnostics(
+      expandPath("src/index.ts"),
+    ).length,
+  ).toBe(1);
+  expect(
+    snapshotManager.readFileSnapshot(expandPath("src/index.ts")),
+  ).toBe(`const x_changed: number = '';
+const y_changed: number = x_changed;`);
 });

@@ -14,23 +14,6 @@ export interface InMemoryLanguageServiceHost extends ts.LanguageServiceHost {
   setDebug(state: boolean): void;
 }
 
-export function applyRenameLocations(
-  code: string,
-  toName: string,
-  renameLocations: readonly ts.RenameLocation[],
-) {
-  let current = code;
-  let offset = 0;
-  for (const loc of renameLocations) {
-    const start = loc.textSpan.start;
-    const end = loc.textSpan.start + loc.textSpan.length;
-    current = current.slice(0, start + offset) + toName +
-      current.slice(end + offset);
-    offset += toName.length - (end - start);
-  }
-  return current;
-}
-
 export function createInMemoryLanguageServiceHost(
   projectRoot: string,
   fileNames: string[],
@@ -40,7 +23,7 @@ export function createInMemoryLanguageServiceHost(
   const fileContents = new Map<string, string>();
   const fileSnapshots = new Map<string, ts.IScriptSnapshot>();
   const fileVersions = new Map<string, number>();
-  const fileDirtySet = new Set<string>();
+  const fileDirtySet = new Map<string, [start: number, end: number] | true>();
 
   const expandPath = (fname: string) => {
     if (fname.startsWith("/")) {
@@ -61,7 +44,11 @@ export function createInMemoryLanguageServiceHost(
         }
         return ts.sys.readFile(fileName);
       },
-      writeFileSnapshot(fileName: string, content: string) {
+      writeFileSnapshot(
+        fileName: string,
+        content: string,
+        range?: [number, number],
+      ) {
         fileName = expandPath(fileName);
         const nextVersion = (fileVersions.get(fileName) || 0) + 1;
         // fileVersions.set(fileName, nextVersion);
@@ -72,7 +59,8 @@ export function createInMemoryLanguageServiceHost(
           nextVersion,
           content.length,
         );
-        fileDirtySet.add(fileName);
+        // TODO: compose range
+        fileDirtySet.set(fileName, range || true);
         const newSource = registory.updateDocument(
           fileName,
           serviceHost,
@@ -157,6 +145,15 @@ export function createInMemoryLanguageServiceHost(
       if (isDirty) {
         const current = fileVersions.get(fileName) || 0;
         fileDirtySet.delete(fileName);
+        // TODO: is this correct?
+        // {
+        //   const rangeOrTrue = fileDirtySet.get(fileName)!;
+        //   if (rangeOrTrue !== true) {
+        //     const snapshot = ts.ScriptSnapshot.fromString(raw);
+        //   } else {
+
+        //   }
+        // }
         fileVersions.set(fileName, current + 1);
       }
       return (fileVersions.get(fileName) || 0).toString();
