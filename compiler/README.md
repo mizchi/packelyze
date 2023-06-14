@@ -9,3 +9,4 @@ Experimental Optimizer.
 - [ ] Dead Code Ellimination
 - [ ] Bundle
 - [ ] Analyze side-effect
+- [ ] Infer function type

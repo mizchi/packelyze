@@ -6,12 +6,6 @@ import { applyRenameLocations, createInMemoryLanguageServiceHost } from ".";
 
 test("basic ugase", () => {
   const projectPath = path.join(__dirname, "../examples");
-  const expandPath = (fname: string) => {
-    if (fname.startsWith("/")) {
-      return fname;
-    }
-    return path.join(projectPath, fname);
-  };
 
   const tsconfig = ts.readConfigFile(
     path.join(projectPath, "tsconfig.json"),
@@ -29,14 +23,23 @@ test("basic ugase", () => {
   const prefs: ts.UserPreferences = {};
   const registory = ts.createDocumentRegistry();
   const serviceHost = createInMemoryLanguageServiceHost(
+    projectPath,
     options.fileNames,
     options.options,
-    expandPath,
+    // expandPath,
   );
   const languageService = ts.createLanguageService(
     serviceHost,
     registory,
   );
+
+  const expandPath = (fname: string) => {
+    if (fname.startsWith("/")) {
+      return fname;
+    }
+    const root = projectPath;
+    return path.join(root, fname);
+  };
 
   // languageService.
   const snapshotManager = serviceHost.getSnapshotManager(registory);

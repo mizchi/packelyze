@@ -1,13 +1,8 @@
-// import ts from "typescript/lib/tsserverlibrary.js";
 import ts from "typescript";
 import fs from "node:fs";
 import path from "node:path";
 
-// const tsconfig = ts.readConfigFile("./tsconfig.json", ts.sys.readFile);
-// const options = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, "./");
-// const defaultHost = ts.createCompilerHost(options.options);
-
-type SnapshotManager = {
+export type SnapshotManager = {
   readFileSnapshot(fileName: string): string | undefined;
   writeFileSnapshot(fileName: string, content: string): ts.SourceFile;
 };
@@ -16,15 +11,8 @@ export interface InMemoryLanguageServiceHost extends ts.LanguageServiceHost {
   getSnapshotManager: (
     registory: ts.DocumentRegistry,
   ) => SnapshotManager;
+  setDebug(state: boolean): void;
 }
-
-// const expandPath = (fname: string) => {
-//   if (fname.startsWith("/")) {
-//     return fname;
-//   }
-//   const root = process.cwd();
-//   return path.join(root, fname);
-// };
 
 export function applyRenameLocations(
   code: string,
@@ -44,9 +32,9 @@ export function applyRenameLocations(
 }
 
 export function createInMemoryLanguageServiceHost(
+  projectRoot: string,
   fileNames: string[],
   options: ts.CompilerOptions,
-  expandPath: (fname: string) => string,
 ): InMemoryLanguageServiceHost {
   // read once, write on memory
   const fileContents = new Map<string, string>();
@@ -54,13 +42,20 @@ export function createInMemoryLanguageServiceHost(
   const fileVersions = new Map<string, number>();
   const fileDirtySet = new Set<string>();
 
+  const expandPath = (fname: string) => {
+    if (fname.startsWith("/")) {
+      return fname;
+    }
+    return path.join(projectRoot, fname);
+  };
+
   const getSnapshotManagerInternal: (
     registory: ts.DocumentRegistry,
   ) => SnapshotManager = (registory: ts.DocumentRegistry) => {
     return {
       readFileSnapshot(fileName: string) {
         fileName = expandPath(fileName);
-        console.log("[readFileSnapshot]", fileName);
+        debugLog("[readFileSnapshot]", fileName);
         if (fileContents.has(fileName)) {
           return fileContents.get(fileName) as string;
         }
@@ -71,7 +66,7 @@ export function createInMemoryLanguageServiceHost(
         const nextVersion = (fileVersions.get(fileName) || 0) + 1;
         // fileVersions.set(fileName, nextVersion);
         fileContents.set(fileName, content);
-        console.log(
+        debugLog(
           "[writeFileSnapshot]",
           fileName,
           nextVersion,
@@ -91,7 +86,20 @@ export function createInMemoryLanguageServiceHost(
 
   const defaultHost = ts.createCompilerHost(options);
 
+  let debug = false;
+
+  const setDebug = (state: boolean) => {
+    debug = state;
+  };
+
+  const debugLog = (...args: any[]) => {
+    if (debug) {
+      console.log(...args);
+    }
+  };
+
   const serviceHost: InMemoryLanguageServiceHost = {
+    setDebug,
     getDefaultLibFileName: defaultHost.getDefaultLibFileName,
     fileExists: ts.sys.fileExists,
     readDirectory: ts.sys.readDirectory,
@@ -102,7 +110,7 @@ export function createInMemoryLanguageServiceHost(
     getCompilationSettings: () => options,
     readFile: (fname, encode) => {
       fname = expandPath(fname);
-      // console.log("[readFile]", fname);
+      // debugLog("[readFile]", fname);
       if (fileContents.has(fname)) {
         return fileContents.get(fname) as string;
       }
@@ -118,7 +126,7 @@ export function createInMemoryLanguageServiceHost(
     },
     writeFile: (fileName, content) => {
       fileName = expandPath(fileName);
-      console.log("[writeFile:mock]", fileName, content.length);
+      debugLog("[writeFile:mock]", fileName, content.length);
       // fileContents.set(fileName, content);
       // const version = fileVersions.get(fileName) || 0;
       // fileVersions.set(fileName, version + 1);
@@ -126,7 +134,7 @@ export function createInMemoryLanguageServiceHost(
     getScriptSnapshot: (fileName) => {
       fileName = expandPath(fileName);
       if (fileName.includes("src/index.ts")) {
-        console.log("[getScriptSnapshot]", fileName);
+        debugLog("[getScriptSnapshot]", fileName);
       }
       if (fileSnapshots.has(fileName)) {
         return fileSnapshots.get(fileName)!;
