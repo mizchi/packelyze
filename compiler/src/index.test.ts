@@ -3,9 +3,8 @@ import ts from "typescript";
 import path from "node:path";
 
 import { createInMemoryLanguageServiceHost } from ".";
-import { getRenameAppliedState } from "./rename";
 
-test("batch renaming", () => {
+test("in memory language service: life cycle update", () => {
   const projectPath = path.join(__dirname, "../examples");
   const tsconfig = ts.readConfigFile(
     path.join(projectPath, "tsconfig.json"),
@@ -16,8 +15,6 @@ test("batch renaming", () => {
     ts.sys,
     projectPath,
   );
-  // usage
-  const prefs: ts.UserPreferences = {};
   const registory = ts.createDocumentRegistry();
   const serviceHost = createInMemoryLanguageServiceHost(
     projectPath,
@@ -37,65 +34,37 @@ test("batch renaming", () => {
     return path.join(root, fname);
   };
 
-  const snapshotManager = serviceHost.getSnapshotManager(registory);
+  const program1 = languageService.getProgram();
+  expect(
+    languageService.getSemanticDiagnostics(expandPath("src/index.ts")).length,
+  ).toBe(1);
 
+  const snapshotManager = serviceHost.getSnapshotManager(registory);
+  const prevSource = languageService.getProgram()?.getSourceFile(
+    expandPath("src/index.ts"),
+  );
   const newSource = snapshotManager.writeFileSnapshot(
     "src/index.ts",
-    "const x: number = '';\nconst y: number = x;",
+    "const x: number = 1;",
   );
 
-  const program = languageService.getProgram()!;
-  const checker = program.getTypeChecker();
-  const localVariables = checker.getSymbolsInScope(
-    newSource,
-    ts.SymbolFlags.BlockScopedVariable,
-  );
-  const xSymbol = localVariables.find((s) => s.name === "x")!;
-  const xRenameLocs = languageService.findRenameLocations(
+  const nextSource = languageService.getProgram()?.getSourceFile(
     expandPath("src/index.ts"),
-    xSymbol.valueDeclaration!.getStart(),
-    false,
-    false,
-    prefs,
   );
 
-  const ySymbol = localVariables.find((s) => s.name === "y")!;
-  const yRenameLocs = languageService.findRenameLocations(
-    expandPath("src/index.ts"),
-    ySymbol.valueDeclaration!.getStart(),
-    false,
-    false,
-    prefs,
-  );
+  expect(prevSource === nextSource).toBe(false);
+  expect(nextSource === newSource).toBe(true);
+  const updated = snapshotManager.readFileSnapshot("src/index.ts");
+  expect(updated).toBe("const x: number = 1;");
+  expect(updated).toBe(newSource.getText());
 
-  const changedFiles = getRenameAppliedState(
-    [
-      {
-        original: "x",
-        to: "x_changed",
-        locations: xRenameLocs!,
-      },
-      {
-        original: "y",
-        to: "y_changed",
-        locations: yRenameLocs!,
-      },
-    ],
-    snapshotManager.readFileSnapshot,
-    expandPath,
-  );
-  for (const [fname, content] of changedFiles) {
-    const [changed, changedStart, changedEnd] = content;
-    // TODO: use changedStart and changedEnd
-    snapshotManager.writeFileSnapshot(fname, changed);
-  }
+  const program2 = languageService.getProgram();
+  expect(program1 === program2).toBe(false);
+
   expect(
-    languageService.getSemanticDiagnostics(
-      expandPath("src/index.ts"),
-    ).length,
-  ).toBe(1);
-  expect(
-    snapshotManager.readFileSnapshot(expandPath("src/index.ts")),
-  ).toBe(`const x_changed: number = '';
-const y_changed: number = x_changed;`);
+    languageService.getSemanticDiagnostics(expandPath("src/index.ts")).length,
+  ).toBe(0);
+
+  const program3 = languageService.getProgram();
+  expect(program2 === program3).toBe(true);
 });

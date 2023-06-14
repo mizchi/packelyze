@@ -1,16 +1,52 @@
-import { RenameLocation } from "typescript";
+import { LanguageService, RenameLocation, UserPreferences } from "typescript";
+import { getNodeAtPosition } from "./utils";
+
+export type RenameLocationWithShorthand = RenameLocation & {
+  isShorthand?: boolean;
+};
 
 export type RenameInfo = {
   original: string;
   to: string;
-  locations: readonly RenameLocation[];
+  locations: readonly RenameLocationWithShorthand[];
 };
 
 export type RewiredRenameItem = {
   original: string;
   to: string;
-  location: RenameLocation;
+  location: RenameLocationWithShorthand;
 };
+
+export function findRenameLocations(
+  service: LanguageService,
+  filePath: string,
+  pos: number,
+  prefs: UserPreferences = {},
+) {
+  const renames = service.findRenameLocations(
+    filePath,
+    pos,
+    false,
+    false,
+    prefs,
+  ) as RenameLocationWithShorthand[] | undefined;
+  if (renames == null) {
+    return;
+  }
+
+  const program = service.getProgram()!;
+  const checker = program.getTypeChecker();
+
+  const file = program.getSourceFile(filePath)!;
+
+  for (const rename of renames!) {
+    const targetNode = getNodeAtPosition(file, rename.textSpan.start);
+    if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
+      rename.isShorthand = true;
+    }
+  }
+  return renames;
+}
 
 export function getRenameAppliedState(
   renames: RenameInfo[],
@@ -64,18 +100,11 @@ function applyRewiredRenames(
   let offset = 0;
   let changedStart = 0;
   let changedEnd = 0;
-  // for (const rename of renames) {
-  //   const loc = rename.location;
-  //   const toName = rename.to;
-  //   const start = loc.textSpan.start;
-  //   const end = loc.textSpan.start + loc.textSpan.length;
-  //   current = current.slice(0, start + offset) + toName +
-  //     current.slice(end + offset);
-  //   offset += toName.length - (end - start);
-  // }
   for (const rename of renames) {
     const loc = rename.location;
-    const toName = rename.to;
+    const toName = rename.location.isShorthand
+      ? `${rename.original}: ${rename.to}`
+      : rename.to;
     const start = loc.textSpan.start;
     const end = loc.textSpan.start + loc.textSpan.length;
     if (changedStart === 0 || changedStart > start) {
