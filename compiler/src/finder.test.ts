@@ -16,6 +16,7 @@ import {
 } from "typescript";
 import path from "path";
 import { createTestLanguageService } from "./testHarness";
+import { findRenameSymbols } from "./finder";
 
 const code = `
 import { sub } from "./sub";
@@ -398,3 +399,32 @@ const createGetLocalSymbolsOfFile =
   };
 
 // memo va
+
+test("findRenameSymbols", () => {
+  const { service, normalizePath, snapshotManager } =
+    createTestLanguageService();
+
+  snapshotManager.writeFileSnapshot(
+    normalizePath("src/index.ts"),
+    `
+import { sub } from "./sub";
+const x = 1;
+function f() {
+  const internal = 2;
+}
+
+
+const y = 1
+const z = y;
+
+export const exported = 2;
+export {
+  z
+}
+  `,
+  );
+  const program = service.getProgram()!;
+  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
+
+  const syms = findRenameSymbols(program, source);
+});
