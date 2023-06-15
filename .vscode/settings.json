@@ -1,6 +1,7 @@
 {
   "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno",
+    // "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.defaultFormatter": "dprint.dprint",
     "editor.formatOnSave": true
   }
 }

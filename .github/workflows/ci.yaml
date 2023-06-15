@@ -28,3 +28,5 @@ jobs:
       working-directory: cli
     - run: pnpm test
       working-directory: zero-runtime
+    - run: pnpm test
+      working-directory: compiler
