@@ -216,7 +216,7 @@ test("rewire exports: complex", () => {
     const yyy = 2;
     export {
       vvv,
-      yyyy as zzz
+      yyy as zzz
     }
     `,
     ScriptTarget.ESNext,
@@ -253,7 +253,7 @@ const b = 1;
 }
 const c = 1;
 const d = 2;
-export { c as vvv, yyyy as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
+export { c as vvv, d as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
 `);
     // snapshotManager.writeFileSnapshot(fname, changed);
 
