@@ -52,9 +52,11 @@ test("batch renaming", () => {
     SymbolFlags.BlockScopedVariable,
   );
   const xSymbol = localVariables.find((s) => s.name === "x")!;
+
+  const sourceFile = program.getSourceFile("src/index.ts")!;
   const xRenameLocs = findRenameLocations(
     languageService,
-    expandPath("src/index.ts"),
+    sourceFile,
     xSymbol.valueDeclaration!.getStart(),
   );
 
@@ -113,10 +115,13 @@ test("shorthand", () => {
 
   const regex = /y = 1/;
   const hit = newSource.text.search(regex);
+  const sourceFile = service.getProgram()!.getSourceFile(
+    normalizePath("src/index.ts"),
+  )!;
 
   const renames = findRenameLocations(
     service,
-    normalizePath("src/index.ts"),
+    sourceFile,
     hit,
   );
 

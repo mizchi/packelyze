@@ -1,4 +1,4 @@
-import { LanguageService, SourceFile, SymbolFlags } from "typescript";
+import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import { ScopedSymbol, findGlobalVariables, findScopedSymbols } from "./analyzer";
 import { RenameInfo, findRenameLocations, getRenameAppliedState } from "./rename";
 import { createSymbolBuilder } from "./symbolBuilder";
@@ -8,9 +8,8 @@ export function getRenamedFileState(service: LanguageService, source: SourceFile
   const scopedSymbols = findScopedSymbols(program, source);
   const renames: RenameInfo[] = [];
   const symbolBuilder = createSymbolBuilder();
-  const checker = program.getTypeChecker();
 
-  const unsafeRenameTargets = collectUnsafeRenameTargets(scopedSymbols);
+  const unsafeRenameTargets = collectUnsafeRenameTargets(program, source, scopedSymbols);
   for (const blockedSymbol of scopedSymbols) {
     const declaration = blockedSymbol.symbol.valueDeclaration;
     if (declaration) {
@@ -26,32 +25,30 @@ export function getRenamedFileState(service: LanguageService, source: SourceFile
     }
   }
 
-  // console.log("unsafeRenameTargets", unsafeRenameTargets,
-  //   "renames", renames.map(r => ({ original: r.original, to: r.to }))
-  // );
-
   const state = getRenameAppliedState(renames, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
   }, normalizePath);
 
   return state;
+}
 
-  // collect unsafe rename targets
-  function collectUnsafeRenameTargets(scopedSymbols: ScopedSymbol[]) {
-    const unsafeRenameTargets = new Set<string>();
-    // register global names to unsafe
-    for (const gvar of findGlobalVariables(program, source)) {
-      unsafeRenameTargets.add(gvar.name);
-    }
-    // register existed local names to unsafe
-    for (const blockSymbol of scopedSymbols) {
-      const symbols = checker.getSymbolsInScope(blockSymbol.parentBlock, SymbolFlags.BlockScoped);
-      for (const symbol of symbols) {
-        unsafeRenameTargets.add(symbol.name);
-      }
-    }
-    return unsafeRenameTargets;  
+// collect unsafe rename targets
+/** @internal */
+function collectUnsafeRenameTargets(program: Program, source: SourceFile, scopedSymbols: ScopedSymbol[]) {
+  const checker = program.getTypeChecker();
+  const unsafeRenameTargets = new Set<string>();
+  // register global names to unsafe
+  for (const gvar of findGlobalVariables(program, source)) {
+    unsafeRenameTargets.add(gvar.name);
   }
+  // register existed local names to unsafe
+  for (const blockSymbol of scopedSymbols) {
+    const symbols = checker.getSymbolsInScope(blockSymbol.parentBlock, SymbolFlags.BlockScoped);
+    for (const symbol of symbols) {
+      unsafeRenameTargets.add(symbol.name);
+    }
+  }
+  return unsafeRenameTargets;  
 }
 
