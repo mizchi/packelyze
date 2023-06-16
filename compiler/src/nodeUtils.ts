@@ -101,14 +101,14 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
   };
 }
 
-type TraceableClosure = Block | ClassDeclaration | FunctionDeclaration;
+export type TraverseableNode = Block | ClassDeclaration | FunctionDeclaration | InterfaceDeclaration | TypeAliasDeclaration | EnumDeclaration | ModuleDeclaration | SourceFile;
 /**
  * @internal
  */
 export function visitLocalBlockScopeSymbols(
   program: Program,
   file: SourceFile,
-  visitor: (symbol: Symbol, parentBlock: TraceableClosure, paths: Array<TraceableClosure>, depth: number) => void,
+  visitor: (symbol: Symbol, parentBlock: TraverseableNode, paths: Array<TraverseableNode>, depth: number) => void,
   depth = 0, 
   debug = false
 ): void {
@@ -147,6 +147,16 @@ export function visitLocalBlockScopeSymbols(
         }
       }
     }
+
+    // if (isEnumDeclaration(node)) {
+    //   if (node.name) {
+    //     const symbol = checker.getSymbolAtLocation(node.name);
+    //     console.log("[nodeUtil:visit]", "enum", node.name?.getText(), symbol?.name);
+    //     if (symbol) {
+    //       visitor(symbol, node, blockPaths, depth);
+    //     }
+    //   }
+    // }
 
     if (isSourceFile(node) || isBlock(node)) {
       const newPaths = [...blockPaths, node as Block];

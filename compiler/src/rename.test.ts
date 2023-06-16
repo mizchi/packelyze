@@ -237,6 +237,7 @@ test("rewire exports: complex", () => {
   }, normalizePath);
   const result = state.get(normalizePath("src/index.ts"))![0];
   // console.log(result);
+  // return
   expect(result).toBe(`export { sub } from "./sub";
 const _ = 1;
 function e() { }
@@ -255,38 +256,44 @@ const c = 1;
 const d = 2;
 export { c as vvv, d as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
 `);
-    // snapshotManager.writeFileSnapshot(fname, changed);
-
-
-  // service.getProgram()!.getSourceFile(
-  //   normalizePath("src/index.ts"),
-  // )!;
-
-
-  // const renames = findRenameLocations(
-  //   service,
-  //   newSource,
-
-
-  // const exportSymbols = findExportSymbols(service.getProgram()!, sourceFile);
-  // const checker = service.getProgram()!.getTypeChecker();
-  // const exportedDeclarations: AnyExportableDeclaration[] = [];
-  // for (const symbol of exportSymbols) {
-  //   const decl = symbol.valueDeclaration && findExportableDeclaration(symbol.valueDeclaration);
-  //   const isExported =  decl?.modifiers?.some((mod) => mod.kind === SyntaxKind.ExportKeyword);
-  //   if (decl && isExported) {
-  //     exportedDeclarations.push(decl);
-  //   }
-  // }
-  // console.log(
-  //   snapshotManager.readFileSnapshot(normalizePath("src/index.ts")),
-  // )
-
-  // expect(exportedDeclarations.length).toBe(4);
-  // const preprocessed = preprocess(sourceFile);
-  // console.log(preprocessed);
-  // console.log(transformed[0].getFullText());
 });
+
+test.skip("rewire exports: enum", () => {
+  const {
+    service,
+    snapshotManager,
+    normalizePath,
+  } = createTestLanguageService();
+
+  const tempSource = createSourceFile(
+    "src/index.ts",
+    `
+    export enum Eee {}
+    `,
+    ScriptTarget.ESNext,
+  );
+  const preprocessed = preprocess(tempSource);
+
+  snapshotManager.writeFileSnapshot(
+    "src/index.ts",
+    preprocessed,
+  );
+
+  const program = service.getProgram()!;
+  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
+  const renameItems = collectRenameItemsInFile(service, source);
+  const state = getRenameAppliedState(renameItems, (fname) => {
+    const source = program.getSourceFile(fname);
+    return source && source.text;
+  }, normalizePath);
+  const result = state.get(normalizePath("src/index.ts"))![0];
+  console.log(result);
+  // return
+  expect(result).toBe(`enum _ {}
+export { _ as Eee};
+`);
+});
+
 
 function collectRenameItemsInFile(service: LanguageService, file: SourceFile) {
   const program = service.getProgram()!;

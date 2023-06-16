@@ -1,12 +1,12 @@
 // import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
 import { Block, ClassDeclaration, FunctionDeclaration, Node, Program, Signature, SourceFile, Symbol, SymbolFlags, Type, isExpression, isFunctionDeclaration, isVariableStatement } from "typescript";
-import { createTypeVisitor, visitLocalBlockScopeSymbols } from "./nodeUtils";
+import { TraverseableNode, createTypeVisitor, visitLocalBlockScopeSymbols } from "./nodeUtils";
 // import { findGlobalTypes, findGlobalVariables, visitLocalBlockScopeSymbols } from "./finder";
 
 export type ScopedSymbol = {
   symbol: Symbol;
-  parentBlock: Block | ClassDeclaration | FunctionDeclaration;
-  paths: (Block | ClassDeclaration | FunctionDeclaration)[];
+  parentBlock: TraverseableNode;
+  paths: TraverseableNode[];
   isExportRelated?: boolean;
 }
 

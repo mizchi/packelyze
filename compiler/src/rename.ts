@@ -1,5 +1,5 @@
 import { Identifier, LanguageService, Program, RenameLocation, SourceFile, SyntaxKind, TransformerFactory, UserPreferences, ExportDeclaration, 
-  Visitor, isExportDeclaration, factory, forEachChild, visitEachChild, Node, isVariableStatement, isIdentifier, isSourceFile, isNamedExports, visitNode, isExportSpecifier
+  Visitor, isExportDeclaration, factory, forEachChild, visitEachChild, Node, isVariableStatement, isIdentifier, isSourceFile, isNamedExports, visitNode, isExportSpecifier, isEnumDeclaration
 } from "typescript";
 import { AnyExportableDeclaration, getNodeAtPosition, isExportableDeclaration } from "./nodeUtils";
 
@@ -50,6 +50,9 @@ export function findRenameDetails(
     if (isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
       rename.isExportedSpecifier = true;
     }
+    // if (isEnumDeclaration(targetNode.parent)) {
+    //   console.log("enum?", targetNode.parent?.name?.text, SyntaxKind[targetNode.parent.kind]);
+    // }
   }
   return renames;
 }
@@ -111,7 +114,10 @@ function buildNewText(original: string, to: string, renameItem: RenameLocationWi
 export function applyRewiredRenames(
   code: string,
   renames: RewiredRenameItem[],
+  debug = false,
 ): [renamed: string, changedStart: number, changedEnd: number] {
+  const debugLog = debug ? console.log : () => {};
+  // const debugLog = console.log;
   let current = code;
   let offset = 0;
   let changedStart = 0;
@@ -121,6 +127,8 @@ export function applyRewiredRenames(
     const toName = buildNewText(rename.original, rename.to, rename.location);
     const start = loc.textSpan.start;
     const end = loc.textSpan.start + loc.textSpan.length;
+    debugLog("[name:from]", rename.original, '[name:to]', toName);
+
     if (changedStart === 0 || changedStart > start) {
       changedStart = start;
     }
