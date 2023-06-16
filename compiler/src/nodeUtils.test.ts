@@ -4,8 +4,7 @@ import { createTestLanguageService } from "./testHarness";
 import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("visitLocalScoped", () => {
-  const { service, normalizePath, snapshotManager } =
-    createTestLanguageService();
+  const { service, normalizePath, snapshotManager } = createTestLanguageService();
   snapshotManager.writeFileSnapshot(
     normalizePath("src/index.ts"),
     `

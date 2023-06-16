@@ -3,7 +3,12 @@ import { ScopedSymbol, findGlobalVariables, findScopedSymbols } from "./analyzer
 import { RenameInfo, findRenameLocations, getRenameAppliedState } from "./rename";
 import { createSymbolBuilder } from "./symbolBuilder";
 
-export function getRenamedFileState(service: LanguageService, source: SourceFile, normalizePath: (path: string) => string) {
+export function getRenamedFileState(
+  service: LanguageService,
+  source: SourceFile,
+  normalizePath: (path: string) => string,
+  writeFile: (fname: string, content: string) => void
+) {
   const program = service.getProgram()!;
   const scopedSymbols = findScopedSymbols(program, source);
   const renames: RenameInfo[] = [];
@@ -31,8 +36,11 @@ export function getRenamedFileState(service: LanguageService, source: SourceFile
     const source = program.getSourceFile(fname);
     return source && source.text;
   }, normalizePath);
-
-  return state;
+  
+  for (const [fname, content] of state) {
+    const [changed, changedStart, changedEnd] = content;
+    writeFile(fname, changed);
+  }
 }
 
 // collect unsafe rename targets

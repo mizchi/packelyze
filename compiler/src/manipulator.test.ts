@@ -51,11 +51,15 @@ test("getRenamedFileState", () => {
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const state = getRenamedFileState(service, source, normalizePath);
-  const [changed, start, end] = [...state.values()][0];
+  // snapshotManager.writeFileSnapshot;
+  getRenamedFileState(service, source, normalizePath, snapshotManager.writeFileSnapshot);
+
+  // const [changed, start, end] = [...state.values()][0];
 
   // TODO: Rename fff
-  expect(changed).toBe(`
+  expect(
+    snapshotManager.readFileSnapshot(normalizePath("src/index.ts"))
+  ).toBe(`
     export const a = 1;
     const bbb = 2;
     const _ = 3;

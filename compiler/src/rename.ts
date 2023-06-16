@@ -1,4 +1,4 @@
-import { LanguageService, RenameLocation, SourceFile, UserPreferences } from "typescript";
+import { LanguageService, Program, RenameLocation, SourceFile, UserPreferences } from "typescript";
 import { getNodeAtPosition } from "./nodeUtils";
 
 export type RenameLocationWithShorthand = RenameLocation & {
@@ -97,7 +97,7 @@ export function getRenameAppliedState(
   return changes;
 }
 
-function applyRewiredRenames(
+export function applyRewiredRenames(
   code: string,
   renames: RewiredRenameItem[],
 ): [renamed: string, changedStart: number, changedEnd: number] {
@@ -124,3 +124,10 @@ function applyRewiredRenames(
   }
   return [current, changedStart, changedEnd];
 }
+
+// export function rewireExports(
+//   program: Program,
+//   sourceFile: SourceFile
+// ) {
+
+// }

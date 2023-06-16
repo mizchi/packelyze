@@ -141,38 +141,6 @@ test("findExportSymbols", () => {
   expect(nameSet.has("3")).toBeFalsy();
 });
 
-test("rename with export as", () => {
-  const { service, snapshotManager, normalizePath } = createTestLanguageService();
-  snapshotManager.writeFileSnapshot(
-    normalizePath("src/index.ts"),
-    `
-    export const aaa = 1;
-    const bbb = 2;
-    const ccc = 3;
-    export {
-      bbb
-    }
-    `
-  );
-  const program = service.getProgram()!;
-  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const state = getRenamedFileState(service, source, normalizePath);
-  // console.log(state);
-  const [changed, start, end] = [...state.values()][0];
-  // console.log("-----");
-  // console.log(changed);
-  // expect(changed).toBe(`
-  //   const _ = 1;
-  //   const $ = 2;
-  //   export {
-  //     _ as aaa,
-  //     $ as bbb
-  //   }
-  //   `
-  // );
-});
-
-
 test.skip("finder: find all locals", () => {
   const code = `
 import { sub } from "./sub";

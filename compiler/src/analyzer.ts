@@ -11,19 +11,19 @@ export type ScopedSymbol = {
 }
 
 export function findScopedSymbols(program: Program, file: SourceFile, debug = false): ScopedSymbol[] {
-  const debugLog = debug ? console.log : () => {};
+  // const debugLog = debug ? console.log : () => {};
   const checker = program.getTypeChecker();
   const collector = createRelatedTypesCollector(program, debug);
 
   const exportSymbols = findExportSymbols(program, file, debug);
-  const globalVars = findGlobalVariables(program, file);
+  const globalVariables = findGlobalVariables(program, file);
   const globalTypes = findGlobalTypes(program, file);
 
   for (const symbol of exportSymbols) {
     collector.collectRelatedTypesFromSymbol(symbol);
     // console.log("exportSymbols", symbol.getName(), symbol.declarations?.map(x => x.getText()));
   }
-  for (const symbol of globalVars) {
+  for (const symbol of globalVariables) {
     collector.collectRelatedTypesFromSymbol(symbol);
   }
   for (const symbol of globalTypes) {
@@ -40,7 +40,7 @@ export function findScopedSymbols(program: Program, file: SourceFile, debug = fa
         parentBlock,
         isExportRelated,
         paths,
-      });  
+      });
     } else {
       if (symbol.declarations) {
         for (const decl of symbol.declarations) {

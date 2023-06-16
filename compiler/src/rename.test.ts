@@ -4,7 +4,6 @@ import { UserPreferences, parseJsonConfigFileContent, readConfigFile, sys, creat
 import { createInMemoryLanguageServiceHost } from "./index";
 import { findRenameLocations, getRenameAppliedState } from "./rename";
 import { createTestLanguageService } from "./testHarness";
-import { findScopedSymbols } from "./analyzer";
 
 test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");
@@ -143,59 +142,5 @@ test("shorthand", () => {
   ).toBe(
     `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
   );
-});
-
-test("export with as", () => {
-  const {
-    service,
-    snapshotManager,
-    normalizePath,
-  } = createTestLanguageService();
-  const newSource = snapshotManager.writeFileSnapshot(
-    "src/index.ts",
-    `
-    export const xxx = 1;
-    const yyy = 2;
-    export { yyy };
-    `,
-  );
-  // const regex = /y = 1/;
-  // const hit = newSource.text.search(regex);
-  const program = service.getProgram()!;
-  const symbols = findScopedSymbols(program, newSource);
-  // console.log("symbol", symbols.map((s) => ":" + s.symbol.getName() + ":" + s.isExportRelated));  
-  // expect(symbols.map((s) => s.symbol.getName())).toEqual(["xxx", "yyy"]);
-  // expect(symbols.map((s) => s.symbol.getName())).toEqual(["xxx", "yyy"]);
-
-  // expect(symbols.map((s) => s.name)).toEqual(["xxx", "yyy"]);
-  // console.log(symbols);
-  // expect(symbols.map((s) => s)).toEqual(["xxx", "yyy"]);
-
-  // const renames = findRenameLocations(
-  //   service,
-  //   normalizePath("src/index.ts"),
-  //   hit,
-  // );
-
-  // const changedFiles = getRenameAppliedState(
-  //   [
-  //     {
-  //       original: "y",
-  //       to: "y_renamed",
-  //       locations: renames!,
-  //     },
-  //   ],
-  //   snapshotManager.readFileSnapshot,
-  //   normalizePath,
-  // );
-  // for (const [fname, content] of changedFiles) {
-  //   const [changed, changedStart, changedEnd] = content;
-  //   snapshotManager.writeFileSnapshot(fname, changed);
-  // }
-  // expect(
-  //   snapshotManager.readFileSnapshot(normalizePath("src/index.ts")),
-  // ).toBe(
-  //   `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
-  // );
 });
 
