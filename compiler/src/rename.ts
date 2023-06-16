@@ -1,5 +1,5 @@
-import { LanguageService, RenameLocation, UserPreferences } from "typescript";
-import { getNodeAtPosition } from "./utils";
+import { LanguageService, RenameLocation, SourceFile, UserPreferences } from "typescript";
+import { getNodeAtPosition } from "./nodeUtils";
 
 export type RenameLocationWithShorthand = RenameLocation & {
   isShorthand?: boolean;
@@ -19,12 +19,12 @@ export type RewiredRenameItem = {
 
 export function findRenameLocations(
   service: LanguageService,
-  filePath: string,
+  file: SourceFile,
   pos: number,
   prefs: UserPreferences = {},
-) {
+): RenameLocationWithShorthand[] | undefined {
   const renames = service.findRenameLocations(
-    filePath,
+    file.fileName,
     pos,
     false,
     false,
@@ -37,13 +37,12 @@ export function findRenameLocations(
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
 
-  const file = program.getSourceFile(filePath)!;
-
-  for (const rename of renames!) {
+  for (const rename of renames) {
     const targetNode = getNodeAtPosition(file, rename.textSpan.start);
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
       rename.isShorthand = true;
     }
+    // console.log("---rename---", rename); 
   }
   return renames;
 }

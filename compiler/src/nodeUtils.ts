@@ -56,28 +56,7 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
         typeString,
       );
   
-      // Do not trace primitive types
-      // const typeString = checker.typeToString(type);
-      // TODO: check is primitive type by type flags
-      const primitives = [
-        "string",
-        "number",
-        "boolean",
-        "void",
-        "any",
-        "unknown",
-        "never",
-        "undefined",
-        "null",
-        "symbol",
-        "object",
-        "bigint",
-      ];
-      // if (!(type.flags & TypeFlags.NonPrimitive)) {
-      //   console.log("is non primitive", typeString);
-      // }
-      // TODO FIX liternal type detction
-      if (primitives.includes(typeString)) {
+      if (type.flags & TypeFlags.NumberLiteral) {
         return;
       }
       if (typeString.startsWith('"')) {

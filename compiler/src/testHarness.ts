@@ -1,4 +1,6 @@
 import {
+  LanguageService,
+  Program,
   createDocumentRegistry,
   createLanguageService,
   parseJsonConfigFileContent,
@@ -7,6 +9,9 @@ import {
 } from "typescript";
 import path from "node:path";
 import { createInMemoryLanguageServiceHost } from ".";
+
+// let lastService: LanguageService | undefined = undefined;
+// let oldRegistry = createDocumentRegistry();
 
 export function createTestLanguageService(
   projectPath: string = path.join(__dirname, "../examples"),
@@ -20,19 +25,23 @@ export function createTestLanguageService(
     sys,
     projectPath,
   );
-  const registory = createDocumentRegistry();
+  const registory =  createDocumentRegistry();
   const serviceHost = createInMemoryLanguageServiceHost(
     projectPath,
     options.fileNames,
     options.options,
   );
   const snapshotManager = serviceHost.getSnapshotManager(registory);
+  const service = createLanguageService(
+    serviceHost,
+    registory,
+  );
+  // oldRegistry = registory;
+  // lastProgram = service.getProgram();
+  // lastService = service;
   return {
     snapshotManager,
-    service: createLanguageService(
-      serviceHost,
-      registory,
-    ),
+    service,
     host: serviceHost,
     registory,
     normalizePath(fname: string) {

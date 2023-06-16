@@ -1,31 +1,31 @@
-import { expect, test } from "vitest";
-import ts, { Node, SourceFile, SyntaxKind, UserPreferences } from "typescript";
 import path from "node:path";
-
-import { createInMemoryLanguageServiceHost } from ".";
+import { expect, test } from "vitest";
+import { UserPreferences, parseJsonConfigFileContent, readConfigFile, sys, createDocumentRegistry, createLanguageService, SymbolFlags } from "typescript";
+import { createInMemoryLanguageServiceHost } from "./index";
 import { findRenameLocations, getRenameAppliedState } from "./rename";
 import { createTestLanguageService } from "./testHarness";
+import { findScopedSymbols } from "./analyzer";
 
 test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");
-  const tsconfig = ts.readConfigFile(
+  const tsconfig = readConfigFile(
     path.join(projectPath, "tsconfig.json"),
-    ts.sys.readFile,
+    sys.readFile,
   );
-  const options = ts.parseJsonConfigFileContent(
+  const options = parseJsonConfigFileContent(
     tsconfig.config,
-    ts.sys,
+    sys,
     projectPath,
   );
   // usage
-  const prefs: ts.UserPreferences = {};
-  const registory = ts.createDocumentRegistry();
+  const prefs: UserPreferences = {};
+  const registory = createDocumentRegistry();
   const serviceHost = createInMemoryLanguageServiceHost(
     projectPath,
     options.fileNames,
     options.options,
   );
-  const languageService = ts.createLanguageService(
+  const languageService = createLanguageService(
     serviceHost,
     registory,
   );
@@ -49,7 +49,7 @@ test("batch renaming", () => {
   const checker = program.getTypeChecker();
   const localVariables = checker.getSymbolsInScope(
     newSource,
-    ts.SymbolFlags.BlockScopedVariable,
+    SymbolFlags.BlockScopedVariable,
   );
   const xSymbol = localVariables.find((s) => s.name === "x")!;
   const xRenameLocs = findRenameLocations(
@@ -141,3 +141,53 @@ test("shorthand", () => {
     `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
   );
 });
+
+test.only("export with as", () => {
+  const {
+    service,
+    snapshotManager,
+    normalizePath,
+  } = createTestLanguageService();
+  const newSource = snapshotManager.writeFileSnapshot(
+    "src/index.ts",
+    `
+    export const xxx = 1;
+    const yyy = 2;
+    export { yyy };
+    `,
+  );
+  // const regex = /y = 1/;
+  // const hit = newSource.text.search(regex);
+  const program = service.getProgram()!;
+  const symbols = findScopedSymbols(program, newSource);
+  // console.log(symbols);
+  // expect(symbols.map((s) => s)).toEqual(["xxx", "yyy"]);
+
+  // const renames = findRenameLocations(
+  //   service,
+  //   normalizePath("src/index.ts"),
+  //   hit,
+  // );
+
+  // const changedFiles = getRenameAppliedState(
+  //   [
+  //     {
+  //       original: "y",
+  //       to: "y_renamed",
+  //       locations: renames!,
+  //     },
+  //   ],
+  //   snapshotManager.readFileSnapshot,
+  //   normalizePath,
+  // );
+  // for (const [fname, content] of changedFiles) {
+  //   const [changed, changedStart, changedEnd] = content;
+  //   snapshotManager.writeFileSnapshot(fname, changed);
+  // }
+  // expect(
+  //   snapshotManager.readFileSnapshot(normalizePath("src/index.ts")),
+  // ).toBe(
+  //   `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
+  // );
+});
+
