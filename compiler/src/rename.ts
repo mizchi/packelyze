@@ -23,6 +23,7 @@ export function findRenameLocations(
   pos: number,
   prefs: UserPreferences = {},
 ): RenameLocationWithShorthand[] | undefined {
+  // console.log("---findRenameLocations---", file?.fileName)
   const renames = service.findRenameLocations(
     file.fileName,
     pos,
