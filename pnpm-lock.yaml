@@ -99,6 +99,9 @@ importers:
       prettier:
         specifier: ^2.8.8
         version: 2.8.8
+      ts-clone-node:
+        specifier: ^2.0.4
+        version: 2.0.4(typescript@5.1.3)
       typescript:
         specifier: 5.1.3
         version: 5.1.3
@@ -1453,6 +1456,16 @@ packages:
       typescript: 5.0.4
     dev: true
 
+  /compatfactory@2.0.9(typescript@5.1.3):
+    resolution: {integrity: sha512-fvO+AWcmbO7P1S+A3mwm3IGr74eHMeq5ZLhNhyNQc9mVDNHT4oe0Gg0ksdIFFNXLK7k7Z/TYcLAUSQdRgh1bsA==}
+    engines: {node: '>=14.9.0'}
+    peerDependencies:
+      typescript: '>=3.x || >= 4.x'
+    dependencies:
+      helpertypes: 0.0.19
+      typescript: 5.1.3
+    dev: false
+
   /concordance@5.0.4:
     resolution: {integrity: sha512-OAcsnTEYu1ARJqWVGwf4zh4JDfHZEaSNlNccFmt8YjB2l/n19/PF2viLINHc57vO4FKIAFl2FWASIGZZWZ2Kxw==}
     engines: {node: '>=10.18.0 <11 || >=12.14.0 <13 || >=14'}
@@ -2134,7 +2147,6 @@ packages:
   /helpertypes@0.0.19:
     resolution: {integrity: sha512-J00e55zffgi3yVnUp0UdbMztNkr2PnizEkOe9URNohnrNhW5X0QpegkuLpOmFQInpi93Nb8MCjQRHAiCDF42NQ==}
     engines: {node: '>=10.0.0'}
-    dev: true
 
   /hono@3.2.4:
     resolution: {integrity: sha512-FAYaLxCuUO1C3YkTf4ve8wEYXXo28hGop8KD9/otYa7aeODz5kZ780apYL33OJPeMIERJzkuf59A+wNt1eA4yw==}
@@ -3269,6 +3281,16 @@ packages:
       compatfactory: 2.0.9(typescript@5.0.4)
       typescript: 5.0.4
     dev: true
+
+  /ts-clone-node@2.0.4(typescript@5.1.3):
+    resolution: {integrity: sha512-eG6FAgmQsenhIJOIFhUcO6yyYejBKZIKcI3y21jiQmIOrth5pD6GElyPAyeihbPSyBs3u/9PVNXy+5I7jGy8jA==}
+    engines: {node: '>=14.9.0'}
+    peerDependencies:
+      typescript: ^3.x || ^4.x
+    dependencies:
+      compatfactory: 2.0.9(typescript@5.1.3)
+      typescript: 5.1.3
+    dev: false
 
   /tslib@2.5.0:
     resolution: {integrity: sha512-336iVw3rtn2BUK7ORdIAHTyxHGRIHVReokCR3XjbckJMK7ms8FysBfhLR8IXnAgy7T0PTPNBWKiH514FOW/WSg==}
