@@ -1,4 +1,4 @@
-import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration } from "typescript";
+import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration, VariableStatement, TypeAliasDeclaration, InterfaceDeclaration, FunctionDeclaration, EnumDeclaration, ModuleDeclaration, isVariableStatement, isInterfaceDeclaration, isTypeAliasDeclaration, isFunctionDeclaration, isEnumDeclaration, isModuleDeclaration, NamedDeclaration, VariableDeclaration } from "typescript";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
 export function getNodeAtPosition(
@@ -101,7 +101,7 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
   };
 }
 
-type TraceableClosure = Block | ClassDeclaration;
+type TraceableClosure = Block | ClassDeclaration | FunctionDeclaration;
 /**
  * @internal
  */
@@ -116,6 +116,21 @@ export function visitLocalBlockScopeSymbols(
   const checker = program.getTypeChecker();
 
   const visit = (node: Node, blockPaths: Block[], depth: number = 0) => {
+    if (isFunctionDeclaration(node)) {
+      if (node.name) {
+        const symbol = checker.getSymbolAtLocation(node.name);
+        if (symbol) {
+          visitor(symbol, node, blockPaths, depth);
+        }
+      }
+      for (const param of node.parameters) {
+        const symbol = checker.getSymbolAtLocation(param.name);
+        if (symbol) {
+          visitor(symbol, node, blockPaths, depth);
+        }
+      }
+    }
+
     if (isClassDeclaration(node)) {
       for (const member of node.members) {
         if (isPropertyDeclaration(member)) {
@@ -132,9 +147,13 @@ export function visitLocalBlockScopeSymbols(
         }
       }
     }
+
     if (isSourceFile(node) || isBlock(node)) {
       const newPaths = [...blockPaths, node as Block];
       const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScoped);
+      // const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScopedVariable);
+
+      // console.log("[nodeUtil:scopedSymbols]", scopedSymbols.map((s) => s.name));
       const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
         if (sym.valueDeclaration) {
           const closestBlock = findClosestBlock(sym.valueDeclaration);
@@ -169,3 +188,41 @@ export function findClosestBlock(node: Node) {
   return node;
 }
 
+export function findExportableDeclaration(node: Node): AnyExportableDeclaration | undefined {
+  while (node && !isBlock(node) && !isMethodDeclaration(node)) {
+    if (isExportableDeclaration(node)) {
+      return node;
+    }
+    node = node.parent;
+  }
+}
+
+export function isExportedDeclaration(node: Node): boolean {
+  const decl = findExportableDeclaration(node);
+  return decl?.modifiers?.some((mod) => mod.kind === SyntaxKind.ExportKeyword) ?? false;
+}
+
+export type AnyExportableDeclaration =
+  | VariableStatement
+  // | VariableDeclaration
+  | InterfaceDeclaration
+  | TypeAliasDeclaration
+  | ClassDeclaration
+  | FunctionDeclaration
+  | EnumDeclaration
+  | ModuleDeclaration;
+
+export function isExportableDeclaration(
+  node: Node,
+): node is AnyExportableDeclaration {
+  return (
+    isVariableStatement(node) ||
+    // isVariableDeclaration(node) ||
+    isInterfaceDeclaration(node) ||
+    isTypeAliasDeclaration(node) ||
+    isClassDeclaration(node) ||
+    isFunctionDeclaration(node) ||
+    isEnumDeclaration(node) ||
+    isModuleDeclaration(node)
+  );
+}

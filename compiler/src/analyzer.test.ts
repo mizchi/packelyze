@@ -2,7 +2,6 @@ import { test, expect } from "vitest";
 import { createRelatedTypesCollector, findExportSymbols, findGlobalTypes, findGlobalVariables, findScopedSymbols, getImportableModules } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
 import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
-import { getRenamedFileState } from "./manipulator";
 import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("collectRelatedTypes", () => {
@@ -309,7 +308,7 @@ const local = 1;
 {
   const block = 2;
 }
-function f() {
+function f(arg: number) {
   const func = 3;
 }
 class X {
@@ -326,9 +325,8 @@ class X {
     symbols.add(symbol);
   });
 
-  expect(symbols.size).toBe(7);
   expect([...symbols].map(s => s.name)).toEqual([
-    'exported', 'local', 'X', 'block', 'func', 'method', 'methodBlock'
+    'exported', 'local', 'X', 'block', "f", 'arg', 'func', 'method', 'methodBlock'
   ]);
 });
 

@@ -10,6 +10,7 @@ test("visitLocalScoped", () => {
     `
 export const exported = 1;
 const local = 1;
+function fff(arg) {}
 {
   const nested = 2;
 
@@ -33,7 +34,8 @@ const local = 1;
       symbols.push(symbol);
     }
   );
+  // console.log(symbols.map(s => s.name));
   expect(symbols.map(s => s.name)).toEqual([
-    "exported", "local", "nested", "Class", "v",  "method", "cstrInternal", "internal"
+    "exported", "local", "fff", "arg", "nested", "Class", "v",  "method", "cstrInternal", "internal"
   ]);
 });

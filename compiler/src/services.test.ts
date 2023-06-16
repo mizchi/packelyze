@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import ts from "typescript";
 import path from "node:path";
 
-import { createInMemoryLanguageServiceHost } from ".";
+import { createInMemoryLanguageServiceHost } from "./services";
 
 test("in memory language service: life cycle update", () => {
   const projectPath = path.join(__dirname, "../examples");

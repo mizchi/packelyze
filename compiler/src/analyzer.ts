@@ -1,12 +1,12 @@
 // import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
-import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, TypeChecker, FunctionExpression, Program, Signature, isExpression, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, SourceFile, TypeFlags, SyntaxKind, Block, SymbolFlags, forEachChild, isSourceFile, isBlock, ClassDeclaration } from "typescript";
+import { Block, ClassDeclaration, FunctionDeclaration, Node, Program, Signature, SourceFile, Symbol, SymbolFlags, Type, isExpression, isFunctionDeclaration, isVariableStatement } from "typescript";
 import { createTypeVisitor, visitLocalBlockScopeSymbols } from "./nodeUtils";
 // import { findGlobalTypes, findGlobalVariables, visitLocalBlockScopeSymbols } from "./finder";
 
 export type ScopedSymbol = {
   symbol: Symbol;
-  parentBlock: Block | ClassDeclaration;
-  paths: (Block | ClassDeclaration)[];
+  parentBlock: Block | ClassDeclaration | FunctionDeclaration;
+  paths: (Block | ClassDeclaration | FunctionDeclaration)[];
   isExportRelated?: boolean;
 }
 
@@ -31,7 +31,11 @@ export function findScopedSymbols(program: Program, file: SourceFile, debug = fa
   }
 
   const result: ScopedSymbol[] = [];
+  
+  // console.log("---start---", file.fileName);
   visitLocalBlockScopeSymbols(program, file, (symbol, parentBlock, paths, depth) => {
+    // console.log("symbol", symbol.getName(), symbol.declarations?.length);
+
     if (symbol.valueDeclaration == null) {
       const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
       const isExportRelated = collector.isRelatedType(type);
@@ -200,3 +204,23 @@ export function findGlobalTypes(program: Program, file: SourceFile) {
   });
   return types;
 }
+
+// collect unsafe rename targets
+/** @internal */
+export function collectUnsafeRenameTargets(program: Program, source: SourceFile, scopedSymbols: ScopedSymbol[]) {
+  const checker = program.getTypeChecker();
+  const unsafeRenameTargets = new Set<string>();
+  // register global names to unsafe
+  for (const gvar of findGlobalVariables(program, source)) {
+    unsafeRenameTargets.add(gvar.name);
+  }
+  // register existed local names to unsafe
+  for (const blockSymbol of scopedSymbols) {
+    const symbols = checker.getSymbolsInScope(blockSymbol.parentBlock, SymbolFlags.BlockScoped);
+    for (const symbol of symbols) {
+      unsafeRenameTargets.add(symbol.name);
+    }
+  }
+  return unsafeRenameTargets;  
+}
+

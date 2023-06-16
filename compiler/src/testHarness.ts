@@ -8,7 +8,7 @@ import {
   sys,
 } from "typescript";
 import path from "node:path";
-import { createInMemoryLanguageServiceHost } from ".";
+import { createInMemoryLanguageServiceHost } from "./services";
 
 // let lastService: LanguageService | undefined = undefined;
 // let oldRegistry = createDocumentRegistry();

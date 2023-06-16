@@ -1,37 +1,39 @@
-import { LanguageService, Program, RenameLocation, SourceFile, UserPreferences } from "typescript";
-import { getNodeAtPosition } from "./nodeUtils";
+import { Identifier, LanguageService, Program, RenameLocation, SourceFile, SyntaxKind, TransformerFactory, UserPreferences, ExportDeclaration, 
+  Visitor, isExportDeclaration, factory, forEachChild, visitEachChild, Node, isVariableStatement, isIdentifier, isSourceFile, isNamedExports, visitNode, isExportSpecifier
+} from "typescript";
+import { AnyExportableDeclaration, getNodeAtPosition, isExportableDeclaration } from "./nodeUtils";
 
-export type RenameLocationWithShorthand = RenameLocation & {
+export type RenameLocationWithMeta = RenameLocation & {
   isShorthand?: boolean;
-  isExportedIdentifier: boolean;
+  isExportedSpecifier?: boolean;
 };
 
-export type RenameInfo = {
+export type BatchRenameItem = {
   original: string;
   to: string;
-  locations: readonly RenameLocationWithShorthand[];
+  locations: readonly RenameLocationWithMeta[];
 };
 
 export type RewiredRenameItem = {
   original: string;
   to: string;
-  location: RenameLocationWithShorthand;
+  location: RenameLocationWithMeta;
 };
 
 /** wrap service.findRenameLocations */
-export function findRenameLocations(
+export function findRenameDetails(
   service: LanguageService,
   file: SourceFile,
   pos: number,
   prefs: UserPreferences = {},
-): RenameLocationWithShorthand[] | undefined {
+): RenameLocationWithMeta[] | undefined {
   const renames = service.findRenameLocations(
     file.fileName,
     pos,
     false,
     false,
     prefs,
-  ) as RenameLocationWithShorthand[] | undefined;
+  ) as RenameLocationWithMeta[] | undefined;
   if (renames == null) {
     return;
   }
@@ -44,17 +46,16 @@ export function findRenameLocations(
     const targetNode = getNodeAtPosition(file, rename.textSpan.start);
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
       rename.isShorthand = true;
-      // rename.isExportedIdentifier = targetNode.parent.parent.modifiers != null && targetNode.parent.parent.modifiers.some(x => x.kind === 78);
     }
-    // console.log("rename", targetNode.getFullText(),  rename);
-    // rename.isExportedIdentifier = false;
-
+    if (isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
+      rename.isExportedSpecifier = true;
+    }
   }
   return renames;
 }
 
 export function getRenameAppliedState(
-  renames: RenameInfo[],
+  renames: BatchRenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
 ): Map<string, [changed: string, start: number, end: number]> {
@@ -97,6 +98,16 @@ export function getRenameAppliedState(
   return changes;
 }
 
+function buildNewText(original: string, to: string, renameItem: RenameLocationWithMeta) {
+  if (renameItem.isShorthand) {
+    return `${original}: ${to}`;
+  }
+  if (renameItem.isExportedSpecifier) {
+    return `${to} as ${original}`;
+  }
+  return to;
+}
+
 export function applyRewiredRenames(
   code: string,
   renames: RewiredRenameItem[],
@@ -107,9 +118,7 @@ export function applyRewiredRenames(
   let changedEnd = 0;
   for (const rename of renames) {
     const loc = rename.location;
-    const toName = rename.location.isShorthand
-      ? `${rename.original}: ${rename.to}`
-      : rename.to;
+    const toName = buildNewText(rename.original, rename.to, rename.location);
     const start = loc.textSpan.start;
     const end = loc.textSpan.start + loc.textSpan.length;
     if (changedStart === 0 || changedStart > start) {
@@ -124,10 +133,3 @@ export function applyRewiredRenames(
   }
   return [current, changedStart, changedEnd];
 }
-
-// export function rewireExports(
-//   program: Program,
-//   sourceFile: SourceFile
-// ) {
-
-// }
