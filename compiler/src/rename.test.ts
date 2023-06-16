@@ -61,12 +61,10 @@ test("batch renaming", () => {
   );
 
   const ySymbol = localVariables.find((s) => s.name === "y")!;
-  const yRenameLocs = languageService.findRenameLocations(
-    expandPath("src/index.ts"),
+  const yRenameLocs = findRenameLocations(
+    languageService,
+    sourceFile,
     ySymbol.valueDeclaration!.getStart(),
-    false,
-    false,
-    prefs,
   );
 
   const changedFiles = getRenameAppliedState(
@@ -165,6 +163,8 @@ test("export with as", () => {
   // const hit = newSource.text.search(regex);
   const program = service.getProgram()!;
   const symbols = findScopedSymbols(program, newSource);
+  // console.log("symbol", symbols.map((s) => ":" + s.symbol.getName() + ":" + s.isExportRelated));  
+  // expect(symbols.map((s) => s.symbol.getName())).toEqual(["xxx", "yyy"]);
   // expect(symbols.map((s) => s.symbol.getName())).toEqual(["xxx", "yyy"]);
 
   // expect(symbols.map((s) => s.name)).toEqual(["xxx", "yyy"]);

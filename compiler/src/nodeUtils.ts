@@ -1,4 +1,4 @@
-import { forEachChild, Node, SourceFile, SyntaxKind, TypeChecker, Type, TypeFlags } from "typescript";
+import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration } from "typescript";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
 export function getNodeAtPosition(
@@ -100,3 +100,72 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
     }
   };
 }
+
+type TraceableClosure = Block | ClassDeclaration;
+/**
+ * @internal
+ */
+export function visitLocalBlockScopeSymbols(
+  program: Program,
+  file: SourceFile,
+  visitor: (symbol: Symbol, parentBlock: TraceableClosure, paths: Array<TraceableClosure>, depth: number) => void,
+  depth = 0, 
+  debug = false
+): void {
+  const debugLog = debug ? console.log : () => { };
+  const checker = program.getTypeChecker();
+
+  const visit = (node: Node, blockPaths: Block[], depth: number = 0) => {
+    if (isClassDeclaration(node)) {
+      for (const member of node.members) {
+        if (isPropertyDeclaration(member)) {
+          const symbol = checker.getSymbolAtLocation(member.name);
+          if (symbol) {
+            visitor(symbol, node, blockPaths, depth);
+          }
+        }
+        if (isMethodDeclaration(member)) {
+          const symbol = checker.getSymbolAtLocation(member.name);
+          if (symbol) {
+            visitor(symbol, node, blockPaths, depth);
+          }
+        }
+      }
+    }
+    if (isSourceFile(node) || isBlock(node)) {
+      const newPaths = [...blockPaths, node as Block];
+      const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScoped);
+      const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
+        if (sym.valueDeclaration) {
+          const closestBlock = findClosestBlock(sym.valueDeclaration);
+          return node === closestBlock;            
+        } else {
+          for (const decl of sym.declarations ?? []) {
+            debugLog("  ".repeat(depth + 1), "[decl]", sym.name, decl.getSourceFile() === file);
+            const isLocalBlock = findClosestBlock(decl) === node;
+            return decl.getSourceFile() === file && isLocalBlock;
+          }
+        }
+        return false;
+      });
+      debugLog("  ".repeat(depth), `[block]`, scopedSymbolsInBlock.map((s) => s.name));
+      for (const symbol of scopedSymbolsInBlock) {
+        const decl = symbol.valueDeclaration;
+        debugLog("  ".repeat(depth), `> [block:local]`, symbol.name, "-", decl && SyntaxKind[decl.kind]);
+        visitor(symbol, node as Block, newPaths, depth);
+      }
+      forEachChild(node, (node) => visit(node, newPaths, depth + 1));
+    } else {
+      forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+  };
+  visit(file, [], depth);
+}
+
+export function findClosestBlock(node: Node) {
+  while (node && !isSourceFile(node) && !isBlock(node)) {
+    node = node.parent;
+  }
+  return node;
+}
+

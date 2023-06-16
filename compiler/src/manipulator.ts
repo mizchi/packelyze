@@ -9,8 +9,10 @@ export function getRenamedFileState(service: LanguageService, source: SourceFile
   const renames: RenameInfo[] = [];
   const symbolBuilder = createSymbolBuilder();
 
+  // to inhibit rename of global names or other scope
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, source, scopedSymbols);
   for (const blockedSymbol of scopedSymbols) {
+    if (blockedSymbol.isExportRelated) continue;
     const declaration = blockedSymbol.symbol.valueDeclaration;
     if (declaration) {
       const locs = findRenameLocations(service, declaration.getSourceFile(), declaration.getStart());

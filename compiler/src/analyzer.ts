@@ -1,12 +1,13 @@
 // import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
-import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, TypeChecker, FunctionExpression, Program, Signature, isExpression, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, SourceFile, TypeFlags, SyntaxKind, Block, SymbolFlags, forEachChild, isSourceFile, isBlock } from "typescript";
-import { createTypeVisitor } from "./nodeUtils";
+import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, TypeChecker, FunctionExpression, Program, Signature, isExpression, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, SourceFile, TypeFlags, SyntaxKind, Block, SymbolFlags, forEachChild, isSourceFile, isBlock, ClassDeclaration } from "typescript";
+import { createTypeVisitor, visitLocalBlockScopeSymbols } from "./nodeUtils";
 // import { findGlobalTypes, findGlobalVariables, visitLocalBlockScopeSymbols } from "./finder";
 
 export type ScopedSymbol = {
   symbol: Symbol;
-  parentBlock: Block;
-  paths: Block[];
+  parentBlock: Block | ClassDeclaration;
+  paths: (Block | ClassDeclaration)[];
+  isExportRelated?: boolean;
 }
 
 export function findScopedSymbols(program: Program, file: SourceFile, debug = false): ScopedSymbol[] {
@@ -20,6 +21,7 @@ export function findScopedSymbols(program: Program, file: SourceFile, debug = fa
 
   for (const symbol of exportSymbols) {
     collector.collectRelatedTypesFromSymbol(symbol);
+    // console.log("exportSymbols", symbol.getName(), symbol.declarations?.map(x => x.getText()));
   }
   for (const symbol of globalVars) {
     collector.collectRelatedTypesFromSymbol(symbol);
@@ -30,21 +32,31 @@ export function findScopedSymbols(program: Program, file: SourceFile, debug = fa
 
   const result: ScopedSymbol[] = [];
   visitLocalBlockScopeSymbols(program, file, (symbol, parentBlock, paths, depth) => {
-    const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-    const isExportRelated = collector.isRelatedType(type);
-
-    // debugLog("  ".repeat(depth), "[Local]", symbol.name, checker.typeToString(type), isExportRelated);
-    // console.log("  ".repeat(depth), "[Local]", symbol.name, checker.typeToString(type), isExportRelated);
-
-    if (!isExportRelated) {
+    if (symbol.valueDeclaration == null) {
+      const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
+      const isExportRelated = collector.isRelatedType(type);
       result.push({
         symbol,
         parentBlock,
+        isExportRelated,
         paths,
-      });
+      });  
+    } else {
+      if (symbol.declarations) {
+        for (const decl of symbol.declarations) {
+          const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
+          const isExportRelated = collector.isRelatedType(type);
+          result.push({
+            symbol,
+            parentBlock,
+            isExportRelated,
+            paths,
+          });  
+        }  
+      }
     }
-    // collector.collectRelatedType(type);
   }, 0, debug);
+  // console.log("exportSymbols", exportSymbols.map(x => x.getName()));
   return result;
 }
 
@@ -157,56 +169,6 @@ export function findExportSymbols(program: Program, source: SourceFile, debug = 
   const exportSymbols = checker.getExportsOfModule(symbol!);
   return exportSymbols;
 }
-
-export function findClosestBlock(node: Node) {
-  while (node && !isSourceFile(node) && !isBlock(node)) {
-    node = node.parent;
-  }
-  return node;
-}
-
-export function visitLocalBlockScope(file: SourceFile, visitor: (block: Block, paths: Block[], depth: number) => void, depth = 0, debug = false) {
-  const debugLog = debug ? console.log : () => { };
-  const visit = (node: Node, blockPaths: Block[], depth: number = 0) => {
-    if (isSourceFile(node) || isBlock(node)) {
-      const newPaths = [...blockPaths, node as Block];
-      debugLog("  ".repeat(depth), `[block]`);
-      visitor(node as Block, newPaths, depth);
-      forEachChild(node, (node) => visit(node, newPaths, depth + 1));
-    } else {
-      forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
-    }
-  };
-  visit(file, [], depth);
-}
-
-export function visitLocalBlockScopeSymbols(program: Program, file: SourceFile, visitor: (symbol: Symbol, parentBlock: Block, paths: Block[], depth: number) => void, depth = 0, debug = false) {
-  const debugLog = debug ? console.log : () => { };
-  // console.log("debugLog", "---");
-  const checker = program.getTypeChecker();
-  const visit = (node: Node, blockPaths: Block[], depth: number = 0) => {
-    if (isSourceFile(node) || isBlock(node)) {
-      const newPaths = [...blockPaths, node as Block];
-      const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScoped);
-      const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
-        if (sym.valueDeclaration == null) return false;
-        const closestBlock = findClosestBlock(sym.valueDeclaration);
-        return node === closestBlock;
-      });
-      debugLog("  ".repeat(depth), `[block]`, scopedSymbolsInBlock.map((s) => s.name));
-      for (const symbol of scopedSymbolsInBlock) {
-        const decl = symbol.valueDeclaration;
-        debugLog("  ".repeat(depth), `> [local]`, symbol.name, "-", decl && SyntaxKind[decl.kind]);
-        visitor(symbol, node as Block, newPaths, depth);
-      }
-      forEachChild(node, (node) => visit(node, newPaths, depth + 1));
-    } else {
-      forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
-    }
-  };
-  visit(file, [], depth);
-}
-
 
 export function getImportableModules(program: Program, file: SourceFile) {
   const checker = program.getTypeChecker();

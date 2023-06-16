@@ -1,10 +1,9 @@
 import { test, expect } from "vitest";
-import { ScopedSymbol, createRelatedTypesCollector, findExportSymbols, findGlobalTypes, findGlobalVariables, findScopedSymbols, getImportableModules, visitLocalBlockScopeSymbols } from "./analyzer";
+import { createRelatedTypesCollector, findExportSymbols, findGlobalTypes, findGlobalVariables, findScopedSymbols, getImportableModules } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
-import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, TypeChecker, Program, Signature, isExpression, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
-import { RenameInfo, findRenameLocations, getRenameAppliedState } from "./rename";
-import { createSymbolBuilder } from "./symbolBuilder";
+import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
 import { getRenamedFileState } from "./manipulator";
+import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("collectRelatedTypes", () => {
   const { service, snapshotManager, normalizePath } = createTestLanguageService();
@@ -142,55 +141,7 @@ test("findExportSymbols", () => {
   expect(nameSet.has("3")).toBeFalsy();
 });
 
-test("findScopedSymbols: analyze scope", () => {
-  const { service, snapshotManager, normalizePath } = createTestLanguageService();
-  snapshotManager.writeFileSnapshot(
-    normalizePath("src/index.ts"),
-    `
-    export const a = 1;
-    const bbb = 2;
-    const ccc = 3;
-    {
-      const ddd = 4;
-      ccc = 4;
-      {
-        ddd = 5;
-        function fff() {
-          const eee = 6;
-        }
-      }
-    }
-    export {
-      bbb
-    }
-    `
-  );
-  const program = service.getProgram()!;
-  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const state = getRenamedFileState(service, source, normalizePath);
-  const [changed, start, end] = [...state.values()][0];
-  expect(changed).toBe(`
-    export const a = 1;
-    const bbb = 2;
-    const _ = 3;
-    {
-      const $ = 4;
-      _ = 4;
-      {
-        $ = 5;
-        function fff() {
-          const b = 6;
-        }
-      }
-    }
-    export {
-      bbb
-    }
-    `
-  );
-});
-
-test.only("rename with export as", () => {
+test("rename with export as", () => {
   const { service, snapshotManager, normalizePath } = createTestLanguageService();
   snapshotManager.writeFileSnapshot(
     normalizePath("src/index.ts"),
@@ -222,7 +173,8 @@ test.only("rename with export as", () => {
 });
 
 
-const code = `
+test.skip("finder: find all locals", () => {
+  const code = `
 import { sub } from "./sub";
 
 const internal = 1;
@@ -246,7 +198,7 @@ export function g() {
 console.log(2);
 `;
 
-test.skip("finder: find all locals", () => {
+
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
   snapshotManager.writeFileSnapshot(normalizePath("src/locals.ts"), code);
@@ -375,6 +327,58 @@ const local = 1;
   //   const decl = symbol.valueDeclaration;
   //   console.log("  ".repeat(depth), `[block:local]`, symbol.name, "-", decl && SyntaxKind[decl.kind]);
   // }, 0);
+});
+
+test("visitLocalBlockScopeSymbols", () => {
+  const { service, normalizePath, snapshotManager } =
+    createTestLanguageService();
+
+  snapshotManager.writeFileSnapshot(
+    normalizePath("src/index.ts"),
+    `
+export const exported = 1;
+const local = 1;
+{
+  const block = 2;
+}
+function f() {
+  const func = 3;
+}
+class X {
+  method() {
+    const methodBlock = 4;
+  }
+}
+  `);
+  const program = service.getProgram()!;
+  const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
+
+  const symbols = new Set<Symbol>();
+  visitLocalBlockScopeSymbols(program, sourceFile, (symbol) => {
+    symbols.add(symbol);
+  });
+
+  expect(symbols.size).toBe(7);
+  expect([...symbols].map(s => s.name)).toEqual([
+    'exported', 'local', 'X', 'block', 'func', 'method', 'methodBlock'
+  ]);
+});
+
+test("findExportSymbols", () => {
+  const { service, normalizePath, snapshotManager } =
+    createTestLanguageService();
+
+  snapshotManager.writeFileSnapshot(
+    normalizePath("src/index.ts"),
+    `
+export const exported = 1;
+const local = 1;
+`
+  );
+  // const symbols = findExportSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+
+  const symbols = findScopedSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+  expect(symbols.map(s => s.symbol.name)).toEqual(["exported", "local"]);
 });
 
 test("findGlobalVariables", () => {

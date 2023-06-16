@@ -3,6 +3,7 @@ import { getNodeAtPosition } from "./nodeUtils";
 
 export type RenameLocationWithShorthand = RenameLocation & {
   isShorthand?: boolean;
+  isExportedIdentifier: boolean;
 };
 
 export type RenameInfo = {
@@ -17,13 +18,13 @@ export type RewiredRenameItem = {
   location: RenameLocationWithShorthand;
 };
 
+/** wrap service.findRenameLocations */
 export function findRenameLocations(
   service: LanguageService,
   file: SourceFile,
   pos: number,
   prefs: UserPreferences = {},
 ): RenameLocationWithShorthand[] | undefined {
-  // console.log("---findRenameLocations---", file?.fileName)
   const renames = service.findRenameLocations(
     file.fileName,
     pos,
@@ -38,12 +39,16 @@ export function findRenameLocations(
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
 
+  // check is export related
   for (const rename of renames) {
     const targetNode = getNodeAtPosition(file, rename.textSpan.start);
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
       rename.isShorthand = true;
+      // rename.isExportedIdentifier = targetNode.parent.parent.modifiers != null && targetNode.parent.parent.modifiers.some(x => x.kind === 78);
     }
-    // console.log("---rename---", rename); 
+    // console.log("rename", targetNode.getFullText(),  rename);
+    // rename.isExportedIdentifier = false;
+
   }
   return renames;
 }
