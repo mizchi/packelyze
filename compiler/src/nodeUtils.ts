@@ -1,22 +1,23 @@
-import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration, VariableStatement, TypeAliasDeclaration, InterfaceDeclaration, FunctionDeclaration, EnumDeclaration, ModuleDeclaration, isVariableStatement, isInterfaceDeclaration, isTypeAliasDeclaration, isFunctionDeclaration, isEnumDeclaration, isModuleDeclaration, NamedDeclaration, VariableDeclaration } from "typescript";
+// import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration, VariableStatement, TypeAliasDeclaration, InterfaceDeclaration, FunctionDeclaration, EnumDeclaration, ModuleDeclaration, isVariableStatement, isInterfaceDeclaration, isTypeAliasDeclaration, isFunctionDeclaration, isEnumDeclaration, isModuleDeclaration, NamedDeclaration, VariableDeclaration } from "typescript";
+import ts from "typescript";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
 export function getNodeAtPosition(
-  sourceFile: SourceFile,
+  sourceFile: ts.SourceFile,
   position: number,
-): Node {
-  let current: Node = sourceFile;
-  const getContainingChild = (child: Node) => {
+): ts.Node {
+  let current: ts.Node = sourceFile;
+  const getContainingChild = (child: ts.Node) => {
     if (
       child.pos <= position &&
       (position < child.end ||
-        (position === child.end && (child.kind === SyntaxKind.EndOfFileToken)))
+        (position === child.end && (child.kind === ts.SyntaxKind.EndOfFileToken)))
     ) {
       return child;
     }
   };
   while (true) {
-    const child = forEachChild(current, getContainingChild);
+    const child = ts.forEachChild(current, getContainingChild);
     if (!child) {
       return current;
     }
@@ -27,15 +28,15 @@ export function getNodeAtPosition(
 /**
  * Traverse type and call visitor function for each type.
  */
-export function createTypeVisitor(checker: TypeChecker, debug = false) {
+export function createTypeVisitor(checker: ts.TypeChecker, debug = false) {
   const debugLog = debug ? console.log : () => {};
 
-  return (node: Type, visitor: (type: Type) => boolean | void, onRevisit?: (type: Type) => boolean | void ) => {
-    const visitedTypes = new Set<Type>();
+  return (node: ts.Type, visitor: (type: ts.Type) => boolean | void, onRevisit?: (type: ts.Type) => boolean | void ) => {
+    const visitedTypes = new Set<ts.Type>();
     // TODO: need symbol cache?
     return traverse(node, 0);
 
-    function traverse(type: Type, depth = 0, force = false) {
+    function traverse(type: ts.Type, depth = 0, force = false) {
       if (visitedTypes.has(type) && !force) {
         debugLog("  ".repeat(depth), "[Revisit]", checker.typeToString(type));
         const again = onRevisit?.(type);
@@ -56,7 +57,7 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
         typeString,
       );
   
-      if (type.flags & TypeFlags.NumberLiteral) {
+      if (type.flags & ts.TypeFlags.NumberLiteral) {
         return;
       }
       if (typeString.startsWith('"')) {
@@ -101,22 +102,22 @@ export function createTypeVisitor(checker: TypeChecker, debug = false) {
   };
 }
 
-export type TraverseableNode = Block | ClassDeclaration | FunctionDeclaration | InterfaceDeclaration | TypeAliasDeclaration | EnumDeclaration | ModuleDeclaration | SourceFile;
+export type TraverseableNode = ts.Block | ts.ClassDeclaration | ts.FunctionDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration | ts.ModuleDeclaration | ts.SourceFile;
 /**
  * @internal
  */
 export function visitLocalBlockScopeSymbols(
-  program: Program,
-  file: SourceFile,
-  visitor: (symbol: Symbol, parentBlock: TraverseableNode, paths: Array<TraverseableNode>, depth: number) => void,
+  program: ts.Program,
+  file: ts.SourceFile,
+  visitor: (symbol: ts.Symbol, parentBlock: TraverseableNode, paths: Array<TraverseableNode>, depth: number) => void,
   depth = 0, 
   debug = false
 ): void {
   const debugLog = debug ? console.log : () => { };
   const checker = program.getTypeChecker();
 
-  const visit = (node: Node, blockPaths: Block[], depth: number = 0) => {
-    if (isFunctionDeclaration(node)) {
+  const visit = (node: ts.Node, blockPaths: ts.Block[], depth: number = 0) => {
+    if (ts.isFunctionDeclaration(node)) {
       if (node.name) {
         const symbol = checker.getSymbolAtLocation(node.name);
         if (symbol) {
@@ -131,15 +132,15 @@ export function visitLocalBlockScopeSymbols(
       }
     }
 
-    if (isClassDeclaration(node)) {
+    if (ts.isClassDeclaration(node)) {
       for (const member of node.members) {
-        if (isPropertyDeclaration(member)) {
+        if (ts.isPropertyDeclaration(member)) {
           const symbol = checker.getSymbolAtLocation(member.name);
           if (symbol) {
             visitor(symbol, node, blockPaths, depth);
           }
         }
-        if (isMethodDeclaration(member)) {
+        if (ts.isMethodDeclaration(member)) {
           const symbol = checker.getSymbolAtLocation(member.name);
           if (symbol) {
             visitor(symbol, node, blockPaths, depth);
@@ -158,9 +159,9 @@ export function visitLocalBlockScopeSymbols(
     //   }
     // }
 
-    if (isSourceFile(node) || isBlock(node)) {
-      const newPaths = [...blockPaths, node as Block];
-      const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScoped);
+    if (ts.isSourceFile(node) || ts.isBlock(node)) {
+      const newPaths = [...blockPaths, node as ts.Block];
+      const scopedSymbols = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScoped);
       // const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScopedVariable);
 
       // console.log("[nodeUtil:scopedSymbols]", scopedSymbols.map((s) => s.name));
@@ -180,26 +181,26 @@ export function visitLocalBlockScopeSymbols(
       debugLog("  ".repeat(depth), `[block]`, scopedSymbolsInBlock.map((s) => s.name));
       for (const symbol of scopedSymbolsInBlock) {
         const decl = symbol.valueDeclaration;
-        debugLog("  ".repeat(depth), `> [block:local]`, symbol.name, "-", decl && SyntaxKind[decl.kind]);
-        visitor(symbol, node as Block, newPaths, depth);
+        debugLog("  ".repeat(depth), `> [block:local]`, symbol.name, "-", decl && ts.SyntaxKind[decl.kind]);
+        visitor(symbol, node as ts.Block, newPaths, depth);
       }
-      forEachChild(node, (node) => visit(node, newPaths, depth + 1));
+      ts.forEachChild(node, (node) => visit(node, newPaths, depth + 1));
     } else {
-      forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+      ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
     }
   };
   visit(file, [], depth);
 }
 
-export function findClosestBlock(node: Node) {
-  while (node && !isSourceFile(node) && !isBlock(node)) {
+export function findClosestBlock(node: ts.Node) {
+  while (node && !ts.isSourceFile(node) && !ts.isBlock(node)) {
     node = node.parent;
   }
   return node;
 }
 
-export function findExportableDeclaration(node: Node): AnyExportableDeclaration | undefined {
-  while (node && !isBlock(node) && !isMethodDeclaration(node)) {
+export function findExportableDeclaration(node: ts.Node): AnyExportableDeclaration | undefined {
+  while (node && !ts.isBlock(node) && !ts.isMethodDeclaration(node)) {
     if (isExportableDeclaration(node)) {
       return node;
     }
@@ -207,32 +208,32 @@ export function findExportableDeclaration(node: Node): AnyExportableDeclaration 
   }
 }
 
-export function isExportedDeclaration(node: Node): boolean {
+export function isExportedDeclaration(node: ts.Node): boolean {
   const decl = findExportableDeclaration(node);
-  return decl?.modifiers?.some((mod) => mod.kind === SyntaxKind.ExportKeyword) ?? false;
+  return decl?.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 }
 
 export type AnyExportableDeclaration =
-  | VariableStatement
+  | ts.VariableStatement
   // | VariableDeclaration
-  | InterfaceDeclaration
-  | TypeAliasDeclaration
-  | ClassDeclaration
-  | FunctionDeclaration
-  | EnumDeclaration
-  | ModuleDeclaration;
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.ClassDeclaration
+  | ts.FunctionDeclaration
+  | ts.EnumDeclaration
+  | ts.ModuleDeclaration;
 
 export function isExportableDeclaration(
-  node: Node,
+  node: ts.Node,
 ): node is AnyExportableDeclaration {
   return (
-    isVariableStatement(node) ||
-    // isVariableDeclaration(node) ||
-    isInterfaceDeclaration(node) ||
-    isTypeAliasDeclaration(node) ||
-    isClassDeclaration(node) ||
-    isFunctionDeclaration(node) ||
-    isEnumDeclaration(node) ||
-    isModuleDeclaration(node)
+    ts.isVariableStatement(node) ||
+    // ts.isVariableDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isFunctionDeclaration(node) ||
+    ts.isEnumDeclaration(node) ||
+    ts.isModuleDeclaration(node)
   );
 }

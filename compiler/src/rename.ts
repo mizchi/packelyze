@@ -1,9 +1,7 @@
-import { Identifier, LanguageService, Program, RenameLocation, SourceFile, SyntaxKind, TransformerFactory, UserPreferences, ExportDeclaration, 
-  Visitor, isExportDeclaration, factory, forEachChild, visitEachChild, Node, isVariableStatement, isIdentifier, isSourceFile, isNamedExports, visitNode, isExportSpecifier, isEnumDeclaration
-} from "typescript";
-import { AnyExportableDeclaration, getNodeAtPosition, isExportableDeclaration } from "./nodeUtils";
+import ts from "typescript";
+import { getNodeAtPosition } from "./nodeUtils";
 
-export type RenameLocationWithMeta = RenameLocation & {
+export type RenameLocationWithMeta = ts.RenameLocation & {
   isShorthand?: boolean;
   isExportedSpecifier?: boolean;
 };
@@ -22,10 +20,10 @@ export type RewiredRenameItem = {
 
 /** wrap service.findRenameLocations */
 export function findRenameDetails(
-  service: LanguageService,
-  file: SourceFile,
+  service: ts.LanguageService,
+  file: ts.SourceFile,
   pos: number,
-  prefs: UserPreferences = {},
+  prefs: ts.UserPreferences = {},
 ): RenameLocationWithMeta[] | undefined {
   const renames = service.findRenameLocations(
     file.fileName,
@@ -47,7 +45,7 @@ export function findRenameDetails(
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
       rename.isShorthand = true;
     }
-    if (isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
+    if (ts.isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
       rename.isExportedSpecifier = true;
     }
     // if (isEnumDeclaration(targetNode.parent)) {

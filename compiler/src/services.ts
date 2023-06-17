@@ -1,4 +1,5 @@
-import ts, { IScriptSnapshot, LanguageService, ScriptSnapshot, SourceFile, TextChangeRange, createDocumentRegistry } from "typescript";
+// import ts, { LanguageService, ScriptSnapshot, SourceFile, TextChangeRange, createDocumentRegistry } from "typescript";
+import ts from "typescript";
 import fs from "node:fs";
 import path from "node:path";
 import { createLogger, Logger } from "./logger";
@@ -15,13 +16,13 @@ export interface IncrementalLanguageServiceHost extends ts.LanguageServiceHost {
   readSnapshotContent(fileName: string): string | undefined;
   writeSnapshot(fileName: string, snapshot: IncrementalSnapshot): void;
   writeSnapshotContent(fileName: string, content: string, range: [number, number] | undefined): void;
-  logger: Logger;
   getInMemoryCache(): InMemoryCache;
   dispose(): void;
+  logger: Logger;
 }
 
-export interface IncrementalLanguageService extends LanguageService {
-  getCurrentSourceFile(fileName: string): SourceFile | undefined;
+export interface IncrementalLanguageService extends ts.LanguageService {
+  getCurrentSourceFile(fileName: string): ts.SourceFile | undefined;
   // getCurrentSnapshot(fileName: string): IncrementalSnapshot | undefined;
   readSnapshot(fileName: string): IncrementalSnapshot | undefined;
   readSnapshotContent(fileName: string): string | undefined;
@@ -42,7 +43,7 @@ export type InMemoryCache = {
 
 export function createIncrementalLanguageService(
   host: IncrementalLanguageServiceHost,
-  documentRegistry: ts.DocumentRegistry = createDocumentRegistry(),
+  documentRegistry: ts.DocumentRegistry = ts.createDocumentRegistry(),
   debug?: boolean,
 ): IncrementalLanguageService {
   const colorlize = (item: any) => {
@@ -386,12 +387,12 @@ export function createIncrementalSnapshot(
   [start, end]: [number, number] = [0, content.length],
   prevSnapshot?: IncrementalSnapshot,
 ): IncrementalSnapshot {
-  const s = ScriptSnapshot.fromString(content) as IncrementalSnapshot;
+  const s = ts.ScriptSnapshot.fromString(content) as IncrementalSnapshot;
   s.loaded = false;
   return s;
 
-  const snapshot = ScriptSnapshot.fromString(content) as IncrementalSnapshot;
-  snapshot.getChangeRange = (oldSnapshot: ts.IScriptSnapshot): TextChangeRange => {
+  const snapshot = ts.ScriptSnapshot.fromString(content) as IncrementalSnapshot;
+  snapshot.getChangeRange = (oldSnapshot: ts.IScriptSnapshot): ts.TextChangeRange => {
     // if (oldSnapshot) {
     // const range = oldSnapshot.getChangeRange(oldSnapshot);
     // if (range) {

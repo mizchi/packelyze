@@ -1,11 +1,12 @@
-import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
+// import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
+import ts from "typescript";
 import { ScopedSymbol, collectUnsafeRenameTargets, findGlobalVariables, findScopedSymbols } from "./analyzer";
 import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(
-  service: LanguageService,
-  source: SourceFile,
+  service: ts.LanguageService,
+  source: ts.SourceFile,
   normalizePath: (path: string) => string,
   writeFile: (fname: string, content: string) => void
 ) {

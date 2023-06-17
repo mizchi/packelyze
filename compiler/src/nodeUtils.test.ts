@@ -1,4 +1,4 @@
-import { Symbol } from "typescript";
+import ts from "typescript";
 import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
 import { visitLocalBlockScopeSymbols } from "./nodeUtils";
@@ -26,7 +26,7 @@ function fff(arg) {}
 }
 `
   );
-  const symbols: Symbol[] = [];
+  const symbols: ts.Symbol[] = [];
   visitLocalBlockScopeSymbols(
     service.getProgram()!,
     service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,

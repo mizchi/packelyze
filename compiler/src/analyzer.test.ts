@@ -1,7 +1,8 @@
 import { test, expect } from "vitest";
 import { createRelatedTypesCollector, findExportSymbols, findGlobalTypes, findGlobalVariables, findScopedSymbols, getImportableModules } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
-import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
+// import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
+import ts from "typescript";
 import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("collectRelatedTypes", () => {
@@ -29,7 +30,7 @@ test("collectRelatedTypes", () => {
   const checker = program.getTypeChecker();
 
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const func = file.statements.find((node) => isFunctionDeclaration(node))! as FunctionDeclaration;
+  const func = file.statements.find((node) => ts.isFunctionDeclaration(node))! as ts.FunctionDeclaration;
   {
     const collector = createRelatedTypesCollector(program);
     const relatedTypes = collector.collectRelatedTypesFromNode(func);
@@ -40,14 +41,14 @@ test("collectRelatedTypes", () => {
     expect(relatetTypesNameSet.has("Internal")).toBe(true);
   }
 
-  const variableStatement = file.statements.find((node) => isVariableStatement(node))! as VariableStatement;
+  const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
   {
     const collector = createRelatedTypesCollector(program);
     const relatedTypes = collector.collectRelatedTypesFromNode(variableStatement);
     const relatedTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
 
     expect(relatedTypesNameSet.has("{ xxx: number; }")).toBeTruthy();
-    const expDecl = file.statements.find((node) => isTypeAliasDeclaration(node))! as TypeAliasDeclaration;
+    const expDecl = file.statements.find((node) => ts.isTypeAliasDeclaration(node))! as ts.TypeAliasDeclaration;
     const expType = checker.getTypeAtLocation(expDecl);
     expect(relatedTypes.has(expType)).toBe(false);
 
@@ -80,7 +81,7 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const checker = program.getTypeChecker();
 
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const variableStatement = file.statements.find((node) => isVariableStatement(node))! as VariableStatement;
+  const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
   {
     const collector = createRelatedTypesCollector(program);
     const relatedTypes = collector.collectRelatedTypesFromNode(variableStatement);
@@ -176,32 +177,32 @@ console.log(2);
   const checker = program.getTypeChecker();
 
   const rootFile = program.getSourceFile(normalizePath("src/locals.ts"));
-  const getSymbolNames = (flags: SymbolFlags) =>
+  const getSymbolNames = (flags: ts.SymbolFlags) =>
     checker.getSymbolsInScope(
       rootFile!,
       flags,
     ).map((s) => s.name);
-  const getSymbols = (flags: SymbolFlags) =>
+  const getSymbols = (flags: ts.SymbolFlags) =>
     checker.getSymbolsInScope(
       rootFile!,
       flags,
     );
 
-  expect(getSymbolNames(SymbolFlags.BlockScoped)).toEqual([
+  expect(getSymbolNames(ts.SymbolFlags.BlockScoped)).toEqual([
     "internal",
     "exported",
   ]);
 
-  const keys = Object.keys(SymbolFlags);
+  const keys = Object.keys(ts.SymbolFlags);
   for (const flags of keys) {
-    const flag = SymbolFlags[flags as keyof typeof SymbolFlags];
+    const flag = ts.SymbolFlags[flags as keyof typeof ts.SymbolFlags];
     if (typeof flag !== "number") {
       continue;
     }
     const symbolNames = getSymbolNames(flag);
-    console.log(SymbolFlags[flag], symbolNames.length);
+    console.log(ts.SymbolFlags[flag], symbolNames.length);
     // expect(getSymbols(flag))
-    if (flag === SymbolFlags.FunctionExcludes) {
+    if (flag === ts.SymbolFlags.FunctionExcludes) {
       console.log("--- FunctionExcludes ---", symbolNames);
       const symbols = getSymbols(flag);
       for (const symbol of symbols) {
@@ -229,7 +230,7 @@ console.log(2);
       }
       break;
     }
-    if (flag === SymbolFlags.Variable) {
+    if (flag === ts.SymbolFlags.Variable) {
       if (true as any) break;
       console.log("--- Variable ---", symbolNames);
       const symbols = getSymbols(flag);
@@ -260,7 +261,7 @@ console.log(2);
       // break;
     }
 
-    if (flag === SymbolFlags.ValueModule) {
+    if (flag === ts.SymbolFlags.ValueModule) {
       console.log("--- ValueModule ---", symbolNames);
       // break;
     }
@@ -322,7 +323,7 @@ class X {
   const program = service.getProgram()!;
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const symbols = new Set<Symbol>();
+  const symbols = new Set<ts.Symbol>();
   visitLocalBlockScopeSymbols(program, sourceFile, (symbol) => {
     symbols.add(symbol);
   });

@@ -1,11 +1,9 @@
 import path from "node:path";
+import ts from "typescript";
 import { expect, test } from "vitest";
-import { transform, Node, UserPreferences, parseJsonConfigFileContent, readConfigFile, sys, createDocumentRegistry, createLanguageService, SymbolFlags, SyntaxKind, Symbol, isVariableStatement, isClassDeclaration, VariableStatement, InterfaceDeclaration, TypeAliasDeclaration, TransformerFactory, TransformationContext, SourceFile, visitEachChild, Visitor, visitNode, isSourceFile, factory, isFunctionDeclaration, isTypeAliasDeclaration, isEnumDeclaration, isModuleDeclaration, isInterfaceDeclaration, Identifier, isIdentifier, createPrinter, Statement, isExportDeclaration, ExportDeclaration, isNamedExportBindings, isNamedExports, createSourceFile, ScriptTarget, Program, LanguageService } from "typescript";
-import { createIncrementalLanguageServiceHost } from "./services";
 import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
 import { createTestLanguageService } from "./testHarness";
 import { collectUnsafeRenameTargets, findExportSymbols, findScopedSymbols } from "./analyzer";
-import { AnyExportableDeclaration, findExportableDeclaration, isExportableDeclaration, isExportedDeclaration } from "./nodeUtils";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
@@ -29,7 +27,7 @@ test("batch renaming", () => {
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const localVariables = checker.getSymbolsInScope(
     source,
-    SymbolFlags.BlockScopedVariable,
+    ts.SymbolFlags.BlockScopedVariable,
   );
   const xSymbol = localVariables.find((s) => s.name === "x")!;
 
@@ -130,7 +128,7 @@ test("rename exported", () => {
     normalizePath,
   } = createTestLanguageService();
 
-  const tempSource = createSourceFile(
+  const tempSource = ts.createSourceFile(
     "src/index.ts",
     `
     const xxx = 1;
@@ -141,7 +139,7 @@ test("rename exported", () => {
       yyy as zzz
     }
     `,
-    ScriptTarget.ESNext,
+    ts.ScriptTarget.ESNext,
   );
   const preprocessed = preprocess(tempSource);
 
@@ -169,7 +167,7 @@ test("rewire exports: complex", () => {
     normalizePath,
   } = createTestLanguageService();
 
-  const tempSource = createSourceFile(
+  const tempSource = ts.createSourceFile(
     "src/index.ts",
     `
     export { sub } from "./sub";
@@ -193,7 +191,7 @@ test("rewire exports: complex", () => {
       yyy as zzz
     }
     `,
-    ScriptTarget.ESNext,
+    ts.ScriptTarget.ESNext,
   );
   const preprocessed = preprocess(tempSource);
 
@@ -262,7 +260,7 @@ export { _ as Eee};
 });
 
 
-function collectRenameItemsInFile(service: LanguageService, file: SourceFile) {
+function collectRenameItemsInFile(service: ts.LanguageService, file: ts.SourceFile) {
   const program = service.getProgram()!;
   const symbolBuilder = createSymbolBuilder();
   const scopedSymbols = findScopedSymbols(program, file);

@@ -1,17 +1,8 @@
-import {
-  DocumentRegistry,
-  LanguageService,
-  Program,
-  createDocumentRegistry,
-  createLanguageService,
-  parseJsonConfigFileContent,
-  readConfigFile,
-  sys,
-} from "typescript";
+import ts from "typescript";
 import path from "node:path";
 import { IncrementalLanguageServiceHost, createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./services";
 
-let lastRegistry: DocumentRegistry | undefined = undefined;
+let lastRegistry: ts.DocumentRegistry | undefined = undefined;
 let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
 
 export function createTestLanguageService(
@@ -19,13 +10,13 @@ export function createTestLanguageService(
   revertRootFiles = true,
 ) {
   // console.time("createTestLanguageService");
-  const tsconfig = readConfigFile(
+  const tsconfig = ts.readConfigFile(
     path.join(projectPath, "tsconfig.json"),
-    sys.readFile,
+    ts.sys.readFile,
   );
-  const options = parseJsonConfigFileContent(
+  const options = ts.parseJsonConfigFileContent(
     tsconfig.config,
-    sys,
+    ts.sys,
     projectPath,
   );
 
@@ -51,7 +42,7 @@ export function createTestLanguageService(
     cache.virtualExistedDirectories.clear();
   }
   // const registory = lastRegistry ?? createDocumentRegistry();
-  const registry = createDocumentRegistry();
+  const registry = ts.createDocumentRegistry();
   const host = createIncrementalLanguageServiceHost(
     projectPath,
     options.fileNames,
