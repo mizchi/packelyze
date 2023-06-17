@@ -1,18 +1,34 @@
 import ts from "typescript";
 import { getNodeAtPosition } from "./nodeUtils";
 
+export enum RenameSourceKind {
+  ScopedIdentifier = 1,
+  IntermediateExportedSpecifier,
+  IntermediateImportSpecifier,
+}
+
+export enum RenameTargetKind {
+  Local = 1,
+  Shorthand,
+  ExportedSpecifier,
+  ImportSpecifier
+}
+
 export type RenameItem = ts.RenameLocation & {
-  isShorthand?: boolean;
-  isExportedSpecifier?: boolean;
-  original: string;
-  to: string;
+  sourceKind: RenameSourceKind;
+  targetKind: RenameTargetKind;
+  source: string;
+  target: string;
 };
 
 /** wrap service.findRenameLocations */
-export function findRenameDetails(
+export function collectRenameItems(
   service: ts.LanguageService,
   file: ts.SourceFile,
   pos: number,
+  sourceKind: RenameSourceKind,
+  source: string,
+  to: string,
   prefs: ts.UserPreferences = {},
 ): RenameItem[] | undefined {
   const renames = service.findRenameLocations(
@@ -31,12 +47,23 @@ export function findRenameDetails(
 
   // check is export related
   for (const rename of renames) {
+    rename.sourceKind = sourceKind;
+    rename.source = source;
+    rename.target = to;
+
     const targetNode = getNodeAtPosition(file, rename.textSpan.start);
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
-      rename.isShorthand = true;
-    }
-    if (ts.isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
-      rename.isExportedSpecifier = true;
+    // check shorthand
+      rename.targetKind = RenameTargetKind.Shorthand;
+      rename.target = buildNewText(rename.source, rename.target, rename);
+    } else if (ts.isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
+      // check export specifier
+      rename.targetKind = RenameTargetKind.ExportedSpecifier;
+      rename.target = buildNewText(rename.source, rename.target, rename);
+    } else {
+      // default is local
+      rename.targetKind = RenameTargetKind.Local;
+      rename.target = to;
     }
   }
   return renames;
@@ -77,10 +104,10 @@ export function getRenameAppliedState(
 }
 
 function buildNewText(original: string, to: string, renameItem: RenameItem) {
-  if (renameItem.isShorthand) {
+  if (renameItem.targetKind === RenameTargetKind.Shorthand) {
     return `${original}: ${to}`;
   }
-  if (renameItem.isExportedSpecifier) {
+  if (renameItem.targetKind === RenameTargetKind.ExportedSpecifier) {
     return `${to} as ${original}`;
   }
   return to;
@@ -99,10 +126,10 @@ export function applyRewiredRenames(
   let changedEnd = 0;
   for (const rename of renames) {
     // const loc = rename.location;
-    const toName = buildNewText(rename.original, rename.to, rename);
+    const toName = rename.target;
     const start = rename.textSpan.start;
     const end = rename.textSpan.start + rename.textSpan.length;
-    debugLog("[name:from]", rename.original, '[name:to]', toName);
+    debugLog("[name:from]", rename.source, '[name:to]', toName);
 
     if (changedStart === 0 || changedStart > start) {
       changedStart = start;

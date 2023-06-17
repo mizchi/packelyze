@@ -34,7 +34,7 @@ test("writeRenamedFileState", () => {
     service.writeSnapshotContent(
       normalizePath("src/index.ts"),
       pre,
-    );  
+    );
     source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   }
   // const program = service.getProgram()!;

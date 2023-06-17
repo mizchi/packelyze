@@ -4,7 +4,7 @@
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
 import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer";
-import { RenameItem, findRenameDetails, getRenameAppliedState } from "./renamer";
+import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(
@@ -17,25 +17,22 @@ export function writeRenamedFileState(
   const scopedSymbols = collectScopedSymbols(program, source);
   const renames: RenameItem[] = [];
   const symbolBuilder = createSymbolBuilder();
-
   // to inhibit rename of global names or other scope
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, source, scopedSymbols);
   for (const blockedSymbol of scopedSymbols) {
     if (blockedSymbol.isExportRelated) continue;
     const declaration = blockedSymbol.symbol.valueDeclaration;
     if (declaration) {
-      const locs = findRenameDetails(service, declaration.getSourceFile(), declaration.getStart());
-      if (locs) {
-        const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-
-        renames.push(
-          ...locs.map((loc) => ({
-            ...loc,
-            original: blockedSymbol.symbol.getName(),
-            to: newName,
-          }))
-        );  
-      }
+      const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
+      const locs = collectRenameItems(
+        service,
+        declaration.getSourceFile(),
+        declaration.getStart(),
+        RenameSourceKind.ScopedIdentifier,
+        blockedSymbol.symbol.getName(),
+        newName,
+      );
+      locs && renames.push(...locs);  
     }
   }
 

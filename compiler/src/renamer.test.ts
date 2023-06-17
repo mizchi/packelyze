@@ -1,7 +1,7 @@
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, findRenameDetails, getRenameAppliedState } from "./renamer";
+import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
 import { createTestLanguageService } from "./testHarness";
 import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols } from "./analyzer";
 import { preprocess } from "./transformer";
@@ -32,17 +32,23 @@ test("batch renaming", () => {
   const xSymbol = localVariables.find((s) => s.name === "x")!;
 
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const xRenameLocs = findRenameDetails(
+  const xRenameLocs = collectRenameItems(
     service,
     sourceFile,
     xSymbol.valueDeclaration!.getStart(),
+    RenameSourceKind.ScopedIdentifier,
+    xSymbol.name,
+    "x_changed",
   );
 
   const ySymbol = localVariables.find((s) => s.name === "y")!;
-  const yRenameLocs = findRenameDetails(
+  const yRenameLocs = collectRenameItems(
     service,
     sourceFile,
     ySymbol.valueDeclaration!.getStart(),
+    RenameSourceKind.ScopedIdentifier,
+    ySymbol.name,
+    "y_changed",
   );
 
   const changedFiles = getRenameAppliedState(
@@ -94,20 +100,17 @@ test("shorthand", () => {
     normalizePath("src/index.ts"),
   )!;
 
-  const renames = findRenameDetails(
+  const renames = collectRenameItems(
     service,
     sourceFile,
     hit,
+    RenameSourceKind.ScopedIdentifier,
+    "y",
+    "y_renamed",
   );
 
   const changedFiles = getRenameAppliedState(
-    [
-      ...renames!.map((loc) => ({
-        ...loc,
-        original: "y",
-        to: "y_renamed",
-      })),
-    ],
+    renames!,
     service.readSnapshotContent,
     normalizePath,
   );
@@ -305,15 +308,16 @@ function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.Source
   for (const blockedSymbol of scopedSymbols) {
     const declaration = blockedSymbol.symbol.valueDeclaration;
     if (declaration) {
-      const locs = findRenameDetails(service, declaration.getSourceFile(), declaration.getStart());
-      if (locs) {
-        const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-        renameItems.push(...locs.map((loc) => ({
-          ...loc,
-          original: blockedSymbol.symbol.getName(),
-          to: newName
-        })));
-      }
+      const original = blockedSymbol.symbol.getName();
+      const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
+      const locs = collectRenameItems(
+        service, declaration.getSourceFile(),
+        declaration.getStart(),
+        RenameSourceKind.ScopedIdentifier,
+        original,
+        newName
+      );
+      locs && renameItems.push(...locs);
     }
   }
   return renameItems;  
