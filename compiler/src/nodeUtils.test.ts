@@ -124,33 +124,3 @@ function fff(arg) {}
   ]);
 });
 
-function stripNode(input: any, checker: ts.TypeChecker): any {
-  if (!(input instanceof Object)) {
-    return input;
-  }
-  if (Array.isArray(input)) {
-    const arr = [];
-    for (const v  of input) {
-      if (v === checker) {
-        // skip
-      } else {
-        arr.push(stripNode(v, checker));
-      }
-    }
-    return arr;
-  }
-  const obj: any = {};
-  for (const [key, v]  of Object.entries(input)) {
-    if (["checker", "parent"].includes(key)) {
-      // skpi
-    } else if (v === checker) {
-      // skip
-    } else if (key === "kind") {
-      obj[key] = ts.SyntaxKind[v as any] ?? v;
-    } else {
-      obj[key] = v;
-    }
-  }
-  return obj;
-}
-
