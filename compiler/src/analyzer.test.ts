@@ -2,7 +2,7 @@ import ts from "typescript";
 import { test, expect } from "vitest";
 import { createRelatedTypesCollector, collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
-import { visitScopedIdentifierSymbols } from "./nodeUtils";
+import { createVisitScoped, composeVisitors } from "./nodeUtils";
 
 test("collectRelatedTypes: infer internal", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -193,9 +193,12 @@ class X {
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
 
   const symbols = new Set<ts.Symbol>();
-  visitScopedIdentifierSymbols(program, sourceFile, (symbol) => {
-    symbols.add(symbol);
-  });
+  composeVisitors(
+    createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol) => {
+      symbols.add(symbol);
+    })
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
+
   expect([...symbols].map(s => s.name)).toEqual([
     'exported', 'local', 'block', "f", 'arg', 'func',  'X', 'method', 'methodBlock'
   ]);
@@ -217,6 +220,44 @@ const local = 1;
   const symbols = collectScopedSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
   expect(symbols.map(s => s.symbol.name)).toEqual(["exported", "local"]);
 });
+
+test("collectExportSymbols with externals", () => {
+  const { service, normalizePath } =
+    createTestLanguageService();
+
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+    import {parseArgs} from "node:util";
+
+    // const localObj = {
+    //   xxx: number;
+    //   yyy: number;
+    // };
+
+    export function parse(args: string[]) {
+      return parseArgs({
+        args,
+        allowPositionals: true,
+        options: {
+          name: {
+            type: "string",
+            alias: "n",
+          }
+        }
+      });
+    }
+`
+  );
+  const externals = [
+    '"node:util"'
+  ];
+  const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
+  const symbols = collectScopedSymbols(service.getProgram()!, source, externals);
+  // TODO: trace external import related symbols
+  expect(symbols.map(s => s.symbol.name)).toEqual(["parse", "args", "allowPositionals", "options", "name", "type", "alias"]);
+});
+
 
 test("collectGlobalVariables", () => {
   const { service, normalizePath } =

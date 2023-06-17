@@ -1,7 +1,7 @@
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
+import { RenameLocationWithMeta, findRenameDetails, getRenameAppliedState } from "./renamer";
 import { createTestLanguageService } from "./testHarness";
 import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols } from "./analyzer";
 import { preprocess } from "./transformer";
@@ -47,16 +47,16 @@ test("batch renaming", () => {
 
   const changedFiles = getRenameAppliedState(
     [
-      {
+      ...xRenameLocs!.map((loc) => ({
+        ...loc,
         original: "x",
         to: "x_changed",
-        locations: xRenameLocs!,
-      },
-      {
+      })),
+      ...yRenameLocs!.map((loc) => ({
+        ...loc,
         original: "y",
         to: "y_changed",
-        locations: yRenameLocs!,
-      },
+      })),
     ],
     service.readSnapshotContent,
     normalizePath,
@@ -102,11 +102,11 @@ test("shorthand", () => {
 
   const changedFiles = getRenameAppliedState(
     [
-      {
+      ...renames!.map((loc) => ({
+        ...loc,
         original: "y",
         to: "y_renamed",
-        locations: renames!,
-      },
+      })),
     ],
     service.readSnapshotContent,
     normalizePath,
@@ -299,7 +299,7 @@ function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.Source
   const program = service.getProgram()!;
   const symbolBuilder = createSymbolBuilder();
   const scopedSymbols = collectScopedSymbols(program, file);
-  const renameItems: BatchRenameItem[] = [];
+  const renameItems: RenameLocationWithMeta[] = [];
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, file, scopedSymbols);
 
   for (const blockedSymbol of scopedSymbols) {
@@ -308,11 +308,11 @@ function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.Source
       const locs = findRenameDetails(service, declaration.getSourceFile(), declaration.getStart());
       if (locs) {
         const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-        renameItems.push({
+        renameItems.push(...locs.map((loc) => ({
+          ...loc,
           original: blockedSymbol.symbol.getName(),
-          to: newName,
-          locations: locs!,
-        });  
+          to: newName
+        })));
       }
     }
   }

@@ -3,7 +3,7 @@ import { writeRenamedFileState } from "./manipulator";
 import { createTestLanguageService } from "./testHarness";
 import { isPreprocessedNeeded, preprocess } from "./transformer";
 
-test("getRenamedFileState", () => {
+test("writeRenamedFileState", () => {
   const { service, normalizePath } = createTestLanguageService();
 
   const code = `

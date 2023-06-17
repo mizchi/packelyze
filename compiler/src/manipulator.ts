@@ -3,8 +3,8 @@
  */
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
-import { ScopedSymbol, collectUnsafeRenameTargets, collectGlobalVariables, collectScopedSymbols } from "./analyzer";
-import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
+import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer";
+import { RenameLocationWithMeta, findRenameDetails, getRenameAppliedState } from "./renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(
@@ -15,7 +15,7 @@ export function writeRenamedFileState(
 ) {
   const program = service.getProgram()!;
   const scopedSymbols = collectScopedSymbols(program, source);
-  const renames: BatchRenameItem[] = [];
+  const renames: RenameLocationWithMeta[] = [];
   const symbolBuilder = createSymbolBuilder();
 
   // to inhibit rename of global names or other scope
@@ -27,11 +27,14 @@ export function writeRenamedFileState(
       const locs = findRenameDetails(service, declaration.getSourceFile(), declaration.getStart());
       if (locs) {
         const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-        renames.push({
-          original: blockedSymbol.symbol.getName(),
-          to: newName,
-          locations: locs!,
-        });  
+
+        renames.push(
+          ...locs.map((loc) => ({
+            ...loc,
+            original: blockedSymbol.symbol.getName(),
+            to: newName,
+          }))
+        );  
       }
     }
   }

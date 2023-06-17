@@ -1,16 +1,15 @@
 // import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
 // import { Block, ClassDeclaration, FunctionDeclaration, Node, Program, Signature, SourceFile, Symbol, SymbolFlags, Type, isExpression, isFunctionDeclaration, isVariableStatement } from "typescript";
 import ts from "typescript";
-import { TraverseableNode, createTypeVisitor, visitScopedIdentifierSymbols } from "./nodeUtils";
+import { TraverseableNode, createTypeVisitor, createVisitScoped, composeVisitors } from "./nodeUtils";
 
 export type ScopedSymbol = {
   symbol: ts.Symbol;
   parentBlock: TraverseableNode;
-  paths: TraverseableNode[];
   isExportRelated?: boolean;
 }
 
-export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, debug = false): ScopedSymbol[] {
+export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
   // const debugLog = debug ? console.log : () => {};
   const checker = program.getTypeChecker();
   const collector = createRelatedTypesCollector(program, debug);
@@ -18,23 +17,41 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, d
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
+
+  // colect export related types
   for (const symbol of exportSymbols) {
     collector.collectRelatedTypesFromSymbol(symbol);
-    // console.log("exportSymbols", symbol.getName(), symbol.declarations?.map(x => x.getText()));
   }
+
+  // colect global vars related types
   for (const symbol of globalVariables) {
     collector.collectRelatedTypesFromSymbol(symbol);
   }
+  // colect global related types
   for (const symbol of globalTypes) {
     collector.collectRelatedTypesFromSymbol(symbol);
   }
 
-  const result: ScopedSymbol[] = [];
-  
-  // console.log("---start---", file.fileName);
-  visitScopedIdentifierSymbols(program, file, (symbol, parentBlock, paths, depth) => {
-    // console.log("symbol", symbol.getName(), symbol.declarations?.length);
+  // collect external import related types
+  if (externals.length > 0) {
+    const importable = collectImportableModules(program, file);
+    // console.log("importable", importable.length, importable.map((s) => s.name));
+    for (const external of externals) {
+      const mod = importable.find((s) => s.name === external);
+      if (mod) {
+        const exportSymbols = checker.getExportsOfModule(mod);
+        // console.log("external", external, mod.name, exportSymbols.length);
+        for (const symbol of exportSymbols) {
+          collector.collectRelatedTypesFromSymbol(symbol);
+        }
+      }
+    }  
+  }
 
+  const result: ScopedSymbol[] = [];
+
+  // const checker = program.getTypeChecker();
+  const visitScopedIdentifierSymbols = createVisitScoped(checker, (symbol, parentBlock) => {
     if (symbol.valueDeclaration == null) {
       const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
       const isExportRelated = collector.isRelatedType(type);
@@ -42,7 +59,6 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, d
         symbol,
         parentBlock,
         isExportRelated,
-        paths,
       });
     } else {
       if (symbol.declarations) {
@@ -53,12 +69,15 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, d
             symbol,
             parentBlock,
             isExportRelated,
-            paths,
           });  
         }  
       }
     }
-  }, 0, debug);
+  }, debug);
+
+  composeVisitors(
+    visitScopedIdentifierSymbols,
+  )(file);
   return result;
 }
 
@@ -124,6 +143,8 @@ export function createRelatedTypesCollector(program: ts.Program, debug = false) 
     return;
   }
 }
+
+
 
 export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
   const checker = program.getTypeChecker();

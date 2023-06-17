@@ -4,19 +4,21 @@ import { getNodeAtPosition } from "./nodeUtils";
 export type RenameLocationWithMeta = ts.RenameLocation & {
   isShorthand?: boolean;
   isExportedSpecifier?: boolean;
-};
-
-export type BatchRenameItem = {
   original: string;
   to: string;
-  locations: readonly RenameLocationWithMeta[];
 };
 
-export type RewiredRenameItem = {
-  original: string;
-  to: string;
-  location: RenameLocationWithMeta;
-};
+// export type BatchRenameItem = {
+//   original: string;
+//   to: string;
+//   locations: readonly RenameLocationWithMeta[];
+// };
+
+// export type RewiredRenameItem = {
+//   original: string;
+//   to: string;
+//   location: RenameLocationWithMeta;
+// };
 
 /** wrap service.findRenameLocations */
 export function findRenameDetails(
@@ -48,37 +50,24 @@ export function findRenameDetails(
     if (ts.isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
       rename.isExportedSpecifier = true;
     }
-    // if (isEnumDeclaration(targetNode.parent)) {
-    //   console.log("enum?", targetNode.parent?.name?.text, SyntaxKind[targetNode.parent.kind]);
-    // }
   }
   return renames;
 }
 
 export function getRenameAppliedState(
-  renames: BatchRenameItem[],
+  renames: RenameLocationWithMeta[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
 ): Map<string, [changed: string, start: number, end: number]> {
   // rewire renames by each files
   const targetFiles = new Set(
-    renames.map((r) => r.locations!.map((loc) => normalizePath(loc.fileName)))
-      .flat(),
+    renames.map((r) => normalizePath(r.fileName))
   );
-  const rewiredRenames: Map<string, RewiredRenameItem[]> = new Map();
+  const rewiredRenames: Map<string, RenameLocationWithMeta[]> = new Map();
   for (const targetFile of targetFiles) {
-    const sortedRenames: RewiredRenameItem[] = renames.map((r) => {
-      const renamesToFile = r.locations.filter((loc) =>
-        normalizePath(loc.fileName) === targetFile
-      );
-      return renamesToFile.map((loc) => ({
-        original: r.original,
-        to: r.to,
-        location: loc,
-      }));
-    })
-      .flat()
-      .sort((a, b) => a.location.textSpan.start - b.location.textSpan.start);
+    const sortedRenames: RenameLocationWithMeta[] = renames
+      .filter((r) => normalizePath(r.fileName) === targetFile)
+      .sort((a, b) => a.textSpan.start - b.textSpan.start);
     rewiredRenames.set(targetFile, sortedRenames);
   }
 
@@ -111,7 +100,7 @@ function buildNewText(original: string, to: string, renameItem: RenameLocationWi
 
 export function applyRewiredRenames(
   code: string,
-  renames: RewiredRenameItem[],
+  renames: RenameLocationWithMeta[],
   debug = false,
 ): [renamed: string, changedStart: number, changedEnd: number] {
   const debugLog = debug ? console.log : () => {};
@@ -121,10 +110,10 @@ export function applyRewiredRenames(
   let changedStart = 0;
   let changedEnd = 0;
   for (const rename of renames) {
-    const loc = rename.location;
-    const toName = buildNewText(rename.original, rename.to, rename.location);
-    const start = loc.textSpan.start;
-    const end = loc.textSpan.start + loc.textSpan.length;
+    // const loc = rename.location;
+    const toName = buildNewText(rename.original, rename.to, rename);
+    const start = rename.textSpan.start;
+    const end = rename.textSpan.start + rename.textSpan.length;
     debugLog("[name:from]", rename.original, '[name:to]', toName);
 
     if (changedStart === 0 || changedStart > start) {

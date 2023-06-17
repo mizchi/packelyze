@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
-import { visitScopedIdentifierSymbols, createTypeVisitor, getNodeAtPosition, findFirstNode } from "./nodeUtils";
+import { createVisitScoped, composeVisitors, createTypeVisitor, getNodeAtPosition, findFirstNode } from "./nodeUtils";
 import { collectExportSymbols } from "./analyzer";
 
 const code1 = `
@@ -111,13 +111,13 @@ function fff(arg) {}
 `
   );
   const symbols: ts.Symbol[] = [];
-  visitScopedIdentifierSymbols(
-    service.getProgram()!,
-    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
-    (symbol, parentBlock, paths, depth) => {
-      symbols.push(symbol);
-    }
+  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
+    symbols.push(symbol);
+  });
+  const visit = composeVisitors(
+    visitScopedIdentifierSymbols,
   );
+  visit(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
   // console.log(symbols.map(s => s.name));
   expect(symbols.map(s => s.name)).toEqual([
     "exported", "local", "fff", "arg", "nested", "Class", "v",  "cstrInternal", "method", "internal"
@@ -139,13 +139,15 @@ type T = {
     `
   );
   const symbols: ts.Symbol[] = [];
-  visitScopedIdentifierSymbols(
-    service.getProgram()!,
-    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
-    (symbol, parentBlock, paths, depth) => {
-      symbols.push(symbol);
-    }
+  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
+    symbols.push(symbol);
+  });
+
+  const visit = composeVisitors(
+    visitScopedIdentifierSymbols,
   );
+  visit(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+
   expect(symbols.map(s => s.name)).toEqual([
     "vvv", "foo"
   ]);
@@ -164,13 +166,13 @@ enum Enum {
     `
   );
   const symbols: ts.Symbol[] = [];
-  visitScopedIdentifierSymbols(
-    service.getProgram()!,
-    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
-    (symbol, parentBlock, paths, depth) => {
-      symbols.push(symbol);
-    }
-  );
+  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
+    symbols.push(symbol);
+  });
+  composeVisitors(
+    visitScopedIdentifierSymbols,
+  )(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+
   expect(symbols.map(s => s.name)).toEqual([
     "Enum", "aaaa", "bbbb", "cccc"
   ]);
@@ -193,18 +195,40 @@ class Class {
     `
   );
   const symbols: ts.Symbol[] = [];
-  visitScopedIdentifierSymbols(
-    service.getProgram()!,
-    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
-    (symbol, parentBlock, paths, depth) => {
+  // const visitScopedIdentifierSymbols = 
+  composeVisitors(
+    createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
       symbols.push(symbol);
-    }
-  );
-  // console.log(
-  //   symbols.map(s => s.name)
-  // )
+    })
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
   expect(symbols.map(s => s.name)).toEqual([
     "Class", "vvv", "foo", "arg", "local", "consturctor"
+  ]);
+});
+
+
+test("visitLocalIdentifierSymbols: object member", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+const localObj = {
+  vvv: 1,
+};
+export const exportedObj = {
+  foo: 1,
+}
+    `
+  );
+  const symbols: ts.Symbol[] = [];
+  composeVisitors(
+    createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
+      symbols.push(symbol);
+    })
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
+  expect(symbols.map(s => s.name)).toEqual([
+    "localObj", "vvv", "exportedObj", "foo"
+    // "Class", "vvv", "foo", "arg", "local", "consturctor"
   ]);
 });
 
