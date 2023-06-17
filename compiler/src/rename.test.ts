@@ -238,14 +238,9 @@ test.skip("rewire exports: enum", () => {
     normalizePath,
   } = createTestLanguageService();
 
-  const tempSource = createSourceFile(
-    "src/index.ts",
-    `
+  const preprocessed = preprocess(`
     export enum Eee {}
-    `,
-    ScriptTarget.ESNext,
-  );
-  const preprocessed = preprocess(tempSource);
+  `);
 
   service.writeSnapshotContent(
     "src/index.ts",
@@ -260,8 +255,7 @@ test.skip("rewire exports: enum", () => {
     return source && source.text;
   }, normalizePath);
   const result = state.get(normalizePath("src/index.ts"))![0];
-  console.log(result);
-  // return
+  // console.log(result);
   expect(result).toBe(`enum _ {}
 export { _ as Eee};
 `);

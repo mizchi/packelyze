@@ -16,7 +16,9 @@ import {
   visitEachChild,
   visitNode,
   createPrinter,
-  createSourceFile
+  createSourceFile,
+  ScriptKind,
+  ScriptTarget
 } from "typescript";
 import { AnyExportableDeclaration, isExportableDeclaration } from "./nodeUtils";
 
@@ -39,6 +41,7 @@ export function isPreprocessedNeeded(code: string) {
 }
 
 export function preprocess(file: SourceFile | string) {
+  file = typeof file === "string" ? createSourceFile("tmp.tsx", file, ScriptTarget.Latest) : file;
   const transformed = transform(file, [exportRewireTransformerFactory]);
   const printer = createPrinter();
   const out = printer.printFile(
