@@ -189,7 +189,22 @@ export function createTypeVisitor(checker: ts.TypeChecker, debug = false) {
   return visitor;
 }
 
-export type TraverseableNode = ts.Block | ts.ClassDeclaration | ts.FunctionDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration | ts.ModuleDeclaration | ts.SourceFile;
+export type TraverseableNode = 
+  | ts.Block
+  | ts.ClassDeclaration
+  | ts.FunctionDeclaration
+  | ts.EnumMember
+  // | ts.InterfaceDeclaration
+  // | ts.TypeAliasDeclaration
+  | ts.EnumDeclaration
+  | ts.MethodSignature
+  | ts.MethodDeclaration
+  | ts.ParameterDeclaration
+  | ts.PropertyDeclaration
+  | ts.ParameterDeclaration
+  // | ts.GetAccessorDeclaration
+  // | ts.SetAccessorDeclaration
+  | ts.PropertySignature;
 /**
  * @internal
  */
@@ -203,66 +218,94 @@ export function visitScopedIdentifierSymbols(
   const debugLog = createLogger("[ScopedSymbol]", debug);
   const checker = program.getTypeChecker();
 
+  const addNameIfExist = (node: ts.Node) => {
+    const name = (node as any)["name"];
+    // console.log("isIdentifier", name.text, ts.SyntaxKind[name.parent.kind]);
+
+    if (name && ts.isIdentifier(name)) {
+      const symbol = checker.getSymbolAtLocation(name);
+      symbol && visitor(symbol, node as TraverseableNode, [], depth);
+    }
+  };
+
   const visit = (node: ts.Node, blockPaths: ts.Block[], depth: number = 0) => {
     if (ts.isFunctionDeclaration(node)) {
-      if (node.name) {
-        const symbol = checker.getSymbolAtLocation(node.name);
-        if (symbol) {
-          visitor(symbol, node, blockPaths, depth);
-        }
-      }
-      for (const param of node.parameters) {
-        const symbol = checker.getSymbolAtLocation(param.name);
-        if (symbol) {
-          visitor(symbol, node, blockPaths, depth);
-        }
-      }
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+    if (ts.isPropertySignature(node)) {
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+    if (ts.isMethodSignature(node)) {
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
     }
 
+    if (ts.isPropertyDeclaration(node)) {
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+
+    if (ts.isMethodDeclaration(node)) {
+      // if (!ts.isConstructorDeclaration(node)){
+      addNameIfExist(node);
+      // }
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+
+    if (ts.isVariableDeclaration(node)) {
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
     if (ts.isClassDeclaration(node)) {
-      for (const member of node.members) {
-        if (ts.isPropertyDeclaration(member)) {
-          const symbol = checker.getSymbolAtLocation(member.name);
-          if (symbol) {
-            visitor(symbol, node, blockPaths, depth);
-          }
-        }
-        if (ts.isMethodDeclaration(member)) {
-          const symbol = checker.getSymbolAtLocation(member.name);
-          if (symbol) {
-            visitor(symbol, node, blockPaths, depth);
-          }
-        }
-      }
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+
+    if (ts.isEnumDeclaration(node)) {
+      addNameIfExist(node);
+        // console.log("enum~~~", node.name.text,  ts.isBlock(node));
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+
+    if (ts.isEnumMember(node)) {
+
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+    }
+
+    if (ts.isParameter(node)) {
+      addNameIfExist(node);
+      // return ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
     }
 
     if (ts.isSourceFile(node) || ts.isBlock(node)) {
-      const newPaths = [...blockPaths, node as ts.Block];
-      const scopedSymbols = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScoped);
+      // const newPaths = [...blockPaths, node as ts.Block];
+      // const scopedSymbols = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScoped);
 
-      const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
-        if (sym.valueDeclaration) {
-          const closestBlock = findClosestBlock(sym.valueDeclaration);
-          return node === closestBlock;            
-        } else {
-          for (const decl of sym.declarations ?? []) {
-            debugLog("  ".repeat(depth + 1), "[decl]", sym.name, decl.getSourceFile() === file);
-            const isLocalBlock = findClosestBlock(decl) === node;
-            return decl.getSourceFile() === file && isLocalBlock;
-          }
-        }
-        return false;
-      });
-      debugLog("  ".repeat(depth), `[block]`, scopedSymbolsInBlock.map((s) => s.name));
-      for (const symbol of scopedSymbolsInBlock) {
-        const decl = symbol.valueDeclaration;
-        debugLog("  ".repeat(depth), `> [block:local]`, symbol.name, "-", decl && ts.SyntaxKind[decl.kind]);
-        visitor(symbol, node as ts.Block, newPaths, depth);
-      }
-      ts.forEachChild(node, (node) => visit(node, newPaths, depth + 1));
-    } else {
-      ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
+      // const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
+      //   if (sym.valueDeclaration) {
+      //     const closestBlock = findClosestBlock(sym.valueDeclaration);
+      //     return node === closestBlock;            
+      //   } else {
+      //     for (const decl of sym.declarations ?? []) {
+      //       debugLog("  ".repeat(depth + 1), "[decl]", sym.name, decl.getSourceFile() === file);
+      //       const isLocalBlock = findClosestBlock(decl) === node;
+      //       return decl.getSourceFile() === file && isLocalBlock;
+      //     }
+      //   }
+      //   return false;
+      // });
+      // debugLog("  ".repeat(depth), `[block]`, scopedSymbolsInBlock.map((s) => s.name));
+      // for (const symbol of scopedSymbolsInBlock) {
+      //   const decl = symbol.valueDeclaration;
+      //   debugLog("  ".repeat(depth), `> [block:local]`, symbol.name, "-", decl && ts.SyntaxKind[decl.kind]);
+      //   // visitor(symbol, node as ts.Block, newPaths, depth);
+      // }
+      // ts.forEachChild(node, (node) => visit(node, newPaths, depth + 1));
     }
+    ts.forEachChild(node, (node) => visit(node, blockPaths, depth + 1));
   };
   visit(file, [], depth);
 }

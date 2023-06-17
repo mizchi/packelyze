@@ -87,7 +87,7 @@ test("createTypeVisitor", () => {
 });
 
 
-test("visitLocalScoped", () => {
+test("visitScopedIdentifierSymbols", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -120,7 +120,91 @@ function fff(arg) {}
   );
   // console.log(symbols.map(s => s.name));
   expect(symbols.map(s => s.name)).toEqual([
-    "exported", "local", "fff", "arg", "nested", "Class", "v",  "method", "cstrInternal", "internal"
+    "exported", "local", "fff", "arg", "nested", "Class", "v",  "cstrInternal", "method", "internal"
+  ]);
+});
+
+test("visitLocalIdentifierSymbols: type alias signatrue", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+type T = {
+  vvv: number;
+  foo() {};
+  // "str": number;
+  // get bar(): number;
+  // set bar(v: number);
+}
+    `
+  );
+  const symbols: ts.Symbol[] = [];
+  visitScopedIdentifierSymbols(
+    service.getProgram()!,
+    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
+    (symbol, parentBlock, paths, depth) => {
+      symbols.push(symbol);
+    }
+  );
+  expect(symbols.map(s => s.name)).toEqual([
+    "vvv", "foo"
+  ]);
+});
+
+test("visitLocalIdentifierSymbols: enum", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+enum Enum {
+  aaaa = 1,
+  bbbb = 2,
+  cccc,
+}
+    `
+  );
+  const symbols: ts.Symbol[] = [];
+  visitScopedIdentifierSymbols(
+    service.getProgram()!,
+    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
+    (symbol, parentBlock, paths, depth) => {
+      symbols.push(symbol);
+    }
+  );
+  expect(symbols.map(s => s.name)).toEqual([
+    "Enum", "aaaa", "bbbb", "cccc"
+  ]);
+});
+
+
+test("visitLocalIdentifierSymbols: class", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+class Class {
+  vvv: number;
+  foo(arg: number) {
+    const local = 1;
+  };
+  consturctor() {
+  }
+}
+    `
+  );
+  const symbols: ts.Symbol[] = [];
+  visitScopedIdentifierSymbols(
+    service.getProgram()!,
+    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
+    (symbol, parentBlock, paths, depth) => {
+      symbols.push(symbol);
+    }
+  );
+  // console.log(
+  //   symbols.map(s => s.name)
+  // )
+  expect(symbols.map(s => s.name)).toEqual([
+    "Class", "vvv", "foo", "arg", "local", "consturctor"
   ]);
 });
 

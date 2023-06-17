@@ -208,25 +208,23 @@ test("rewire exports: complex", () => {
     return source && source.text;
   }, normalizePath);
   const result = state.get(normalizePath("src/index.ts"))![0];
-  // console.log(result);
-  // return
   expect(result).toBe(`export { sub } from "./sub";
 const _ = 1;
-function e() { }
-class $ {
+function $() { }
+class a {
 }
-enum a {
+enum b {
 }
 type Ttt = number;
 interface Iii {
 }
-const b = 1;
-{
-    const f = 2;
-}
 const c = 1;
-const d = 2;
-export { c as vvv, d as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
+{
+    const d = 2;
+}
+const e = 1;
+const f = 2;
+export { e as vvv, f as zzz, _ as xxx, $ as fff, a as Ccc, b as Eee, Ttt, Iii };
 `);
 });
 

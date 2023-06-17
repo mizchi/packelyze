@@ -168,7 +168,7 @@ test("collectExportSymbols", () => {
   expect(nameSet.has("3")).toBeFalsy();
 });
 
-test("visitScopedIdentifierSymbols", () => {
+test("visitScopedIdentifierSymbols: exports", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -197,7 +197,7 @@ class X {
     symbols.add(symbol);
   });
   expect([...symbols].map(s => s.name)).toEqual([
-    'exported', 'local', 'X', 'block', "f", 'arg', 'func', 'method', 'methodBlock'
+    'exported', 'local', 'block', "f", 'arg', 'func',  'X', 'method', 'methodBlock'
   ]);
 });
 
