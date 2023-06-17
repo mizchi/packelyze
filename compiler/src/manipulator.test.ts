@@ -4,7 +4,7 @@ import { createTestLanguageService } from "./testHarness";
 import { isPreprocessedNeeded, preprocess } from "./transformer";
 
 test("getRenamedFileState", () => {
-  const { service, snapshotManager, normalizePath } = createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   const code = `
   export const a = 1;
@@ -24,16 +24,18 @@ test("getRenamedFileState", () => {
     bbb
   }
   `;
-  let source = snapshotManager.write(
+  service.writeSnapshotContent(
     normalizePath("src/index.ts"),
     code,
   );
+  let source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   if (isPreprocessedNeeded(code)) {
     const pre = preprocess(source);
-    source = snapshotManager.write(
+    service.writeSnapshotContent(
       normalizePath("src/index.ts"),
       pre,
     );  
+    source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   }
   // const program = service.getProgram()!;
 
@@ -41,7 +43,7 @@ test("getRenamedFileState", () => {
   // source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   // console.log(source.getText());
   // return;
-  writeRenamedFileState(service, source, normalizePath, snapshotManager.write);
+  writeRenamedFileState(service, source, normalizePath, service.writeSnapshotContent);
   // TODO: Rename fff
   // console.log(
   //   snapshotManager.readFileSnapshot(normalizePath("src/index.ts"))

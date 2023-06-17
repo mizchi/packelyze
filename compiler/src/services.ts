@@ -10,12 +10,14 @@ export interface IncrementalSnapshot extends ts.IScriptSnapshot {
   incremental?: boolean;
 }
 
-export interface IncrementalServiceHost extends ts.LanguageServiceHost {
+export interface IncrementalLanguageServiceHost extends ts.LanguageServiceHost {
   readSnapshot(fileName: string): IncrementalSnapshot | undefined;
   readSnapshotContent(fileName: string): string | undefined;
   writeSnapshot(fileName: string, snapshot: IncrementalSnapshot): void;
   writeSnapshotContent(fileName: string, content: string, range: [number, number] | undefined): void;
-  logger: Logger
+  logger: Logger;
+  getInMemoryCache(): InMemoryCache;
+  dispose(): void;
 }
 
 export interface IncrementalLanguageService extends LanguageService {
@@ -31,8 +33,15 @@ export interface IncrementalLanguageService extends LanguageService {
   logger: Logger
 }
 
+export type InMemoryCache = {
+  fileVersions: Map<string, number>;
+  fileContents: Map<string, string | undefined>;
+  fileSnapshots: Map<string, IncrementalSnapshot | undefined>;
+  virtualExistedDirectories: Set<string>;
+}
+
 export function createIncrementalLanguageService(
-  host: IncrementalServiceHost,
+  host: IncrementalLanguageServiceHost,
   documentRegistry: ts.DocumentRegistry = createDocumentRegistry(),
   debug?: boolean,
 ): IncrementalLanguageService {
@@ -116,8 +125,9 @@ export function createIncrementalLanguageServiceHost(
   projectRoot: string,
   fileNames: string[] = [],
   options?: ts.CompilerOptions,
+  oldHost?: IncrementalLanguageServiceHost,
   debug = false,
-): IncrementalServiceHost {
+): IncrementalLanguageServiceHost {
   const colorlize = (item: any) => {
     if (typeof item === "string") {
       return blue(item);
@@ -148,10 +158,11 @@ export function createIncrementalLanguageServiceHost(
     }
   }
 
-  const fileContents = new Map<string, string | undefined>();
-  const fileSnapshots = new Map<string, IncrementalSnapshot | undefined>();
-  const fileVersions = new Map<string, number>();
-  const virtualExistedDirectories = new Set<string>();
+  const cache = oldHost?.getInMemoryCache();
+  const fileContents = cache?.fileContents ?? new Map<string, string | undefined>();
+  const fileSnapshots = cache?.fileSnapshots ?? new Map<string, IncrementalSnapshot | undefined>();
+  const fileVersions = cache?.fileVersions ?? new Map<string, number>();
+  const virtualExistedDirectories = cache?.virtualExistedDirectories ?? new Set<string>();
 
   // ensure virtual file directories
   function addVirtualExistedDirectories(fileName: string) {
@@ -233,10 +244,30 @@ export function createIncrementalLanguageServiceHost(
 
   let currentFileNames = [...fileNames];
 
-  const serviceHost: IncrementalServiceHost = {
+  const getInMemoryCache = (): InMemoryCache => {
+    return {
+      fileVersions,
+      fileContents,
+      fileSnapshots,
+      virtualExistedDirectories,
+    };
+  }
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    currentFileNames = [];
+    fileContents.clear();
+    fileSnapshots.clear();
+    fileVersions.clear();
+    virtualExistedDirectories.clear();
+  }
+  const serviceHost: IncrementalLanguageServiceHost = {
+    dispose,
     readSnapshotContent,
     readSnapshot,
     writeSnapshot,
+    getInMemoryCache,
     // readCurrentSnapshot,
     // readCurrentSnapshotContent,
     writeSnapshotContent,
@@ -346,6 +377,7 @@ export function createIncrementalLanguageServiceHost(
     },
     logger: log,
   };
+
   return serviceHost;
 }
 

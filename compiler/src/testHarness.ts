@@ -1,4 +1,5 @@
 import {
+  DocumentRegistry,
   LanguageService,
   Program,
   createDocumentRegistry,
@@ -8,14 +9,16 @@ import {
   sys,
 } from "typescript";
 import path from "node:path";
-import { createIncrementalLanguageServiceHost } from "./services";
+import { IncrementalLanguageServiceHost, createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./services";
 
-// let lastService: LanguageService | undefined = undefined;
-// let oldRegistry = createDocumentRegistry();
+let lastRegistry: DocumentRegistry | undefined = undefined;
+let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
 
 export function createTestLanguageService(
   projectPath: string = path.join(__dirname, "../examples"),
+  revertRootFiles = true,
 ) {
+  // console.time("createTestLanguageService");
   const tsconfig = readConfigFile(
     path.join(projectPath, "tsconfig.json"),
     sys.readFile,
@@ -25,25 +28,49 @@ export function createTestLanguageService(
     sys,
     projectPath,
   );
-  const registory =  createDocumentRegistry();
-  const serviceHost = createIncrementalLanguageServiceHost(
+
+  // release old cache
+  if (revertRootFiles && lastRegistry && lastHost) {
+    const cache = lastHost.getInMemoryCache();
+    const key = lastRegistry.getKeyForCompilationSettings(options.options);
+    for (const fname of options.fileNames) {
+      if (!fname.startsWith(projectPath)) {
+        continue;
+      }
+      if (cache.fileSnapshots.has(fname)) {
+        cache.fileSnapshots.delete(fname);
+      }
+      if (cache.fileContents.has(fname)) {
+        cache.fileContents.delete(fname);
+      }
+      if (cache.fileVersions.has(fname)) {
+        cache.fileVersions.delete(fname);
+      }
+      // lastRegistry.releaseDocumentWithKey(fname as any, key);
+    }
+    cache.virtualExistedDirectories.clear();
+  }
+  // const registory = lastRegistry ?? createDocumentRegistry();
+  const registry = createDocumentRegistry();
+  const host = createIncrementalLanguageServiceHost(
     projectPath,
     options.fileNames,
     options.options,
+    lastHost,
   );
-  const snapshotManager = serviceHost.getSnapshotManager(registory);
-  const service = createLanguageService(
-    serviceHost,
-    registory,
+  // const snapshotManager = serviceHost.getSnapshotManager(registory);
+  const service = createIncrementalLanguageService(
+    host,
+    registry,
   );
-  // oldRegistry = registory;
-  // lastProgram = service.getProgram();
-  // lastService = service;
+  lastRegistry = registry;
+  lastHost = host;
+  // console.timeEnd("createTestLanguageService");
   return {
-    snapshotManager,
+    // snapshotManager,
     service,
-    host: serviceHost,
-    registory,
+    host,
+    registory: registry,
     normalizePath(fname: string) {
       if (fname.startsWith("/")) {
         return fname;

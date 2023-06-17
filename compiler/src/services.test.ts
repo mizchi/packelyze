@@ -119,5 +119,45 @@ test("IncrementalLanguageService", () => {
     expect(
       service.getSemanticDiagnostics(nestedNewFilePath).length,
     ).toBe(1);
-  }  
+  }
+});
+
+test("IncrementalLanguageService: reuse last state", () => {
+  const projectPath = path.join(__dirname, "../examples");
+  const registory = ts.createDocumentRegistry();
+  const host1 = createIncrementalLanguageServiceHost(projectPath);
+  const service1 = createIncrementalLanguageService(
+    host1,
+    registory,
+  );
+
+  service1.writeSnapshotContent(
+    "src/index.ts",
+    "const x: number = 1;",
+  );
+
+  // console.time("recreate with cache");
+  const host2 = createIncrementalLanguageServiceHost(projectPath,
+    undefined,
+    undefined,
+    host1,
+  );
+  // console.timeEnd("recreate with cache");
+  const service2 = createIncrementalLanguageService(
+    host2,
+    registory,
+  );
+  const reused = service2.getCurrentSourceFile("src/index.ts");
+  expect(reused!.text).toBe("const x: number = 1;");
+
+  // --- new
+  // console.time("recreate without cache");
+  const host3 = createIncrementalLanguageServiceHost(projectPath);
+  // console.timeEnd("recreate without cache");
+  const service3 = createIncrementalLanguageService(
+    host3,
+    registory,
+  );
+  const reused2 = service3.getCurrentSourceFile("src/index.ts");
+  expect(reused2!.text).not.toBe("const x: number = 1;");
 });

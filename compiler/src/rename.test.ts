@@ -11,28 +11,7 @@ import { createSymbolBuilder } from "./symbolBuilder";
 
 test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");
-  const tsconfig = readConfigFile(
-    path.join(projectPath, "tsconfig.json"),
-    sys.readFile,
-  );
-  const options = parseJsonConfigFileContent(
-    tsconfig.config,
-    sys,
-    projectPath,
-  );
-  // usage
-  const prefs: UserPreferences = {};
-  const registory = createDocumentRegistry();
-  const serviceHost = createIncrementalLanguageServiceHost(
-    projectPath,
-    options.fileNames,
-    options.options,
-  );
-  const languageService = createLanguageService(
-    serviceHost,
-    registory,
-  );
-
+  const {service} = createTestLanguageService(projectPath);
   const normalizePath = (fname: string) => {
     if (fname.startsWith("/")) {
       return fname;
@@ -40,32 +19,30 @@ test("batch renaming", () => {
     const root = projectPath;
     return path.join(root, fname);
   };
-
-  const snapshotManager = serviceHost.getSnapshotManager(registory);
-
-  const newSource = snapshotManager.write(
+  service.writeSnapshotContent(
     "src/index.ts",
     "const x: number = '';\nconst y: number = x;",
   );
 
-  const program = languageService.getProgram()!;
+  const program = service.getProgram()!;
   const checker = program.getTypeChecker();
+  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const localVariables = checker.getSymbolsInScope(
-    newSource,
+    source,
     SymbolFlags.BlockScopedVariable,
   );
   const xSymbol = localVariables.find((s) => s.name === "x")!;
 
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
   const xRenameLocs = findRenameDetails(
-    languageService,
+    service,
     sourceFile,
     xSymbol.valueDeclaration!.getStart(),
   );
 
   const ySymbol = localVariables.find((s) => s.name === "y")!;
   const yRenameLocs = findRenameDetails(
-    languageService,
+    service,
     sourceFile,
     ySymbol.valueDeclaration!.getStart(),
   );
@@ -83,21 +60,20 @@ test("batch renaming", () => {
         locations: yRenameLocs!,
       },
     ],
-    snapshotManager.read,
+    service.readSnapshotContent,
     normalizePath,
   );
   for (const [fname, content] of changedFiles) {
     const [changed, changedStart, changedEnd] = content;
-    // TODO: use changedStart and changedEnd
-    snapshotManager.write(fname, changed);
+    service.writeSnapshotContent(fname, changed);
   }
   expect(
-    languageService.getSemanticDiagnostics(
+    service.getSemanticDiagnostics(
       normalizePath("src/index.ts"),
     ).length,
   ).toBe(1);
   expect(
-    snapshotManager.read(normalizePath("src/index.ts")),
+    service.readSnapshotContent(normalizePath("src/index.ts")),
   ).toBe(`const x_changed: number = '';
 const y_changed: number = x_changed;`);
 });
@@ -105,16 +81,16 @@ const y_changed: number = x_changed;`);
 test("shorthand", () => {
   const {
     service,
-    snapshotManager,
     normalizePath,
   } = createTestLanguageService();
 
-  const newSource = snapshotManager.write(
+  service.writeSnapshotContent(
     "src/index.ts",
     "function foo(): { y: 1 } { const y = 1; return { y } }",
   );
 
   const regex = /y = 1/;
+  const newSource = service.getCurrentSourceFile("src/index.ts")!;
   const hit = newSource.text.search(regex);
   const sourceFile = service.getProgram()!.getSourceFile(
     normalizePath("src/index.ts"),
@@ -134,15 +110,15 @@ test("shorthand", () => {
         locations: renames!,
       },
     ],
-    snapshotManager.read,
+    service.readSnapshotContent,
     normalizePath,
   );
   for (const [fname, content] of changedFiles) {
     const [changed, changedStart, changedEnd] = content;
-    snapshotManager.write(fname, changed);
+    service.writeSnapshotContent(fname, changed);
   }
   expect(
-    snapshotManager.read(normalizePath("src/index.ts")),
+    service.readSnapshotContent(normalizePath("src/index.ts")),
   ).toBe(
     `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
   );
@@ -151,7 +127,6 @@ test("shorthand", () => {
 test("rename exported", () => {
   const {
     service,
-    snapshotManager,
     normalizePath,
   } = createTestLanguageService();
 
@@ -170,7 +145,7 @@ test("rename exported", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.write(
+  service.writeSnapshotContent(
     "src/index.ts",
     preprocessed,
   );
@@ -191,7 +166,6 @@ export { _ as xxx, $ as zzz };
 test("rewire exports: complex", () => {
   const {
     service,
-    snapshotManager,
     normalizePath,
   } = createTestLanguageService();
 
@@ -223,7 +197,7 @@ test("rewire exports: complex", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.write(
+  service.writeSnapshotContent(
     "src/index.ts",
     preprocessed,
   );
@@ -261,7 +235,6 @@ export { c as vvv, d as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
 test.skip("rewire exports: enum", () => {
   const {
     service,
-    snapshotManager,
     normalizePath,
   } = createTestLanguageService();
 
@@ -274,7 +247,7 @@ test.skip("rewire exports: enum", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.write(
+  service.writeSnapshotContent(
     "src/index.ts",
     preprocessed,
   );

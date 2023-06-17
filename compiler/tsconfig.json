@@ -4,6 +4,7 @@
     "rootDir": "src",
     "outDir": "lib",
     "declaration": true,
+    "emitDeclarationOnly": true,
     "skipLibCheck": true,
     "types": [
       "vitest/importMeta"
