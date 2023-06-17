@@ -3,7 +3,7 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
 import { createTestLanguageService } from "./testHarness";
-import { collectUnsafeRenameTargets, findExportSymbols, findScopedSymbols } from "./analyzer";
+import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols } from "./analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
@@ -149,7 +149,7 @@ test("rename exported", () => {
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsInFile(service, source);
+  const renameItems = collectRenameItemsFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
@@ -202,7 +202,7 @@ test("rewire exports: complex", () => {
 
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsInFile(service, source);
+  const renameItems = collectRenameItemsFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
@@ -230,7 +230,44 @@ export { c as vvv, d as zzz, _ as xxx, e as fff, $ as Ccc, a as Eee, Ttt, Iii };
 `);
 });
 
-test.skip("rewire exports: enum", () => {
+test.skip("rename multi file", () => {
+  const {
+    service,
+  } = createTestLanguageService();
+
+  service.writeSnapshotContent(
+    "src/index.ts",
+    `
+      import { sub } from "./sub";
+      console.log(sub);
+    `,
+  );
+  service.writeSnapshotContent(
+    "src/sub.ts",
+    `
+      const sub = 1;
+      export { sub };
+    `,
+  );
+
+  const program = service.getProgram()!;
+  const source = program.getSourceFile("sub/index.ts")!;
+  console.log(
+    collectExportSymbols(program, source),
+  )
+  // const renameItems = collectRenameItemsFromFile(service, source);
+//   const state = getRenameAppliedState(renameItems, (fname) => {
+//     const source = program.getSourceFile(fname);
+//     return source && source.text;
+//   }, normalizePath);
+//   const result = state.get(normalizePath("src/index.ts"))![0];
+//   // console.log(result);
+//   expect(result).toBe(`enum _ {}
+// export { _ as Eee};
+// `);
+});
+
+test("rewire exports: enum", () => {
   const {
     service,
     normalizePath,
@@ -247,23 +284,23 @@ test.skip("rewire exports: enum", () => {
 
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsInFile(service, source);
+  const renameItems = collectRenameItemsFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
   }, normalizePath);
   const result = state.get(normalizePath("src/index.ts"))![0];
   // console.log(result);
-  expect(result).toBe(`enum _ {}
-export { _ as Eee};
+  expect(result).toBe(`enum _ {
+}
+export { _ as Eee };
 `);
 });
 
-
-function collectRenameItemsInFile(service: ts.LanguageService, file: ts.SourceFile) {
+function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.SourceFile) {
   const program = service.getProgram()!;
   const symbolBuilder = createSymbolBuilder();
-  const scopedSymbols = findScopedSymbols(program, file);
+  const scopedSymbols = collectScopedSymbols(program, file);
   const renameItems: BatchRenameItem[] = [];
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, file, scopedSymbols);
 

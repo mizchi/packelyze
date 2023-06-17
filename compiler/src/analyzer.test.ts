@@ -1,20 +1,42 @@
-import { test, expect } from "vitest";
-import { createRelatedTypesCollector, findExportSymbols, findGlobalTypes, findGlobalVariables, findScopedSymbols, getImportableModules } from "./analyzer";
-import { createTestLanguageService } from "./testHarness";
-// import { FunctionDeclaration, Type, Node, Symbol, isFunctionDeclaration, isVariableStatement, VariableStatement, isTypeAliasDeclaration, TypeAliasDeclaration, visitEachChild, forEachChild, SyntaxKind, SymbolFlags, LanguageService, SourceFile } from "typescript";
 import ts from "typescript";
-import { visitLocalBlockScopeSymbols } from "./nodeUtils";
+import { test, expect } from "vitest";
+import { createRelatedTypesCollector, collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules } from "./analyzer";
+import { createTestLanguageService } from "./testHarness";
+import { visitScopedIdentifierSymbols } from "./nodeUtils";
 
-test("collectRelatedTypes", () => {
+test("collectRelatedTypes: infer internal", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
     `
     export function getInternal<T extends object>(v: number, t: T) {
       type Internal = { v: string, t: T };
+      type UnusedInternal = { y: number };
       const internal: Internal = { v: "foo", t };
       return internal
     }
+    `
+  );
+  const program = service.getProgram()!;
+  const checker = program.getTypeChecker();
+  const file = program.getSourceFile(normalizePath("src/index.ts"))!;
+  {
+    const func = file.statements.find((node) => ts.isFunctionDeclaration(node))! as ts.FunctionDeclaration;
+    const collector = createRelatedTypesCollector(program);
+    const symbol = checker.getSymbolAtLocation(func.name!)!;
+    const relatedTypes = collector.collectRelatedTypesFromSymbol(symbol);
+
+    const relatetTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
+    expect(relatetTypesNameSet.has("T")).toBe(true);
+    expect(relatetTypesNameSet.has("Internal")).toBe(true);
+  }
+});
+
+test("collectRelatedTypes: Partial", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
     type Exp = {
       public: {
         xxx: number;
@@ -28,37 +50,35 @@ test("collectRelatedTypes", () => {
   );
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
-
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const func = file.statements.find((node) => ts.isFunctionDeclaration(node))! as ts.FunctionDeclaration;
-  {
-    const collector = createRelatedTypesCollector(program);
-    const relatedTypes = collector.collectRelatedTypesFromNode(func);
-    // expect(relatedTypes.size).toBe(2);
-
-    const relatetTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
-    expect(relatetTypesNameSet.has("T")).toBe(true);
-    expect(relatetTypesNameSet.has("Internal")).toBe(true);
-  }
 
   const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
-  {
-    const collector = createRelatedTypesCollector(program);
-    const relatedTypes = collector.collectRelatedTypesFromNode(variableStatement);
-    const relatedTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
-
-    expect(relatedTypesNameSet.has("{ xxx: number; }")).toBeTruthy();
-    const expDecl = file.statements.find((node) => ts.isTypeAliasDeclaration(node))! as ts.TypeAliasDeclaration;
-    const expType = checker.getTypeAtLocation(expDecl);
-    expect(relatedTypes.has(expType)).toBe(false);
-
-    const pubSymbol = expType.getProperty("public")!;
-    expect(collector.isRelatedTypeFromSymbol(pubSymbol)).toBe(true);
-
-    const pubType = checker.getTypeOfSymbolAtLocation(pubSymbol, expDecl);
-    expect(collector.isRelatedType(pubType)).toBe(true);
+  const collector = createRelatedTypesCollector(program);
+  const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
+  for (const identifier of identifiers) {
+    const symbol = checker.getSymbolAtLocation(identifier)!;
+    collector.collectRelatedTypesFromSymbol(symbol);
   }
+
+  const relatedTypes = collector.getRelatedTypes();
+  const relatedTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
+
+  expect(relatedTypesNameSet.has("{ xxx: number; }")).toBeTruthy();
+
+  // check Exp is not exported directly
+  const expDecl = file.statements.find((node) => ts.isTypeAliasDeclaration(node))! as ts.TypeAliasDeclaration;
+  const expType = checker.getTypeAtLocation(expDecl);
+  expect(relatedTypes.has(expType)).toBe(false);
+
+  // check Exp['public'] is exported
+  const pubSymbol = expType.getProperty("public")!;
+  expect(collector.isRelatedSymbol(pubSymbol)).toBe(true);
+
+  // check priv is hidden
+  const privSymbol = expType.getProperty("priv")!;
+  expect(collector.isRelatedSymbol(privSymbol)).toBe(false);
 });
+
 
 test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -84,7 +104,12 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
   {
     const collector = createRelatedTypesCollector(program);
-    const relatedTypes = collector.collectRelatedTypesFromNode(variableStatement);
+    const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
+    for (const identifier of identifiers) {
+      const symbol = checker.getSymbolAtLocation(identifier)!;
+      collector.collectRelatedTypesFromSymbol(symbol);
+    }
+    const relatedTypes = collector.getRelatedTypes();
     const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
     expect(nameSet.has("Exp")).toBeTruthy();
     expect(nameSet.has("A")).toBeTruthy();
@@ -94,7 +119,7 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   }
 });
 
-test("findExportSymbols", () => {
+test("collectExportSymbols", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/sub.ts"),
@@ -105,7 +130,7 @@ test("findExportSymbols", () => {
     `
   );
 
-  const file =  service.writeSnapshotContent(
+  service.writeSnapshotContent(
     normalizePath("src/index.ts"),
     `
     export { sub1 } from "./sub";
@@ -124,7 +149,7 @@ test("findExportSymbols", () => {
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const exportSymbols = findExportSymbols(program, source);
+  const exportSymbols = collectExportSymbols(program, source);
 
   expect(exportSymbols.map(x => x.getName())).toEqual([
     "sub1", "a", "b", "Foo"
@@ -143,163 +168,7 @@ test("findExportSymbols", () => {
   expect(nameSet.has("3")).toBeFalsy();
 });
 
-test.skip("finder: find all locals", () => {
-  const code = `
-import { sub } from "./sub";
-
-const internal = 1;
-export const exported = 2;
-
-function f1() {
-  const value = 3;
-  return { value };
-}
-
-// function f2() {
-//   f1();
-// }
-
-export function g() {
-  const g_internal = 4;
-  console.log(g_internal);
-  // document;
-}
-
-console.log(2);
-`;
-
-
-  const { service, normalizePath } =
-    createTestLanguageService();
-  service.writeSnapshotContent(normalizePath("src/locals.ts"), code);
-
-  const program = service.getProgram()!;
-  const checker = program.getTypeChecker();
-
-  const rootFile = program.getSourceFile(normalizePath("src/locals.ts"));
-  const getSymbolNames = (flags: ts.SymbolFlags) =>
-    checker.getSymbolsInScope(
-      rootFile!,
-      flags,
-    ).map((s) => s.name);
-  const getSymbols = (flags: ts.SymbolFlags) =>
-    checker.getSymbolsInScope(
-      rootFile!,
-      flags,
-    );
-
-  expect(getSymbolNames(ts.SymbolFlags.BlockScoped)).toEqual([
-    "internal",
-    "exported",
-  ]);
-
-  const keys = Object.keys(ts.SymbolFlags);
-  for (const flags of keys) {
-    const flag = ts.SymbolFlags[flags as keyof typeof ts.SymbolFlags];
-    if (typeof flag !== "number") {
-      continue;
-    }
-    const symbolNames = getSymbolNames(flag);
-    console.log(ts.SymbolFlags[flag], symbolNames.length);
-    // expect(getSymbols(flag))
-    if (flag === ts.SymbolFlags.FunctionExcludes) {
-      console.log("--- FunctionExcludes ---", symbolNames);
-      const symbols = getSymbols(flag);
-      for (const symbol of symbols) {
-        const decledSource = symbol.valueDeclaration?.getSourceFile();
-        if (decledSource && decledSource.fileName.includes("/node_modules/")) {
-          // console.log('')
-        } else if (decledSource == null) {
-          // console.log(
-          //   "  --- decledSource ---",
-          //   symbol.getName(),
-          //   decledSource,
-          // );
-        } else {
-          console.log(
-            "  --- local ---",
-            symbol.getName(),
-            decledSource?.fileName.replace(process.cwd() + "/", ""),
-          );
-        }
-        // console.log(
-        //   "  --- decledSource ---",
-        //   symbol.getName(),
-        //   decledSource?.fileName,
-        // );
-      }
-      break;
-    }
-    if (flag === ts.SymbolFlags.Variable) {
-      if (true as any) break;
-      console.log("--- Variable ---", symbolNames);
-      const symbols = getSymbols(flag);
-      for (const symbol of symbols) {
-        const decledSource = symbol.valueDeclaration?.getSourceFile();
-        if (decledSource && decledSource.fileName.includes("/node_modules/")) {
-          // console.log('')
-        } else if (decledSource == null) {
-          // console.log(
-          //   "  --- decledSource ---",
-          //   symbol.getName(),
-          //   decledSource,
-          // );
-        } else {
-          console.log(
-            "  --- local ---",
-            symbol.getName(),
-            decledSource?.fileName.replace(process.cwd() + "/", ""),
-          );
-        }
-        // console.log(
-        //   "  --- decledSource ---",
-        //   symbol.getName(),
-        //   decledSource?.fileName,
-        // );
-      }
-      break;
-      // break;
-    }
-
-    if (flag === ts.SymbolFlags.ValueModule) {
-      console.log("--- ValueModule ---", symbolNames);
-      // break;
-    }
-  }
-});
-
-test("findRenameSymbols", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
-
-  service.writeSnapshotContent(
-    normalizePath("src/index.ts"),
-    `
-export const exported = 1;
-const local = 1;
-{
-  const block = 2;
-  {
-    const nestedBlock = 3;
-    class X {
-      method() {
-        const methodBlock = 4;
-      }
-    }
-  }
-}
-  `,
-  );
-  const program = service.getProgram()!;
-  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-
-  // visitLocalBlockScopeSymbols(program, source, (symbol, parentBlock, paths, depth) => {
-  //   const decl = symbol.valueDeclaration;
-  //   console.log("  ".repeat(depth), `[block:local]`, symbol.name, "-", decl && SyntaxKind[decl.kind]);
-  // }, 0);
-});
-
-test("visitLocalBlockScopeSymbols", () => {
+test("visitScopedIdentifierSymbols", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -324,16 +193,15 @@ class X {
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
 
   const symbols = new Set<ts.Symbol>();
-  visitLocalBlockScopeSymbols(program, sourceFile, (symbol) => {
+  visitScopedIdentifierSymbols(program, sourceFile, (symbol) => {
     symbols.add(symbol);
   });
-
   expect([...symbols].map(s => s.name)).toEqual([
     'exported', 'local', 'X', 'block', "f", 'arg', 'func', 'method', 'methodBlock'
   ]);
 });
 
-test("findExportSymbols", () => {
+test("collectExportSymbols", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -346,11 +214,11 @@ const local = 1;
   );
   // const symbols = findExportSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
 
-  const symbols = findScopedSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+  const symbols = collectScopedSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
   expect(symbols.map(s => s.symbol.name)).toEqual(["exported", "local"]);
 });
 
-test("findGlobalVariables", () => {
+test("collectGlobalVariables", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -360,13 +228,13 @@ test("findGlobalVariables", () => {
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const vars = findGlobalVariables(program, source);
+  const vars = collectGlobalVariables(program, source);
   expect(vars.map(s => s.name).includes("exported")).toBeFalsy();
   expect(vars.map(s => s.name).includes("Object")).toBeTruthy();
   expect(vars.map(s => s.name).includes("Generator")).toBeFalsy();
 });
 
-test("findGlobalTypes", () => {
+test("collectGlobalTypes", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -379,7 +247,7 @@ export type Bar = number;
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const types = findGlobalTypes(program, source);
+  const types = collectGlobalTypes(program, source);
   const names = types.map(s => s.name);
 
   expect(names.includes("Foo")).toBeFalsy();
@@ -389,7 +257,7 @@ export type Bar = number;
   expect(names.includes("Pick")).toBeTruthy();
 });
 
-test("findImportableModules", () => {
+test("collectImportableModules", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -402,58 +270,11 @@ export type Bar = number;
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const modules = getImportableModules(program, source);
+  const modules = collectImportableModules(program, source);
   const names = modules.map(s => s.name);
   // console.log(names);
   expect(names.includes('"foo"')).toBeTruthy();
   expect(names.includes('"bar"')).toBeTruthy();
   expect(names.includes('"node:util"')).toBeTruthy();
 });
-
-// function getRenamedFileState(service: LanguageService, source: SourceFile, normalizePath: (path: string) => string) {
-//   const program = service.getProgram()!;
-//   const scopedSymbols = findScopedSymbols(program, source);
-
-//   const renames: RenameInfo[] = [];
-
-//   const symbolBuilder = createSymbolBuilder();
-//   const checker = program.getTypeChecker();
-
-//   const unsafeRenameTargets = collectUnsafeRenameTargets(scopedSymbols);
-//   for (const symbol of scopedSymbols) {
-//     expect(symbol.symbol.valueDeclaration).toBeTruthy();
-//     const decl = symbol.symbol.valueDeclaration!;
-//     const locs = findRenameLocations(service, decl.getSourceFile().fileName, decl.getStart());
-
-//     const uname = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-//     renames.push({
-//       original: symbol.symbol.getName(),
-//       to: uname,
-//       locations: locs!,
-//     });
-//   }
-
-//   const state = getRenameAppliedState(renames, (fname) => {
-//     const source = program.getSourceFile(fname);
-//     return source && source.text;
-//   }, normalizePath);
-//   return state;
-
-//   // collect unsafe rename targets
-//   function collectUnsafeRenameTargets(scopedSymbols: ScopedSymbol[]) {
-//     const unsafeRenameTargets = new Set<string>();
-//     // register global names to unsafe
-//     for (const gvar of findGlobalVariables(program, source)) {
-//       unsafeRenameTargets.add(gvar.name);
-//     }
-//     // register existed local names to unsafe
-//     for (const blockSymbol of scopedSymbols) {
-//       const symbols = checker.getSymbolsInScope(blockSymbol.parentBlock, SymbolFlags.BlockScoped);
-//       for (const symbol of symbols) {
-//         unsafeRenameTargets.add(symbol.name);
-//       }
-//     }
-//     return unsafeRenameTargets;  
-//   }
-// }
 

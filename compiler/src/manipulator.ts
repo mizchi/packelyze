@@ -1,6 +1,9 @@
+/**
+ * Top Level API for manipulating TypeScript source code.
+ */
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
-import { ScopedSymbol, collectUnsafeRenameTargets, findGlobalVariables, findScopedSymbols } from "./analyzer";
+import { ScopedSymbol, collectUnsafeRenameTargets, collectGlobalVariables, collectScopedSymbols } from "./analyzer";
 import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
 import { createSymbolBuilder } from "./symbolBuilder";
 
@@ -11,7 +14,7 @@ export function writeRenamedFileState(
   writeFile: (fname: string, content: string) => void
 ) {
   const program = service.getProgram()!;
-  const scopedSymbols = findScopedSymbols(program, source);
+  const scopedSymbols = collectScopedSymbols(program, source);
   const renames: BatchRenameItem[] = [];
   const symbolBuilder = createSymbolBuilder();
 

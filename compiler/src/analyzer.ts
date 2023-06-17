@@ -1,7 +1,7 @@
 // import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
 // import { Block, ClassDeclaration, FunctionDeclaration, Node, Program, Signature, SourceFile, Symbol, SymbolFlags, Type, isExpression, isFunctionDeclaration, isVariableStatement } from "typescript";
 import ts from "typescript";
-import { TraverseableNode, createTypeVisitor, visitLocalBlockScopeSymbols } from "./nodeUtils";
+import { TraverseableNode, createTypeVisitor, visitScopedIdentifierSymbols } from "./nodeUtils";
 
 export type ScopedSymbol = {
   symbol: ts.Symbol;
@@ -10,15 +10,14 @@ export type ScopedSymbol = {
   isExportRelated?: boolean;
 }
 
-export function findScopedSymbols(program: ts.Program, file: ts.SourceFile, debug = false): ScopedSymbol[] {
+export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, debug = false): ScopedSymbol[] {
   // const debugLog = debug ? console.log : () => {};
   const checker = program.getTypeChecker();
   const collector = createRelatedTypesCollector(program, debug);
 
-  const exportSymbols = findExportSymbols(program, file, debug);
-  const globalVariables = findGlobalVariables(program, file);
-  const globalTypes = findGlobalTypes(program, file);
-
+  const exportSymbols = collectExportSymbols(program, file, debug);
+  const globalVariables = collectGlobalVariables(program, file);
+  const globalTypes = collectGlobalTypes(program, file);
   for (const symbol of exportSymbols) {
     collector.collectRelatedTypesFromSymbol(symbol);
     // console.log("exportSymbols", symbol.getName(), symbol.declarations?.map(x => x.getText()));
@@ -33,7 +32,7 @@ export function findScopedSymbols(program: ts.Program, file: ts.SourceFile, debu
   const result: ScopedSymbol[] = [];
   
   // console.log("---start---", file.fileName);
-  visitLocalBlockScopeSymbols(program, file, (symbol, parentBlock, paths, depth) => {
+  visitScopedIdentifierSymbols(program, file, (symbol, parentBlock, paths, depth) => {
     // console.log("symbol", symbol.getName(), symbol.declarations?.length);
 
     if (symbol.valueDeclaration == null) {
@@ -60,7 +59,6 @@ export function findScopedSymbols(program: ts.Program, file: ts.SourceFile, debu
       }
     }
   }, 0, debug);
-  // console.log("exportSymbols", exportSymbols.map(x => x.getName()));
   return result;
 }
 
@@ -68,6 +66,7 @@ export function createRelatedTypesCollector(program: ts.Program, debug = false) 
   const checker = program.getTypeChecker();
   // let symbols = new Map<string, Symbol>();
   let relatedTypes = new Set<ts.Type>();
+  let relatedSymbols = new Set<ts.Symbol>();
 
   const debugLog = debug ? console.log : () => {};
 
@@ -75,18 +74,22 @@ export function createRelatedTypesCollector(program: ts.Program, debug = false) 
 
   return {
     getRelatedTypes: () => relatedTypes,
-    isRelatedType: (type: ts.Type) => relatedTypes.has(type),
+    isRelatedType: (type: ts.Type) => {
+      return relatedTypes.has(type)
+    },
+    isRelatedSymbol: (symbol: ts.Symbol) => {
+      if (symbol.valueDeclaration != null) {
+        const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
+        return relatedTypes.has(type);
+      }
+      return relatedSymbols.has(symbol);
+    },
     isRelatedTypeFromSymbol: (symbol: ts.Symbol) => {
       const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
       return relatedTypes.has(type);
     },
 
-    collectRelatedTypesFromNode: (node: ts.Node, depth = 0): Set<ts.Type> => {
-      collectRelatedTypesFromNode(node, depth);
-      return relatedTypes;
-    },
     collectRelatedTypesFromSymbol: (symbol: ts.Symbol, depth = 0): Set<ts.Type> => {
-      // console.log("symbol!", symbol.getName(), symbol.declarations?.map(x => x.getText()));
       if (symbol.declarations) {
         for (const decl of symbol.declarations) {
           const declaredType = checker.getTypeAtLocation(decl);
@@ -104,83 +107,38 @@ export function createRelatedTypesCollector(program: ts.Program, debug = false) 
   }
 
   function collectRelatedType(type: ts.Type, depth = 0) {
-    visitType(type, (type) => {
-      if (relatedTypes.has(type)) {
-        return true;
+    visitType(
+      type,
+      (type) => {
+        if (relatedTypes.has(type)) {
+          return true;
+        }
+        relatedTypes.add(type);
+      },
+      (symbol) => {
+        if (relatedSymbols.has(symbol)) {
+          return true;
+        }
       }
-      // if (primitives.includes(checker.typeToString(type))) {
-      //   return true;
-      // }
-      relatedTypes.add(type);
-    });
+    );
     return;
-  }
-
-  function collectRelatedTypesFromNode(node: ts.Node, depth = 0) {
-    if (ts.isFunctionDeclaration(node)) {
-      const signature = checker.getSignatureFromDeclaration(node);
-      if (signature == null) {
-        return;
-      }
-      debugLog("  ".repeat(depth), "[FunctionType:Signature]", node.name?.getText());
-      return collectRelatedTypesFromSignature(signature, depth + 1);
-    }
-
-    if (ts.isVariableStatement(node)) {
-      if (node.declarationList.declarations == null) return;
-      for (const decl of node.declarationList.declarations) {
-        const type = checker.getTypeAtLocation(decl);
-        debugLog("  ".repeat(depth), "[VariableType]", decl.name.getText());
-        collectRelatedType(type, depth + 1);
-      }
-    }
-
-    if (ts.isExpression(node)) {
-      const exprType = checker.getTypeAtLocation(node);
-      debugLog("  ".repeat(depth), "[ExpressionType]", node.getFullText().slice(0, 10));
-      return collectRelatedType(exprType, depth + 1);
-    }
-  }
-
-  function collectRelatedTypesFromSignature(signature: ts.Signature, depth = 0) {
-    const returnType = signature.getReturnType();
-    const params = signature.getParameters();
-    const typeParams = signature.getTypeParameters();
-
-    debugLog("  ".repeat(depth), "[Paramters]");
-    for (const param of params) {
-      const paramType = checker.getTypeOfSymbolAtLocation(param, param.valueDeclaration!);
-      debugLog("  ".repeat(depth + 1), "[P]", param.name);
-      collectRelatedType(paramType, depth + 2);
-    }
-    // TODO: Traverse
-    debugLog("  ".repeat(depth), "[TypeParamters]");
-    if (typeParams) {
-      for (const typeParam of typeParams) {
-        debugLog("  ".repeat(depth + 1), "[TP]", checker.typeToString(typeParam));
-        collectRelatedType(typeParam, depth + 2);
-      }  
-    }
-
-    debugLog("  ".repeat(depth), "[ReturnType]", checker.typeToString(returnType));
-    collectRelatedType(returnType, depth + 1);
   }
 }
 
-export function findExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
+export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
   const checker = program.getTypeChecker();
   const symbol = checker.getSymbolAtLocation(source);
   const exportSymbols = checker.getExportsOfModule(symbol!);
   return exportSymbols;
 }
 
-export function getImportableModules(program: ts.Program, file: ts.SourceFile) {
+export function collectImportableModules(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();
   const values = checker.getSymbolsInScope(file, ts.SymbolFlags.ValueModule);
   return values;  
 }
 
-export function findGlobalVariables(program: ts.Program, file: ts.SourceFile) {
+export function collectGlobalVariables(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();
   const scopedSymbols =  new Set(checker.getSymbolsInScope(file, ts.SymbolFlags.BlockScoped));
 
@@ -190,7 +148,7 @@ export function findGlobalVariables(program: ts.Program, file: ts.SourceFile) {
   return variables;
 }
 
-export function findGlobalTypes(program: ts.Program, file: ts.SourceFile) {
+export function collectGlobalTypes(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();
   const types = checker.getSymbolsInScope(file, ts.SymbolFlags.Type).filter((s) => {
     if (s.declarations) {
@@ -211,7 +169,7 @@ export function collectUnsafeRenameTargets(program: ts.Program, source: ts.Sourc
   const checker = program.getTypeChecker();
   const unsafeRenameTargets = new Set<string>();
   // register global names to unsafe
-  for (const gvar of findGlobalVariables(program, source)) {
+  for (const gvar of collectGlobalVariables(program, source)) {
     unsafeRenameTargets.add(gvar.name);
   }
   // register existed local names to unsafe

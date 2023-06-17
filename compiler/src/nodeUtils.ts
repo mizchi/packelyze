@@ -1,5 +1,6 @@
 // import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration, VariableStatement, TypeAliasDeclaration, InterfaceDeclaration, FunctionDeclaration, EnumDeclaration, ModuleDeclaration, isVariableStatement, isInterfaceDeclaration, isTypeAliasDeclaration, isFunctionDeclaration, isEnumDeclaration, isModuleDeclaration, NamedDeclaration, VariableDeclaration } from "typescript";
 import ts from "typescript";
+import { createLogger } from "./logger";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
 export function getNodeAtPosition(
@@ -25,45 +26,72 @@ export function getNodeAtPosition(
   }
 }
 
+// type ToString = string["toString"];
 /**
  * Traverse type and call visitor function for each type.
  */
+let cachedPrimitiveVisited: Set<ts.Type> | undefined;
+let cachedPrimitiveSymbols: Set<ts.Symbol> | undefined;
 export function createTypeVisitor(checker: ts.TypeChecker, debug = false) {
-  const debugLog = debug ? console.log : () => {};
+  const debugLog = createLogger("[TypeVisit]", debug);
+  // const visitedDeclarations = new Set<ts.Declaration>();
+  const visitor = (node: ts.Type, visitType: (type: ts.Type) => boolean | void, visitSymbol: (symbol: ts.Symbol) => void, onRevisit?: (type: ts.Type) => boolean | void ) => {
+    const visitedTypes = cachedPrimitiveVisited ? new Set(cachedPrimitiveVisited) : new Set<ts.Type>();
+    const visitedSymbols = cachedPrimitiveSymbols ? new Set(cachedPrimitiveSymbols) : new Set<ts.Symbol>();
 
-  return (node: ts.Type, visitor: (type: ts.Type) => boolean | void, onRevisit?: (type: ts.Type) => boolean | void ) => {
-    const visitedTypes = new Set<ts.Type>();
+    const visitSymbolWithCache = (symbol: ts.Symbol) => {
+      if (visitedSymbols.has(symbol)) return true;
+      visitedSymbols.add(symbol);
+      visitSymbol(symbol);
+    }
     // TODO: need symbol cache?
     return traverse(node, 0);
 
     function traverse(type: ts.Type, depth = 0, force = false) {
+      // check revisted
       if (visitedTypes.has(type) && !force) {
-        debugLog("  ".repeat(depth), "[Revisit]", checker.typeToString(type));
+        debugLog("  ".repeat(depth), "(cached)", checker.typeToString(type));
         const again = onRevisit?.(type);
         if (again) {
           traverse(type, depth, true);
         }
         return;
       }
-      if (visitor(type) === true) {
+
+      // mark visited
+      visitedTypes.add(type);
+
+      // cache symbols
+      if (type.symbol) {
+        if (visitSymbolWithCache(type.symbol)) return;
+      }
+      // check manual stop
+      if (visitType(type) === true) {
         debugLog("  ".repeat(depth), "[Stopped]", checker.typeToString(type));
         return;
       }
 
       const typeString = checker.typeToString(type);
+      // const {checker: _, ...rest} = type;
       debugLog(
         "  ".repeat(depth),
         "[Type]",
         typeString,
+        {
+          ...type,
+          checker: undefined,
+        },
+        // strip
+        // type.aliasSymbol && type.aliasSymbol.name,
       );
+      // type a = ts.Type
   
       if (type.flags & ts.TypeFlags.NumberLiteral) {
         return;
       }
-      if (typeString.startsWith('"')) {
-        return;
-      }
+
       if (type.aliasSymbol) {
+        if (visitSymbolWithCache(type.aliasSymbol)) return;
         const aliasType = checker.getDeclaredTypeOfSymbol(type.aliasSymbol);
         traverse(aliasType, depth + 1);
       }
@@ -84,36 +112,95 @@ export function createTypeVisitor(checker: ts.TypeChecker, debug = false) {
           traverse(t, depth + 1);
         }
       }
+
       for (const property of type.getProperties()) {
         if (property.valueDeclaration == null) {
           // TODO
           continue;
         }
         const propertyType = checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration);
+        if (visitSymbolWithCache(property)) continue;
         debugLog("  ".repeat(depth + 1), "[Property]", property.name);
         traverse(propertyType, depth + 2);
       };
 
-      if (type.pattern) {
       // TODO: Handle pattern?
-        // type.pattern
+      // if (type.pattern) {
+      // }
+
+      for (const signature of checker.getSignaturesOfType(type, ts.SignatureKind.Call)) {
+        debugLog("  ".repeat(depth), "[CallSignature]");
+        const nextDebug = debug;
+        for (const param of signature.parameters) {
+          if (param.valueDeclaration) {
+            const paramType = checker.getTypeOfSymbolAtLocation(param, param.valueDeclaration);
+            if (visitSymbolWithCache(param)) continue;
+            debugLog("  ".repeat(depth + 1), "[Parameter]", param.name, checker.typeToString(paramType));
+            traverse(paramType, depth + 2, nextDebug);
+          }
+        }
+        if (signature.typeParameters) {
+          for (const typeParam of signature.typeParameters) {
+            debugLog("  ".repeat(depth + 1), "[TypeParameter]", checker.typeToString(typeParam));
+            // const typeParamType = checker.getTypeOfSymbolAtLocation(typeParam, typeParam.valueDeclaration!);
+            traverse(typeParam, depth + 2, nextDebug);
+          }
+        }
+        const returnType = checker.getReturnTypeOfSignature(signature);
+        debugLog("  ".repeat(depth + 1), "[ReturnType]", checker.typeToString(returnType));
+        traverse(returnType, depth + 2, nextDebug);
       }
     }
   };
+
+  if (!cachedPrimitiveVisited) {
+    const primitives: ts.Type[] = [
+      checker.getNumberType(),
+      checker.getStringType(),
+      checker.getBooleanType(),
+      checker.getUndefinedType(),
+      checker.getNullType(),
+      checker.getVoidType(),
+      checker.getAnyType(),
+      checker.getNeverType(),
+      checker.getBigIntType(),
+      checker.getESSymbolType(),
+    ];
+    debugLog.off();
+    let visitedTypes = new Set<ts.Type>();
+    let visitedSymbols = new Set<ts.Symbol>();
+
+    for (const prim of primitives) {
+      visitor(prim,
+        (type) => {
+          visitedTypes.add(type);
+        },
+        (symbol) => {
+          visitedSymbols.add(symbol);
+        }
+      );
+    }
+    cachedPrimitiveVisited = visitedTypes;
+    cachedPrimitiveSymbols = visitedSymbols;
+    if (debug) debugLog.on();
+  }
+
+  // console.log("[precache primitives]", visitedTypes.size, visitedSymbols.size, visitedDeclarations.size);
+  return visitor;
 }
 
 export type TraverseableNode = ts.Block | ts.ClassDeclaration | ts.FunctionDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration | ts.ModuleDeclaration | ts.SourceFile;
 /**
  * @internal
  */
-export function visitLocalBlockScopeSymbols(
+export function visitScopedIdentifierSymbols(
   program: ts.Program,
   file: ts.SourceFile,
   visitor: (symbol: ts.Symbol, parentBlock: TraverseableNode, paths: Array<TraverseableNode>, depth: number) => void,
   depth = 0, 
   debug = false
 ): void {
-  const debugLog = debug ? console.log : () => { };
+  const debugLog = createLogger("[ScopedSymbol]", debug);
   const checker = program.getTypeChecker();
 
   const visit = (node: ts.Node, blockPaths: ts.Block[], depth: number = 0) => {
@@ -149,22 +236,10 @@ export function visitLocalBlockScopeSymbols(
       }
     }
 
-    // if (isEnumDeclaration(node)) {
-    //   if (node.name) {
-    //     const symbol = checker.getSymbolAtLocation(node.name);
-    //     console.log("[nodeUtil:visit]", "enum", node.name?.getText(), symbol?.name);
-    //     if (symbol) {
-    //       visitor(symbol, node, blockPaths, depth);
-    //     }
-    //   }
-    // }
-
     if (ts.isSourceFile(node) || ts.isBlock(node)) {
       const newPaths = [...blockPaths, node as ts.Block];
       const scopedSymbols = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScoped);
-      // const scopedSymbols = checker.getSymbolsInScope(node, SymbolFlags.BlockScopedVariable);
 
-      // console.log("[nodeUtil:scopedSymbols]", scopedSymbols.map((s) => s.name));
       const scopedSymbolsInBlock = scopedSymbols.filter((sym) => {
         if (sym.valueDeclaration) {
           const closestBlock = findClosestBlock(sym.valueDeclaration);
@@ -237,3 +312,21 @@ export function isExportableDeclaration(
     ts.isModuleDeclaration(node)
   );
 }
+
+/**
+ * find first string matched node in file
+ * for testing purpose
+ */
+export const findFirstNode = (program: ts.Program, fileName: string, matcher: string | RegExp) => {
+  const source = program.getSourceFile(fileName);
+  if (source) {
+    const code = source.getFullText();
+    const pos = code.search(matcher);
+    if (pos < 0) {
+      return;
+    }
+    const node = getNodeAtPosition(source, pos);
+    return node;  
+  }
+}
+
