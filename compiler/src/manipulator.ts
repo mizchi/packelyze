@@ -4,7 +4,7 @@
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
 import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer";
-import { RenameLocationWithMeta, findRenameDetails, getRenameAppliedState } from "./renamer";
+import { RenameItem, findRenameDetails, getRenameAppliedState } from "./renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(
@@ -15,7 +15,7 @@ export function writeRenamedFileState(
 ) {
   const program = service.getProgram()!;
   const scopedSymbols = collectScopedSymbols(program, source);
-  const renames: RenameLocationWithMeta[] = [];
+  const renames: RenameItem[] = [];
   const symbolBuilder = createSymbolBuilder();
 
   // to inhibit rename of global names or other scope

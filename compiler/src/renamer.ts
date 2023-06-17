@@ -1,24 +1,12 @@
 import ts from "typescript";
 import { getNodeAtPosition } from "./nodeUtils";
 
-export type RenameLocationWithMeta = ts.RenameLocation & {
+export type RenameItem = ts.RenameLocation & {
   isShorthand?: boolean;
   isExportedSpecifier?: boolean;
   original: string;
   to: string;
 };
-
-// export type BatchRenameItem = {
-//   original: string;
-//   to: string;
-//   locations: readonly RenameLocationWithMeta[];
-// };
-
-// export type RewiredRenameItem = {
-//   original: string;
-//   to: string;
-//   location: RenameLocationWithMeta;
-// };
 
 /** wrap service.findRenameLocations */
 export function findRenameDetails(
@@ -26,14 +14,14 @@ export function findRenameDetails(
   file: ts.SourceFile,
   pos: number,
   prefs: ts.UserPreferences = {},
-): RenameLocationWithMeta[] | undefined {
+): RenameItem[] | undefined {
   const renames = service.findRenameLocations(
     file.fileName,
     pos,
     false,
     false,
     prefs,
-  ) as RenameLocationWithMeta[] | undefined;
+  ) as RenameItem[] | undefined;
   if (renames == null) {
     return;
   }
@@ -55,7 +43,7 @@ export function findRenameDetails(
 }
 
 export function getRenameAppliedState(
-  renames: RenameLocationWithMeta[],
+  renames: RenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
 ): Map<string, [changed: string, start: number, end: number]> {
@@ -63,9 +51,9 @@ export function getRenameAppliedState(
   const targetFiles = new Set(
     renames.map((r) => normalizePath(r.fileName))
   );
-  const rewiredRenames: Map<string, RenameLocationWithMeta[]> = new Map();
+  const rewiredRenames: Map<string, RenameItem[]> = new Map();
   for (const targetFile of targetFiles) {
-    const sortedRenames: RenameLocationWithMeta[] = renames
+    const sortedRenames: RenameItem[] = renames
       .filter((r) => normalizePath(r.fileName) === targetFile)
       .sort((a, b) => a.textSpan.start - b.textSpan.start);
     rewiredRenames.set(targetFile, sortedRenames);
@@ -88,7 +76,7 @@ export function getRenameAppliedState(
   return changes;
 }
 
-function buildNewText(original: string, to: string, renameItem: RenameLocationWithMeta) {
+function buildNewText(original: string, to: string, renameItem: RenameItem) {
   if (renameItem.isShorthand) {
     return `${original}: ${to}`;
   }
@@ -100,7 +88,7 @@ function buildNewText(original: string, to: string, renameItem: RenameLocationWi
 
 export function applyRewiredRenames(
   code: string,
-  renames: RenameLocationWithMeta[],
+  renames: RenameItem[],
   debug = false,
 ): [renamed: string, changedStart: number, changedEnd: number] {
   const debugLog = debug ? console.log : () => {};

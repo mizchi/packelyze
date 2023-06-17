@@ -1,7 +1,7 @@
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameLocationWithMeta, findRenameDetails, getRenameAppliedState } from "./renamer";
+import { RenameItem, findRenameDetails, getRenameAppliedState } from "./renamer";
 import { createTestLanguageService } from "./testHarness";
 import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols } from "./analyzer";
 import { preprocess } from "./transformer";
@@ -299,7 +299,7 @@ function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.Source
   const program = service.getProgram()!;
   const symbolBuilder = createSymbolBuilder();
   const scopedSymbols = collectScopedSymbols(program, file);
-  const renameItems: RenameLocationWithMeta[] = [];
+  const renameItems: RenameItem[] = [];
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, file, scopedSymbols);
 
   for (const blockedSymbol of scopedSymbols) {
