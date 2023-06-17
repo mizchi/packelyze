@@ -23,12 +23,10 @@ export interface IncrementalLanguageServiceHost extends ts.LanguageServiceHost {
 
 export interface IncrementalLanguageService extends ts.LanguageService {
   getCurrentSourceFile(fileName: string): ts.SourceFile | undefined;
-  // getCurrentSnapshot(fileName: string): IncrementalSnapshot | undefined;
   readSnapshot(fileName: string): IncrementalSnapshot | undefined;
   readSnapshotContent(fileName: string): string | undefined;
   writeSnapshot(fileName: string, snapshot: IncrementalSnapshot): void;
   writeSnapshotContent(fileName: string, content: string): void;
-
   deleteSnapshot(fileName: string): void;
   normalizePath(fileName: string): string;
   logger: Logger
