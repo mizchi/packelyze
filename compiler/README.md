@@ -2,6 +2,11 @@
 
 Experimental Optimizer.
 
+## Goals
+
+1. preprocess module scoped source
+2. privide bundler
+
 ## TODO
 
 - [ ] Symbol to Function Signature

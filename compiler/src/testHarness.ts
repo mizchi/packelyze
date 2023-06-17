@@ -8,7 +8,7 @@ import {
   sys,
 } from "typescript";
 import path from "node:path";
-import { createInMemoryLanguageServiceHost } from "./services";
+import { createIncrementalLanguageServiceHost } from "./services";
 
 // let lastService: LanguageService | undefined = undefined;
 // let oldRegistry = createDocumentRegistry();
@@ -26,7 +26,7 @@ export function createTestLanguageService(
     projectPath,
   );
   const registory =  createDocumentRegistry();
-  const serviceHost = createInMemoryLanguageServiceHost(
+  const serviceHost = createIncrementalLanguageServiceHost(
     projectPath,
     options.fileNames,
     options.options,

@@ -5,7 +5,7 @@ import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("visitLocalScoped", () => {
   const { service, normalizePath, snapshotManager } = createTestLanguageService();
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 export const exported = 1;

@@ -6,7 +6,7 @@ import { visitLocalBlockScopeSymbols } from "./nodeUtils";
 
 test("collectRelatedTypes", () => {
   const { service, snapshotManager, normalizePath } = createTestLanguageService();
-  const file =  snapshotManager.writeFileSnapshot(
+  const file =  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
     export function getInternal<T extends object>(v: number, t: T) {
@@ -60,7 +60,7 @@ test("collectRelatedTypes", () => {
 
 test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const { service, snapshotManager, normalizePath } = createTestLanguageService();
-  const file =  snapshotManager.writeFileSnapshot(
+  const file =  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
     type A = {
@@ -93,7 +93,7 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
 
 test("findExportSymbols", () => {
   const { service, snapshotManager, normalizePath } = createTestLanguageService();
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/sub.ts"),
     `
     export const sub1 = 1;
@@ -102,7 +102,7 @@ test("findExportSymbols", () => {
     `
   );
 
-  const file =  snapshotManager.writeFileSnapshot(
+  const file =  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
     export { sub1 } from "./sub";
@@ -168,7 +168,7 @@ console.log(2);
 
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
-  snapshotManager.writeFileSnapshot(normalizePath("src/locals.ts"), code);
+  snapshotManager.write(normalizePath("src/locals.ts"), code);
 
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
@@ -269,7 +269,7 @@ test("findRenameSymbols", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 export const exported = 1;
@@ -300,7 +300,7 @@ test("visitLocalBlockScopeSymbols", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 export const exported = 1;
@@ -334,7 +334,7 @@ test("findExportSymbols", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 export const exported = 1;
@@ -351,7 +351,7 @@ test("findGlobalVariables", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `export const exported = 1;`,
   );
@@ -367,7 +367,7 @@ test("findGlobalTypes", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 import { Foo } from "./types";
@@ -390,7 +390,7 @@ test("findImportableModules", () => {
   const { service, normalizePath, snapshotManager } =
     createTestLanguageService();
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     normalizePath("src/index.ts"),
     `
 import { Foo } from "./types";

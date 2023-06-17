@@ -28,6 +28,7 @@
     "src"
   ],
   "dependencies": {
+    "colorette": "^2.0.20",
     "prettier": "^2.8.8",
     "ts-clone-node": "^2.0.4",
     "typescript": "5.1.3"

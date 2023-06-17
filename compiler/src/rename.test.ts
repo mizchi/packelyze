@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect, test } from "vitest";
 import { transform, Node, UserPreferences, parseJsonConfigFileContent, readConfigFile, sys, createDocumentRegistry, createLanguageService, SymbolFlags, SyntaxKind, Symbol, isVariableStatement, isClassDeclaration, VariableStatement, InterfaceDeclaration, TypeAliasDeclaration, TransformerFactory, TransformationContext, SourceFile, visitEachChild, Visitor, visitNode, isSourceFile, factory, isFunctionDeclaration, isTypeAliasDeclaration, isEnumDeclaration, isModuleDeclaration, isInterfaceDeclaration, Identifier, isIdentifier, createPrinter, Statement, isExportDeclaration, ExportDeclaration, isNamedExportBindings, isNamedExports, createSourceFile, ScriptTarget, Program, LanguageService } from "typescript";
-import { createInMemoryLanguageServiceHost } from "./services";
+import { createIncrementalLanguageServiceHost } from "./services";
 import { BatchRenameItem, findRenameDetails, getRenameAppliedState } from "./rename";
 import { createTestLanguageService } from "./testHarness";
 import { collectUnsafeRenameTargets, findExportSymbols, findScopedSymbols } from "./analyzer";
@@ -23,7 +23,7 @@ test("batch renaming", () => {
   // usage
   const prefs: UserPreferences = {};
   const registory = createDocumentRegistry();
-  const serviceHost = createInMemoryLanguageServiceHost(
+  const serviceHost = createIncrementalLanguageServiceHost(
     projectPath,
     options.fileNames,
     options.options,
@@ -43,7 +43,7 @@ test("batch renaming", () => {
 
   const snapshotManager = serviceHost.getSnapshotManager(registory);
 
-  const newSource = snapshotManager.writeFileSnapshot(
+  const newSource = snapshotManager.write(
     "src/index.ts",
     "const x: number = '';\nconst y: number = x;",
   );
@@ -83,13 +83,13 @@ test("batch renaming", () => {
         locations: yRenameLocs!,
       },
     ],
-    snapshotManager.readFileSnapshot,
+    snapshotManager.read,
     normalizePath,
   );
   for (const [fname, content] of changedFiles) {
     const [changed, changedStart, changedEnd] = content;
     // TODO: use changedStart and changedEnd
-    snapshotManager.writeFileSnapshot(fname, changed);
+    snapshotManager.write(fname, changed);
   }
   expect(
     languageService.getSemanticDiagnostics(
@@ -97,7 +97,7 @@ test("batch renaming", () => {
     ).length,
   ).toBe(1);
   expect(
-    snapshotManager.readFileSnapshot(normalizePath("src/index.ts")),
+    snapshotManager.read(normalizePath("src/index.ts")),
   ).toBe(`const x_changed: number = '';
 const y_changed: number = x_changed;`);
 });
@@ -109,7 +109,7 @@ test("shorthand", () => {
     normalizePath,
   } = createTestLanguageService();
 
-  const newSource = snapshotManager.writeFileSnapshot(
+  const newSource = snapshotManager.write(
     "src/index.ts",
     "function foo(): { y: 1 } { const y = 1; return { y } }",
   );
@@ -134,15 +134,15 @@ test("shorthand", () => {
         locations: renames!,
       },
     ],
-    snapshotManager.readFileSnapshot,
+    snapshotManager.read,
     normalizePath,
   );
   for (const [fname, content] of changedFiles) {
     const [changed, changedStart, changedEnd] = content;
-    snapshotManager.writeFileSnapshot(fname, changed);
+    snapshotManager.write(fname, changed);
   }
   expect(
-    snapshotManager.readFileSnapshot(normalizePath("src/index.ts")),
+    snapshotManager.read(normalizePath("src/index.ts")),
   ).toBe(
     `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
   );
@@ -170,7 +170,7 @@ test("rename exported", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     "src/index.ts",
     preprocessed,
   );
@@ -223,7 +223,7 @@ test("rewire exports: complex", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     "src/index.ts",
     preprocessed,
   );
@@ -274,7 +274,7 @@ test.skip("rewire exports: enum", () => {
   );
   const preprocessed = preprocess(tempSource);
 
-  snapshotManager.writeFileSnapshot(
+  snapshotManager.write(
     "src/index.ts",
     preprocessed,
   );
