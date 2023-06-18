@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
-import { collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector } from "./analyzer";
-import { createTestLanguageService } from "./testHarness";
-import { createVisitScoped, composeVisitors, findFirstNode } from "./nodeUtils";
+import { collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector, createPrebuiltCollectorFactory, isIdentifierInferredByRhs, findRenamebaleObjectMember } from "./analyzer";
+import { createOneshotTestProgram, createTestLanguageService } from "./testHarness";
+import { createVisitScoped, composeVisitors, findFirstNode, createVisitScopedName } from "./nodeUtils";
 
 test("collectRelatedTypes: infer internal", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -179,7 +179,7 @@ test("collectExportSymbols", () => {
     collector.visitSymbol(symbol);
   }
 
-  const relatedTypes = collector.getRelatedTypes();
+  const relatedTypes = collector.getNewTypes();
   const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
   expect(nameSet.has("Foo")).toBeTruthy();
   expect(nameSet.has("1")).toBeTruthy();
@@ -359,3 +359,90 @@ export type Bar = number;
   expect(names.includes('"node:util"')).toBeTruthy();
 });
 
+
+test("isNodeInferredByRhs", () => {
+  const code = `export const aaa = {
+    num: 1,
+    foo() {
+      return 1;
+    },
+    nested: {
+      v: 1,
+    }
+  };
+  type Obj = {
+    v: number;
+    w: string;
+    x: {
+      y: number;
+    }
+  };
+  export const bbb: Obj = { v: 1, w: '' }
+  `;
+  const { program: project, file, checker } = createOneshotTestProgram(code);
+
+  const createCollector = createPrebuiltCollectorFactory(project);
+  const aaaIdent =  findFirstNode(project, file.fileName, /aaa/)! as ts.Identifier;
+  expect(isIdentifierInferredByRhs(checker, aaaIdent)).toBe(true);
+
+  const bbbIdent =  findFirstNode(project, file.fileName, /bbb/)! as ts.Identifier;
+  expect(isIdentifierInferredByRhs(checker, bbbIdent)).toBe(false);
+
+  const aRenameables = findRenamebaleObjectMember(project, aaaIdent, createCollector());
+  // console.log(aRenameables.map(r => r.text));
+  expect([...aRenameables].map(r => r.text)).toEqual(["num", "foo", "nested", "v"]);
+
+  const bRenameables = findRenamebaleObjectMember(project, bbbIdent, createCollector()) as ts.Identifier[];
+
+  // console.log(bRenameables.map(r => r.text));
+  expect([...bRenameables].map(r => r.text)).toEqual(["v", "w", "x", "y"]);
+});
+
+test.skip("isNodeInferredByRhs with rename", () => {
+  const code = `
+  type Local = {
+    xxx: number;
+  };
+  type Pub = {
+    pubv: number;
+  };
+  const local: Local = {
+    xxx: 1,
+  };
+  export const pub: Pub = {
+    pubv: 1,
+  };  
+`;
+  const { program: project, file, checker } = createOneshotTestProgram(code);
+
+  const createCollector = createPrebuiltCollectorFactory(project);
+  const exportRelatedCollector = createCollector();
+  const exportedSymbols = collectExportSymbols(project, file);
+  for (const symbol of exportedSymbols) {
+    exportRelatedCollector.visitSymbol(symbol);
+  }
+
+  // const symbols: ts.Symbol[] = [];
+  const renameIdents: ts.Identifier[] = [];
+  const visit = composeVisitors(
+    createVisitScopedName(checker, (ident, decl) => {
+      // renameIdents.push(ident);
+      if (!exportRelatedCollector.isRelatedNode(decl)) {
+        renameIdents.push(ident);
+      }
+      // if (isIdentifierInferredByRhs(checker, ident)) {
+      // const renameables = findRenamebaleObjectMember(project, ident, createCollector());
+      // renameIdents.push(...renameables);
+      // }
+      // else {
+      //   // const symbol = checker.getSymbolAtLocation(ident);
+      //   const symbol = checker.getSymbolAtLocation(ident);
+      //   if (symbol && !exportRelatedCollector.isRelatedSymbol(symbol)) {
+      //     renameIdents.push(ident);
+      //   }
+      // }
+    }),
+  );
+  visit(file);
+  // console.log(renameIdents.map(r => r.text));
+});

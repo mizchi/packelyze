@@ -10,7 +10,7 @@ export type ScopedSymbol = {
 
 export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
   const checker = program.getTypeChecker();
-  const collector = createCollector(checker, debug);
+  const collector = createCollector(checker, undefined, debug);
 
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
@@ -86,7 +86,7 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
-  const collector = createCollector(checker, debug);
+  const collector = createCollector(checker, undefined, debug);
 
   // colect global vars related types
   for (const symbol of globalVariables) {
@@ -215,7 +215,7 @@ export function collectUnsafeRenameTargets(program: ts.Program, source: ts.Sourc
   return unsafeRenameTargets;  
 }
 
-const symbolToRelatedTypes = (symbol: ts.Symbol, checker: ts.TypeChecker) => {
+export const symbolToRelatedTypes = (symbol: ts.Symbol, checker: ts.TypeChecker) => {
   const types: ts.Type[] = [];
   if (symbol.declarations) {
     for (const decl of symbol.declarations) {
@@ -231,19 +231,125 @@ const symbolToRelatedTypes = (symbol: ts.Symbol, checker: ts.TypeChecker) => {
   return types;
 }
 
-export function createCollector(checker: ts.TypeChecker, debug = false) {
+export const symbolToRelatedNodes = (symbol: ts.Symbol): ts.Node[] => {
+  const nodes: ts.Node[] = [];
+  if (symbol.declarations) {
+    for (const decl of symbol.declarations) {
+      nodes.push(decl);
+    }
+  }
+  if (symbol.valueDeclaration) {
+    nodes.push(symbol.valueDeclaration);
+  }
+  return nodes;
+}
+
+// const primitives: ts.Type[] = [
+//   checker.getNumberType(),
+//   checker.getStringType(),
+//   checker.getBooleanType(),
+//   checker.getUndefinedType(),
+//   checker.getNullType(),
+//   checker.getVoidType(),
+//   checker.getAnyType(),
+//   checker.getNeverType(),
+//   checker.getBigIntType(),
+//   checker.getESSymbolType(),
+// ];
+
+export function createPrebuiltCollectorFactory(program: ts.Program, debug = false) {
+  const checker = program.getTypeChecker();
+  const primitives: ts.Type[] = [
+    checker.getNumberType(),
+    checker.getStringType(),
+    checker.getBooleanType(),
+    checker.getUndefinedType(),
+    checker.getNullType(),
+    checker.getVoidType(),
+    checker.getAnyType(),
+    checker.getNeverType(),
+    checker.getBigIntType(),
+    checker.getESSymbolType(),
+  ];
+  const globalTypes = collectGlobalTypes(program, program.getSourceFile(program.getRootFileNames()[0])!);
+  const globalVariables = collectGlobalVariables(program, program.getSourceFile(program.getRootFileNames()[0])!);
+
+  const cacheCollector = createCollector(checker, undefined, debug);
+
+  for (const primitive of primitives) {
+    cacheCollector.visitType(primitive);
+  }
+
+  for (const type of globalTypes) {
+    cacheCollector.visitType(checker.getDeclaredTypeOfSymbol(type));
+  }
+  for (const globalVar of globalVariables) {
+    cacheCollector.visitType(checker.getDeclaredTypeOfSymbol(globalVar));
+  }
+
+  const initialCache = cacheCollector.getCache();
+  const cleanCache = {
+    visitedSymbols: new Set<ts.Symbol>(initialCache.visitedSymbols),
+    visitedTypes: new Set<ts.Type>(initialCache.visitedTypes),
+    visitedNodes: new Set<ts.Node>(initialCache.visitedNodes),
+  };
+  return () => createCollector(checker, cleanCache, debug);
+}
+
+type CollectorCache = {
+  visitedSymbols: Set<ts.Symbol>;
+  visitedTypes: Set<ts.Type>;
+  visitedNodes: Set<ts.Node>;
+};
+export type Collector = ReturnType<typeof createCollector>;
+export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache, debug = false) {
   const log = createLogger("[collector]", debug);
-  const visitedSymbol = new Set<ts.Symbol>();
-  const visitedType = new Set<ts.Type>();
-  const visitedNode = new Set<ts.Node>();
+  const visitedSymbols = cache ? new Set(cache.visitedSymbols) :  new Set<ts.Symbol>();
+  const visitedTypes = cache ? new Set(cache.visitedTypes) : new Set<ts.Type>();
+  const visitedNodes = cache ? new Set(cache.visitedNodes) : new Set<ts.Node>();
 
   return {
-    getRelatedTypes: () => visitedType,
-    getRelatedSymbols: () => visitedSymbol,
-    getRelatedNodes: () => visitedNode,
+    getCache: () => {
+      return {
+        visitedSymbols,
+        visitedTypes,
+        visitedNodes,
+      }
+    },
+    getNewTypes: () => {
+      const newTypes = new Set<ts.Type>();
+      for (const type of visitedTypes) {
+        if (!cache?.visitedTypes.has(type)) {
+          newTypes.add(type);
+        }
+      }
+      return newTypes;
+    },
+    getNewSymbols: () => {
+      const newSymbols = new Set<ts.Symbol>();
+      for (const symbol of visitedSymbols) {
+        if (!cache?.visitedSymbols.has(symbol)) {
+          newSymbols.add(symbol);
+        }
+      }
+      return newSymbols;
+    },
+    getNewNodes: () => {
+      const newNodes = new Set<ts.Node>();
+      for (const node of visitedNodes) {
+        if (!cache?.visitedNodes.has(node)) {
+          newNodes.add(node);
+        }
+      }
+      return newNodes;
+    },
+    // getNewTypes: () => visitedTypes,
+    getRelatedSymbols: () => visitedSymbols,
+    getRelatedNodes: () => visitedNodes,
     isRelated,
     isRelatedNode,
     isRelatedSymbol,
+    isRelatedType,
     visitNode,
     visitType,
     visitSymbol,
@@ -276,25 +382,29 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
       ...symbol.declarations ? symbol.declarations : [],
     ]);
   }
-
+  function isRelatedType(type: ts.Type) {
+    return visitedTypes.has(type);
+  }
 
   function isRelated(...symbols: Array<ts.Symbol | ts.Type | ts.Node>) {
-    return symbols.some(symbol => visitedSymbol.has(symbol as ts.Symbol) || visitedType.has(symbol as ts.Type) || visitedNode.has(symbol as ts.Node));
+    return symbols.some(symbol => visitedSymbols.has(symbol as ts.Symbol) || visitedTypes.has(symbol as ts.Type) || visitedNodes.has(symbol as ts.Node));
   }
 
   function visitNode(node: ts.Node, depth = 0) {
-    if (visitedNode.has(node)) return;
-    visitedNode.add(node);
+    if (visitedNodes.has(node)) return;
+    visitedNodes.add(node);
     log("  ".repeat(depth),"[node]", ts.SyntaxKind[node.kind], node.getText().slice(0, 10));
-    const symbol = checker.getSymbolAtLocation(node);
-    symbol && visitSymbol(symbol, depth + 1);
+    // ts.forEachChild(node, (node => visitNode(node, depth + 1)));
+
     const type = checker.getTypeAtLocation(node);
     visitType(type, depth + 1);
-    // ts.forEachChild (node, (node => visitNode(node, depth + 1)));
+
+    const symbol = checker.getSymbolAtLocation(node);
+    symbol && visitSymbol(symbol, depth + 1);
   }
   function visitType(node: ts.Type, depth = 0) {
-    if (visitedType.has(node)) return;
-    visitedType.add(node);
+    if (visitedTypes.has(node)) return;
+    visitedTypes.add(node);
     log("  ".repeat(depth), "[type]", checker.typeToString(node));
 
     const type = node;
@@ -304,13 +414,9 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
 
     if (type.aliasSymbol) {
       visitSymbol(type.aliasSymbol, depth + 1);
-      const aliasType = checker.getDeclaredTypeOfSymbol(type.aliasSymbol);
-      visitType(aliasType, depth + 1);
     }
-    if (type.aliasTypeArguments) {
-      for (const typeArg of type.aliasTypeArguments) {
-        visitType(typeArg);
-      }
+    for (const typeArg of type.aliasTypeArguments ?? []) {
+      visitType(typeArg);
     }
     if (type.isUnion()) {
       for (const t of type.types) {
@@ -319,15 +425,11 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
     }
     if (type.isIntersection()) {
       for (const t of type.types) {
-        // debugLog("  ".repeat(depth + 1), "[Intersection]");
         visitType(t, depth + 1);
       }
     }
 
     for (const property of type.getProperties()) {
-      if (property.valueDeclaration) {
-        visitNode(property.valueDeclaration, depth + 1);
-      }
       visitSymbol(property, depth + 1);
     };
 
@@ -341,10 +443,8 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
       for (const param of signature.parameters) {
         visitSymbol(param, depth + 1);
       }
-      if (signature.typeParameters) {
-        for (const typeParam of signature.typeParameters) {
-          visitType(typeParam, depth + 2);
-        }
+      for (const typeParam of signature.typeParameters ?? []) {
+        visitType(typeParam, depth + 2);
       }
       const returnType = checker.getReturnTypeOfSignature(signature);
       visitType(returnType, depth + 1);
@@ -353,17 +453,64 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
     }
   }
   function visitSymbol(symbol: ts.Symbol, depth = 0) {
-    if (visitedSymbol.has(symbol)) return;
-    visitedSymbol.add(symbol);
+    if (visitedSymbols.has(symbol)) return;
+    visitedSymbols.add(symbol);
 
     log("  ".repeat(depth), "[symbol]", symbol.name);
     if (symbol.valueDeclaration) {
       visitNode(symbol.valueDeclaration, depth + 1);
     }
-    if (symbol.declarations) {
-      for (const decl of symbol.declarations) {
-        visitNode(decl, depth + 1);
+    for (const decl of symbol.declarations??[]) {
+      visitNode(decl, depth + 1);
+    }
+
+    const declared = checker.getDeclaredTypeOfSymbol(symbol);
+    visitType(declared, depth + 1);
+
+    // const type = checker.
+  }
+}
+
+export function findRenamebaleObjectMember(program: ts.Program, node: ts.Node, collector: Collector): ts.Identifier[] {
+  const checker = program.getTypeChecker();
+  const nodes: ts.Identifier[] = [];
+  if (isIdentifierInferredByRhs(checker, node as ts.Identifier)) {
+    const identType = checker.getTypeAtLocation(node);
+    collector.visitType(identType);
+    const newNodes = collector.getNewNodes();
+    for (const node of newNodes) {
+      // console.log("kind", node.kind, ts.SyntaxKind[node.kind]);
+      if (ts.isPropertyAssignment(node) || ts.isMethodDeclaration(node)) {
+        if (ts.isIdentifier(node.name)) {
+          nodes.push(node.name);
+        }
+      }
+    }
+    return nodes;
+  } else {
+    const identType = checker.getTypeAtLocation(node);
+    collector.visitType(identType);
+    const newSymbols = collector.getNewSymbols();
+    // console.log("newSymbols", [...newSymbols].map(t => t.name));
+    for (const symbol of newSymbols) {
+      const decl = symbol.valueDeclaration;
+      if (decl && (ts.isVariableDeclaration(decl) || ts.isPropertySignature(decl) || ts.isMethodSignature(decl))) {
+        if (ts.isIdentifier(decl.name)) {
+          nodes.push(decl.name);
+        }
       }
     }
   }
+  return nodes;
+}
+
+export function isIdentifierInferredByRhs(checker: ts.TypeChecker, node: ts.Identifier | ts.VariableDeclaration) {
+  if (ts.isIdentifier(node)) {
+    return isIdentifierInferredByRhs(checker, node.parent as ts.VariableDeclaration);
+  }
+  if (ts.isVariableDeclaration(node)) {
+    const type = checker.getTypeAtLocation(node);
+    return type.symbol && node.initializer === type.symbol.valueDeclaration;
+  }
+  return false;
 }

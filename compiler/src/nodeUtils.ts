@@ -26,19 +26,6 @@ export function getNodeAtPosition(
   }
 }
 
-// const primitives: ts.Type[] = [
-//   checker.getNumberType(),
-//   checker.getStringType(),
-//   checker.getBooleanType(),
-//   checker.getUndefinedType(),
-//   checker.getNullType(),
-//   checker.getVoidType(),
-//   checker.getAnyType(),
-//   checker.getNeverType(),
-//   checker.getBigIntType(),
-//   checker.getESSymbolType(),
-// ];
-
 export type Visitor = (node: ts.Node, depth?: number) => boolean | void;
 export function composeVisitors(...visitors: Visitor[]): Visitor {
   const visit = (node: ts.Node, depth = 0) => {
@@ -107,6 +94,65 @@ export const createVisitScoped = (
       addNameIfExist(node);
     }
 
+    if (ts.isMethodDeclaration(node)) {
+      addNameIfExist(node);
+    }
+
+    if (ts.isVariableDeclaration(node)) {
+      addNameIfExist(node);
+    }
+    if (ts.isClassDeclaration(node)) {
+      addNameIfExist(node);
+    }
+
+    if (ts.isEnumDeclaration(node)) {
+      addNameIfExist(node);
+    }
+
+    if (ts.isEnumMember(node)) {
+      addNameIfExist(node);
+    }
+
+    if (ts.isParameter(node)) {
+      addNameIfExist(node);
+    }
+  }
+}
+
+export const createVisitScopedName = (
+  checker: ts.TypeChecker,
+  visitor: (symbol: ts.Identifier, decl: TraverseableNode) => void,
+  debug = false
+): Visitor => {
+  return (node: ts.Node) => {
+    const addNameIfExist = (node: ts.Node) => {
+      const name = (node as any)["name"];
+      if (name && ts.isIdentifier(name)) {
+        visitor(name, node as TraverseableNode);
+        // const symbol = checker.getSymbolAtLocation(name);
+        // symbol && visitor(symbol, node as TraverseableNode);
+      }
+    };
+
+    if (ts.isFunctionDeclaration(node)) {
+      addNameIfExist(node);
+    }
+
+    /// Example: const obj = { vvv: 1 };
+    if (ts.isPropertyAssignment(node)) {
+      addNameIfExist(node);
+    }
+    
+    if (ts.isPropertySignature(node)) {
+      addNameIfExist(node);
+    }
+    if (ts.isMethodSignature(node)) {
+      addNameIfExist(node);
+    }
+
+    if (ts.isPropertyDeclaration(node)) {
+      addNameIfExist(node);
+    }
     if (ts.isMethodDeclaration(node)) {
       addNameIfExist(node);
     }

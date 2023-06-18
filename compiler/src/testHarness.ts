@@ -74,10 +74,10 @@ export function createTestLanguageService(
 
 // To check oneshot ast analyze
 let oldOneshotProgram: ts.Program | undefined = undefined;
-export function createOneshotTestProject(
+export function createOneshotTestProgram(
   indexCode: string,
   projectPath: string = path.join(__dirname, "__fixtures__/minimum"),
-): { file: ts.SourceFile, project: ts.Program, checker: ts.TypeChecker } {
+): { file: ts.SourceFile, program: ts.Program, checker: ts.TypeChecker } {
   const tsconfig = ts.readConfigFile(
     path.join(projectPath, "tsconfig.json"),
     ts.sys.readFile,
@@ -98,14 +98,14 @@ export function createOneshotTestProject(
     return ts.sys.readFile(resolved);
   }
   // host.reda
-  const project = ts.createProgram([
+  const program = ts.createProgram([
     path.join(projectPath, "index.ts"),
   ], options.options, host, oldOneshotProgram);
-  const file = project.getSourceFile(path.join(projectPath, "index.ts"))!;
-  oldOneshotProgram = project;
+  const file = program.getSourceFile(path.join(projectPath, "index.ts"))!;
+  oldOneshotProgram = program;
   return {
     file,
-    project,
-    checker: project.getTypeChecker(),
+    program: program,
+    checker: program.getTypeChecker(),
   };
 }
