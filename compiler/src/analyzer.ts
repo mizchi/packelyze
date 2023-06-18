@@ -81,18 +81,12 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
 
 export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
   const log = createLogger(`[collectScopedSignatures]`,debug);
-  // log.on();
   const checker = program.getTypeChecker();
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
   const collector = createCollector(checker, debug);
-
-  // colect export related types
-  for (const symbol of exportSymbols) {
-    collector.visitSymbol(symbol);
-  }
 
   // colect global vars related types
   for (const symbol of globalVariables) {
@@ -119,89 +113,50 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
       }
     }  
   }
+  // colect export related types
+  log.on();
+  for (const symbol of exportSymbols) {
+    // log.on();
+    collector.visitSymbol(symbol);
+  }
 
   const result: ScopedSymbol[] = [];
 
   // const checker = program.getTypeChecker();
-  const visitSignature = createVisitSignature(checker, (symbol, parentBlock) => {
-    // const isExportRelated = collector.isRelatedSymbol(symbol);
-    log("visitSignature", symbol.name);
-
-    // if (!isExportRelated) {
-    //   result.push({
-    //     symbol,
-    //     parentBlock,
-    //     isExportRelated,
-    //   });
-    // }
-    if (symbol.valueDeclaration == null) {
-      log("visitSignature:valueDeclaration==null", symbol.name);
-      // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-      // const isExportRelated = collector.isRelatedType(type);
-      const isExportRelated = collector.isRelatedSymbol(symbol);
-      if (!isExportRelated) {
+  composeVisitors(
+    createVisitSignature(checker, (symbol, parentBlock) => {
+      if (symbol.valueDeclaration) {
+        const isExportRelated = collector.isRelatedNode(symbol.valueDeclaration);
+        const isRelatedDeclaration = collector.isRelatedNode(symbol.valueDeclaration);
+        log("visitSignature:declaration", symbol.name, isExportRelated, isRelatedDeclaration);
         result.push({
           symbol,
           parentBlock,
           isExportRelated,
         });
+      } else {
+        // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
+        const isExportRelated = collector.isRelatedSymbol(symbol);
+        log("visitSignature", symbol.name, isExportRelated);  
+        result.push({
+          symbol,
+          parentBlock,
+          isExportRelated,
+        });  
       }
-    } else {
-      if (symbol.declarations) {
-        for (const decl of symbol.declarations) {
-          const isExportRelated = collector.isRelatedNode(decl);
-          // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
-          // const isExportRelated = collector.isRelated(symbol);
-          const isRelatedDeclaration = collector.isRelatedNode(decl);
-          if (symbol.name === 'pub') {
-            log("visitSignature:declarations", symbol.name, "exported?", isExportRelated, "relatedDeclaration?", isRelatedDeclaration);
-            // const d = decl;
-            // if (d.getSourceFile().fileName.startsWith(program.getCurrentDirectory())) {
-            //   log(d.getSourceFile().fileName.replace(
-            //     program.getCurrentDirectory() + '/', ''
-            //   ), d.getText());
-            // }
-
-            // log("visitSignature:declarations", symbol.name, "exported?", isExportRelated);
-            // console.log(decl.getText());
-
-            // const symbols = collector.getRelatedTypes();
-            // for (const s of symbols) {
-            //   if (s.symbol?.declarations){
-            //     for (const d of s.symbol.declarations) {
-            //       if (d.getSourceFile().fileName.startsWith(program.getCurrentDirectory())) {
-            //         log(d.getSourceFile().fileName.replace(
-            //           program.getCurrentDirectory() + '/', ''
-            //         ), d.getText());
-            //       }
-            //     }
-            //     // console.log(
-            //     //   s.symbol.declarations
-            //     //     .filter((d) => d.getSourceFile().fileName.startsWith(program.getCurrentDirectory()))
-            //     //   );
-            //   }
-            //   // console.log(s.symbol);
-            // }
-          }
-
-          if (!isExportRelated) {
-            result.push({
-              symbol,
-              parentBlock,
-              isExportRelated,
-            });
-          }
-        }  
-      }
-    }
-  }, debug);
-
-  composeVisitors(
-    visitSignature,
+      return;
+    }, debug)
   )(file);
   return result;
 }
 
+export function collectExportRelatedSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
+  throw new Error("not implemented");
+  // const checker = program.getTypeChecker();
+  // const symbol = checker.getSymbolAtLocation(source);
+  // const exportSymbols = checker.getExportsOfModule(symbol!);
+  // return exportSymbols;
+}
 
 export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
   const checker = program.getTypeChecker();
@@ -283,8 +238,10 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
   const visitedNode = new Set<ts.Node>();
 
   return {
-    isRelated,
     getRelatedTypes: () => visitedType,
+    getRelatedSymbols: () => visitedSymbol,
+    getRelatedNodes: () => visitedNode,
+    isRelated,
     isRelatedNode,
     isRelatedSymbol,
     visitNode,
@@ -394,7 +351,6 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
       // debugLog("  ".repeat(depth + 1), "[ReturnType]", checker.typeToString(returnType));
       // traverse(returnType, depth + 2, nextDebug);
     }
-
   }
   function visitSymbol(symbol: ts.Symbol, depth = 0) {
     if (visitedSymbol.has(symbol)) return;

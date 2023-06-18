@@ -71,3 +71,41 @@ export function createTestLanguageService(
     },
   };
 }
+
+// To check oneshot ast analyze
+let oldOneshotProgram: ts.Program | undefined = undefined;
+export function createOneshotTestProject(
+  indexCode: string,
+  projectPath: string = path.join(__dirname, "__fixtures__/minimum"),
+): { file: ts.SourceFile, project: ts.Program, checker: ts.TypeChecker } {
+  const tsconfig = ts.readConfigFile(
+    path.join(projectPath, "tsconfig.json"),
+    ts.sys.readFile,
+  );
+  const options = ts.parseJsonConfigFileContent(
+    tsconfig.config,
+    ts.sys,
+    projectPath,
+  );
+
+  const host = ts.createCompilerHost(options.options);
+  host.getCurrentDirectory = () => projectPath;
+  host.readFile = (fname) => {
+    const resolved = fname.startsWith("/") ? fname : path.join(projectPath, fname);
+    if (resolved === path.join(projectPath, "index.ts")) {
+      return indexCode;
+    } 
+    return ts.sys.readFile(resolved);
+  }
+  // host.reda
+  const project = ts.createProgram([
+    path.join(projectPath, "index.ts"),
+  ], options.options, host, oldOneshotProgram);
+  const file = project.getSourceFile(path.join(projectPath, "index.ts"))!;
+  oldOneshotProgram = project;
+  return {
+    file,
+    project,
+    checker: project.getTypeChecker(),
+  };
+}

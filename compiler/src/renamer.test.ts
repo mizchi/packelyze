@@ -3,9 +3,10 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
 import { createTestLanguageService } from "./testHarness";
-import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols, collectScopedSignatures } from "./analyzer";
+import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols, collectScopedSignatures, createCollector } from "./analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "./symbolBuilder";
+import { findFirstNode } from "./nodeUtils";
 
 test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");
@@ -161,6 +162,33 @@ export { _ as xxx, $ as zzz };
 `);
 });
 
+// {
+//   // before
+//   type Local = {
+//     xxx: number;
+//   };
+//   type Pub = {
+//     pubv: number;
+//   };
+//   const local: Local = {
+//     xxx: 1,
+//   };
+//   export const pub: Pub = {
+//     pubv: 1,
+//   };  
+// }
+// {
+//   // after
+//   type Local = {
+//     a: number;
+//   };
+//   type Pub = {
+//       pubv: number;
+//   };
+//   const _: Local = { a: 1 };
+//   const $: Pub = { pubv: 1 };
+//   export { $ as pub };
+// }
 
 test("rename local object member", () => {
   // type Local = {
@@ -175,19 +203,30 @@ test("rename local object member", () => {
   } = createTestLanguageService();
 
   const code = `
-    type Local = {
-      xxx: number;
-    };
-    type Pub = {
-      pub: number;
-    };
-    const local: Local = {
-      xxx: 1,
-    };
-    export const pub: Pub = {
-      pub: 1,
-    };
-    `;
+type Local = {
+  xxx: number;
+};
+type Pub = {
+  pubv: number;
+};
+const local: Local = {
+  xxx: 1,
+};
+export const pub: Pub = {
+  pubv: 1,
+};
+`;
+  const after = `
+type Local = {
+    a: number;
+};
+type Pub = {
+    pubv: number;
+};
+const _: Local = { a: 1 };
+const $: Pub = { pubv: 1 };
+export { $ as pub };
+  `;
   const preprocessed = preprocess(code);
   service.writeSnapshotContent(
     "src/index.ts",
@@ -207,10 +246,10 @@ test("rename local object member", () => {
     xxx: number;
 };
 type Pub = {
-    pub: number;
+    pubv: number;
 };
 const _: Local = { xxx: 1 };
-const $: Pub = { pub: 1 };
+const $: Pub = { pubv: 1 };
 export { $ as pub };
 `);
   // return;
@@ -218,35 +257,110 @@ export { $ as pub };
     // try to rename signature
     const source = service.getCurrentSourceFile('src/index.ts')!;
     const renameItems = collectRenameItemsForSignatureFromFile(service, source);
-    // console.log(renameItems);
+    console.log('renames', renameItems.map( (item) => `${item.source} => ${item.target} (${item.textSpan.start}, ${item.textSpan.length})`));
     const state = getRenameAppliedState(renameItems, (fname) => {
       const source = service.getCurrentSourceFile(fname);
       return source && source.text;
     }, normalizePath);
+    // console.log(state)
     // const result = state.get(normalizePath("src/index.ts"))![0];
     // console.log(result);
 //     expect(result).toBe(`type Local = {
 //     _: number;
 // };
-// type Pub = {
-//     $: number;
-// };
-// const local: Local = { _: 1 };
-// const pub: Pub = { $: 1 };
-// export { pub };
-// `);
   }
 });
-  // expect(result).toBe(`type Local = {
-//   expect(result).toBe(`type Local = {
-//     _: number;
-// };
-// const $: Local = {
-//     _: 1
-// }
-// export const exported = 1;
-// `);
 
+test.only("rename local object member", () => {
+  // type Local = {
+  //   xxx: number;
+  // };
+  // const local: Local = {
+  //   xxx: 1,
+  // };  
+  const {
+    service,
+    normalizePath,
+  } = createTestLanguageService();
+
+  const code = `type Local = {
+    xxx: number;
+};
+type Pub = {
+    pubv: number;
+};
+const _: Local = { xxx: 1 };
+const $: Pub = { pubv: 1 };
+export { $ as pub };
+`;
+  // const preprocessed = preprocess(code);
+  service.writeSnapshotContent(
+    "src/index.ts",
+    code,
+  );
+
+  const collector = createCollector(service.getProgram()!.getTypeChecker());
+  const file = service.getCurrentSourceFile('src/index.ts')!;
+  const exportedSymbols = collectExportSymbols(service.getProgram()!, file);
+
+  // 公開型から、その型のメンバーを参照しているシンボルを探す
+  for (const symbol of exportedSymbols) {
+    collector.visitSymbol(symbol);
+    // console.log('symbol', symbol.getName());
+  }
+
+  // コード側から探索した node から、シンボルを探しておく
+  const source = service.getCurrentSourceFile('src/index.ts')!;
+
+  const pubTypeNode = findFirstNode(service.getProgram()!, 'src/index.ts', 'type Pub')!;
+  expect(
+    collector.isRelatedNode(pubTypeNode)
+  ).toBe(true);
+
+  // console.log('pubTypeNode', ts.SyntaxKind[pubTypeNode.kind], pubTypeNode.getText());
+  // const node = findFirstNode(service.getProgram()!, 'src/index.ts', 'pubv')!;
+  // console.log('node', ts.SyntaxKind[node.kind],  ts.SyntaxKind[node.parent.kind]);
+
+  const renameCanditates: ts.Node[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isPropertySignature(node)) {
+      if (!isExportedAncestor(node, collector.isRelatedNode)) {
+        if (ts.isPropertySignature(node)) {
+          renameCanditates.push(node.name);
+        }
+        // console.log('renamer', node.getText());
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  const renameItems: RenameItem[] = [];
+  const symbolBuilder = createSymbolBuilder();
+
+  const scopedSymbols = collectScopedSymbols(service.getProgram()!, file);
+  const unsafeRenameTargets = collectUnsafeRenameTargets(service.getProgram()!, file, scopedSymbols);
+
+  for (const node of renameCanditates) {
+    const original = node.getText();
+    const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
+    // const newName = `${original}_renamed`
+    const locs = collectRenameItems(
+      service, node.getSourceFile(),
+      node.getStart(),
+      RenameSourceKind.ScopedSignature,
+      original,
+      newName
+    );
+    locs && renameItems.push(...locs);
+  }
+
+  const state = getRenameAppliedState(renameItems, (fname) => {
+    const source = service.getCurrentSourceFile(fname);
+    return source && source.text;
+  }, normalizePath);
+  const result = state.get(normalizePath("src/index.ts"))![0];
+  console.log(result);
+});
 
 test("rewire exports: complex", () => {
   const {
@@ -414,6 +528,7 @@ export function collectRenameItemsForSignatureFromFile(service: ts.LanguageServi
   const renameItems: RenameItem[] = [];
   const unsafeRenameTargets = collectUnsafeRenameTargets(program, file, scopedSignatures);
 
+  // console.log("scopedSignature", scopedSignatures);
   for (const blockedSymbol of scopedSignatures) {
     const declaration = blockedSymbol.symbol.valueDeclaration;
     if (declaration) {
@@ -432,3 +547,28 @@ export function collectRenameItemsForSignatureFromFile(service: ts.LanguageServi
   return renameItems;  
 }
 
+function isExportedAncestor(node: ts.Node, finder = (node: ts.Node) => true) {
+  let cur = node;
+  while (cur = cur.parent) {
+    // force stop
+    if (ts.isSourceFile(cur) || ts.isBlock(cur)) {
+      break;
+    }
+    // only checkable nodes. not stoppable
+    if (ts.isTypeLiteralNode(cur) || ts.isTupleTypeNode(cur)) {
+      if (finder(cur)) {
+        return true;
+      }
+    }
+    // terminater
+    if (
+      ts.isTypeAliasDeclaration(cur) ||
+      ts.isInterfaceDeclaration(cur)
+    ) {
+      // console.log('decl', ts.SyntaxKind[cur.kind], cur === pubTypeNode);
+      return finder(cur);
+      break;
+    }
+  }
+  return false;
+}
