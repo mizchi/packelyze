@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
-import { createRelatedTypesCollector, collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector } from "./analyzer";
+import { collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
 import { createVisitScoped, composeVisitors, findFirstNode } from "./nodeUtils";
 
@@ -117,16 +117,7 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
   }
-  // const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
   {
-    // const collector = createRelatedTypesCollector(program);
-    // const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
-    // for (const identifier of identifiers) {
-    //   const symbol = checker.getSymbolAtLocation(identifier)!;
-    //   collector.collectRelatedTypesFromSymbol(symbol);
-    // }
-    // const relatedTypes = collector.getRelatedTypes();
-    // const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
     expect(collector.isRelatedNode(
       findFirstNode(program, file.fileName, /type Exp/)!,
     )).toBe(true);

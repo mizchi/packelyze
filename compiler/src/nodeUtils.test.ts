@@ -1,7 +1,7 @@
-import ts, { TypeAliasDeclaration } from "typescript";
+import ts from "typescript";
 import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
-import { createVisitScoped, composeVisitors, createTypeVisitor, getNodeAtPosition, findFirstNode, createVisitSignature, createTypeVisitor2 } from "./nodeUtils";
+import { createVisitScoped, composeVisitors, findFirstNode, createVisitSignature } from "./nodeUtils";
 import { collectExportSymbols, createCollector } from "./analyzer";
 import { createLogger } from './logger';
 

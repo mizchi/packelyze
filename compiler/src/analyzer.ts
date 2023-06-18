@@ -1,7 +1,5 @@
-// import { Program, Node, SourceFile, FunctionDeclaration, FunctionExpression, isFunctionDeclaration } from "typescript";
-// import { Block, ClassDeclaration, FunctionDeclaration, Node, Program, Signature, SourceFile, Symbol, SymbolFlags, Type, isExpression, isFunctionDeclaration, isVariableStatement } from "typescript";
 import ts from "typescript";
-import { TraverseableNode, createTypeVisitor, createVisitScoped, composeVisitors, createVisitSignature } from "./nodeUtils";
+import { TraverseableNode, createVisitScoped, composeVisitors, createVisitSignature } from "./nodeUtils";
 import { createLogger } from "./logger";
 
 export type ScopedSymbol = {
@@ -12,7 +10,7 @@ export type ScopedSymbol = {
 
 export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
   const checker = program.getTypeChecker();
-  const collector = createRelatedTypesCollector(program, debug);
+  const collector = createCollector(checker, debug);
 
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
@@ -20,16 +18,16 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
 
   // colect export related types
   for (const symbol of exportSymbols) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    collector.visitSymbol(symbol);
   }
 
   // colect global vars related types
   for (const symbol of globalVariables) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    collector.visitType(checker.getDeclaredTypeOfSymbol(symbol));
   }
   // colect global related types
   for (const symbol of globalTypes) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    collector.visitType(checker.getDeclaredTypeOfSymbol(symbol));
   }
 
   // collect external import related types
@@ -42,7 +40,7 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
         const exportSymbols = checker.getExportsOfModule(mod);
         // console.log("external", external, mod.name, exportSymbols.length);
         for (const symbol of exportSymbols) {
-          collector.collectRelatedTypesFromSymbol(symbol);
+          collector.visitSymbol(symbol);
         }
       }
     }  
@@ -54,7 +52,7 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
   const visitScopedIdentifierSymbols = createVisitScoped(checker, (symbol, parentBlock) => {
     if (symbol.valueDeclaration == null) {
       const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-      const isExportRelated = collector.isRelatedType(type);
+      const isExportRelated = collector.isRelated(type, symbol);
       result.push({
         symbol,
         parentBlock,
@@ -63,8 +61,8 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
     } else {
       if (symbol.declarations) {
         for (const decl of symbol.declarations) {
-          const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
-          const isExportRelated = collector.isRelatedType(type);
+          // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
+          const isExportRelated = collector.isRelatedNode(decl);
           result.push({
             symbol,
             parentBlock,
@@ -83,30 +81,26 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
 
 export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
   const log = createLogger(`[collectScopedSignatures]`,debug);
-  log.on();
+  // log.on();
   const checker = program.getTypeChecker();
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
-  // const collector = createRelatedTypesCollector(program, debug);
-  const collector2 = createCollector(checker, debug);
+  const collector = createCollector(checker, debug);
 
   // colect export related types
   for (const symbol of exportSymbols) {
-    // collector.collectRelatedTypesFromSymbol(symbol);
-    collector2.visitSymbol(symbol);
+    collector.visitSymbol(symbol);
   }
 
   // colect global vars related types
   for (const symbol of globalVariables) {
-    // collector.collectRelatedTypesFromSymbol(symbol);
-    // collector2.visitSymbol(symbol);
+    collector.visitType(checker.getDeclaredTypeOfSymbol(symbol));
   }
   // colect global related types
   for (const symbol of globalTypes) {
-    // collector.collectRelatedTypesFromSymbol(symbol);
-    // collector2.visitSymbol(symbol);
+    collector.visitType(checker.getDeclaredTypeOfSymbol(symbol));
   }
 
   // collect external import related types
@@ -120,7 +114,7 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
         // console.log("external", external, mod.name, exportSymbols.length);
         for (const symbol of exportSymbols) {
           // collector.collectRelatedTypesFromSymbol(symbol);
-          collector2.visitSymbol(symbol);
+          collector.visitSymbol(symbol);
         }
       }
     }  
@@ -144,7 +138,7 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
       log("visitSignature:valueDeclaration==null", symbol.name);
       // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
       // const isExportRelated = collector.isRelatedType(type);
-      const isExportRelated = collector2.isRelatedSymbol(symbol);
+      const isExportRelated = collector.isRelatedSymbol(symbol);
       if (!isExportRelated) {
         result.push({
           symbol,
@@ -155,10 +149,10 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
     } else {
       if (symbol.declarations) {
         for (const decl of symbol.declarations) {
-          const isExportRelated = collector2.isRelatedNode(decl);
+          const isExportRelated = collector.isRelatedNode(decl);
           // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
           // const isExportRelated = collector.isRelated(symbol);
-          const isRelatedDeclaration = collector2.isRelatedNode(decl);
+          const isRelatedDeclaration = collector.isRelatedNode(decl);
           if (symbol.name === 'pub') {
             log("visitSignature:declarations", symbol.name, "exported?", isExportRelated, "relatedDeclaration?", isRelatedDeclaration);
             // const d = decl;
@@ -208,72 +202,6 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
   return result;
 }
 
-
-export function createRelatedTypesCollector(program: ts.Program, debug = false) {
-  const checker = program.getTypeChecker();
-  // let symbols = new Map<string, Symbol>();
-  let relatedTypes = new Set<ts.Type>();
-  let relatedSymbols = new Set<ts.Symbol>();
-  let relatedDeclarations = new Set<ts.Declaration>();
-  const visitType = createTypeVisitor(checker, debug);
-  return {
-    isRelatedType,
-    isRelatedSymbol,
-    getRelatedTypes: () => relatedTypes,
-    getRelatedSybols: () => relatedSymbols,
-    isRelatedDeclaration: (node: ts.Declaration) => {
-      return relatedDeclarations.has(node as ts.Declaration);
-    },
-    isRelated(...symbolOrType: (ts.Type | ts.Symbol | ts.Declaration)[]) {
-      return symbolOrType.some((s) => {
-        if (s.flags & ts.SymbolFlags.Type) {
-          return relatedTypes.has(s as ts.Type);
-        } else {
-          return isRelatedSymbol(s as ts.Symbol);
-        }
-      })
-    },
-    collectRelatedType,
-    collectRelatedTypesFromSymbol: (symbol: ts.Symbol, depth = 0) => {
-      const types = symbolToRelatedTypes(symbol, checker);
-      if (symbol.valueDeclaration) {
-        relatedDeclarations.add(symbol.valueDeclaration);
-      }
-      for (const type of types) {
-        collectRelatedType(type, depth);
-      }
-    },
-  }
-
-  function isRelatedType(type: ts.Type) {
-    return relatedTypes.has(type)
-  };
-  function isRelatedSymbol(symbol: ts.Symbol) {
-    if (symbol.valueDeclaration) {
-      const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
-      return relatedTypes.has(type);
-    }
-    return relatedSymbols.has(symbol);
-  }
-
-  function collectRelatedType(type: ts.Type, depth = 0) {
-    visitType(
-      type,
-      (type) => {
-        if (relatedTypes.has(type)) {
-          return true;
-        }
-        relatedTypes.add(type);
-      },
-      (symbol) => {
-        if (relatedSymbols.has(symbol)) {
-          return true;
-        }
-      }
-    );
-    return;
-  }
-}
 
 export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
   const checker = program.getTypeChecker();
