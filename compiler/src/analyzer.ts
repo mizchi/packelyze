@@ -85,23 +85,28 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
   const log = createLogger(`[collectScopedSignatures]`,debug);
   log.on();
   const checker = program.getTypeChecker();
-  const collector = createRelatedTypesCollector(program, debug);
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
+  // const collector = createRelatedTypesCollector(program, debug);
+  const collector2 = createCollector(checker, debug);
+
   // colect export related types
   for (const symbol of exportSymbols) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    // collector.collectRelatedTypesFromSymbol(symbol);
+    collector2.visitSymbol(symbol);
   }
 
   // colect global vars related types
   for (const symbol of globalVariables) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    // collector.collectRelatedTypesFromSymbol(symbol);
+    // collector2.visitSymbol(symbol);
   }
   // colect global related types
   for (const symbol of globalTypes) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    // collector.collectRelatedTypesFromSymbol(symbol);
+    // collector2.visitSymbol(symbol);
   }
 
   // collect external import related types
@@ -114,7 +119,8 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
         const exportSymbols = checker.getExportsOfModule(mod);
         // console.log("external", external, mod.name, exportSymbols.length);
         for (const symbol of exportSymbols) {
-          collector.collectRelatedTypesFromSymbol(symbol);
+          // collector.collectRelatedTypesFromSymbol(symbol);
+          collector2.visitSymbol(symbol);
         }
       }
     }  
@@ -136,8 +142,9 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
     // }
     if (symbol.valueDeclaration == null) {
       log("visitSignature:valueDeclaration==null", symbol.name);
-      const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-      const isExportRelated = collector.isRelatedType(type);
+      // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
+      // const isExportRelated = collector.isRelatedType(type);
+      const isExportRelated = collector2.isRelatedSymbol(symbol);
       if (!isExportRelated) {
         result.push({
           symbol,
@@ -148,9 +155,10 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
     } else {
       if (symbol.declarations) {
         for (const decl of symbol.declarations) {
+          const isExportRelated = collector2.isRelatedNode(decl);
           // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
-          const isExportRelated = collector.isRelated(symbol);
-          const isRelatedDeclaration = collector.isRelatedDeclaration(decl);
+          // const isExportRelated = collector.isRelated(symbol);
+          const isRelatedDeclaration = collector2.isRelatedNode(decl);
           if (symbol.name === 'pub') {
             log("visitSignature:declarations", symbol.name, "exported?", isExportRelated, "relatedDeclaration?", isRelatedDeclaration);
             // const d = decl;
@@ -348,6 +356,7 @@ export function createCollector(checker: ts.TypeChecker, debug = false) {
 
   return {
     isRelated,
+    getRelatedTypes: () => visitedType,
     isRelatedNode,
     isRelatedSymbol,
     visitNode,

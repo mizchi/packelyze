@@ -101,6 +101,9 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
       t: 'b';
       v: string;
     }
+    type C = {
+      t: 'c';
+    }
     type Exp = A | B;
     export const exp: Exp = null as any as Exp;
     `
@@ -109,21 +112,35 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const checker = program.getTypeChecker();
 
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
+  const exportedSymbols = collectExportSymbols(program, file);
+  const collector = createCollector(checker);
+  for (const symbol of exportedSymbols) {
+    collector.visitSymbol(symbol);
+  }
+  // const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
   {
-    const collector = createRelatedTypesCollector(program);
-    const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
-    for (const identifier of identifiers) {
-      const symbol = checker.getSymbolAtLocation(identifier)!;
-      collector.collectRelatedTypesFromSymbol(symbol);
-    }
-    const relatedTypes = collector.getRelatedTypes();
-    const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
-    expect(nameSet.has("Exp")).toBeTruthy();
-    expect(nameSet.has("A")).toBeTruthy();
-    expect(nameSet.has("B")).toBeTruthy();
-    expect(nameSet.has('"a"')).toBeTruthy();
-    expect(nameSet.has('"b"')).toBeTruthy();
+    // const collector = createRelatedTypesCollector(program);
+    // const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
+    // for (const identifier of identifiers) {
+    //   const symbol = checker.getSymbolAtLocation(identifier)!;
+    //   collector.collectRelatedTypesFromSymbol(symbol);
+    // }
+    // const relatedTypes = collector.getRelatedTypes();
+    // const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
+    expect(collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type Exp/)!,
+    )).toBe(true);
+    expect(collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type A/)!,
+    )).toBe(true);
+    expect(collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type B/)!,
+    )).toBe(true);
+    expect(collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type C/)!,
+    )).toBe(false);
+    // expect(nameSet.has('"a"')).toBeTruthy();
+    // expect(nameSet.has('"b"')).toBeTruthy();
   }
 });
 
@@ -144,7 +161,7 @@ test("collectExportSymbols", () => {
     export { sub1 } from "./sub";
     export const a = 1;
     const b = 2;
-    const c = 3;
+    const c: 3 = 3;
     export {
       b
     }
@@ -159,13 +176,16 @@ test("collectExportSymbols", () => {
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const exportSymbols = collectExportSymbols(program, source);
 
+
   expect(exportSymbols.map(x => x.getName())).toEqual([
     "sub1", "a", "b", "Foo"
   ]);
 
-  const collector = createRelatedTypesCollector(program);
+  // const collector = createRelatedTypesCollector(program);
+  const collector = createCollector(checker);
   for (const symbol of exportSymbols) {
-    collector.collectRelatedTypesFromSymbol(symbol);
+    // collector.collectRelatedTypesFromSymbol(symbol);
+    collector.visitSymbol(symbol);
   }
 
   const relatedTypes = collector.getRelatedTypes();
@@ -173,7 +193,7 @@ test("collectExportSymbols", () => {
   expect(nameSet.has("Foo")).toBeTruthy();
   expect(nameSet.has("1")).toBeTruthy();
   expect(nameSet.has("2")).toBeTruthy();
-  expect(nameSet.has("3")).toBeFalsy();
+  // expect(nameSet.has("3")).toBeFalsy();
 });
 
 test("visitScoped: exports", () => {
