@@ -26,7 +26,6 @@ export function getNodeAtPosition(
   }
 }
 
-// type ToString = string["toString"];
 /**
  * Traverse type and call visitor function for each type.
  */
@@ -189,6 +188,166 @@ export function createTypeVisitor(checker: ts.TypeChecker, debug = false) {
   return visitor;
 }
 
+/**
+ * Traverse type and call visitor function for each type.
+ */
+export function createTypeVisitor2(checker: ts.TypeChecker, debug = false) {
+  const debugLog = createLogger("[TypeVisit]", debug);
+  // const visitedDeclarations = new Set<ts.Declaration>();
+  const visitor = (
+    node: ts.Node,
+    visit: (decl: ts.Node) => void,
+  //   visitType: (type: ts.Type) => boolean | void,
+  //   visitSymbol: (symbol: ts.Symbol) => void,
+  //   onRevisit?: (type: ts.Type) => boolean | void
+  ) => {
+    const visitedTypes = new Set<ts.Type>();
+    const visitedSymbols = new Set<ts.Symbol>();
+    const visitedDeclarations = new Set<ts.Node>();
+
+    const visitNodeWithCache = (decl: ts.Node) => {
+      if (visitedDeclarations.has(decl)) return;
+      visitedDeclarations.add(decl);
+      visit(decl);
+      if (decl.parent) {
+        const symbol = checker.getSymbolAtLocation(decl);
+        if (symbol) {
+          visitSymbolWithCache(symbol);
+        }  
+      }
+      // if (ts.isTypeAliasDeclaration(decl)) {
+      //   for (const typeParam of decl.typeParameters ?? []) {
+      //     visitNodeWithCache(typeParam);
+      //   }
+      //   if (decl.type) {
+      //     const type = checker.getTypeFromTypeNode(decl.type);
+      //     visitSymbolWithCache(type.symbol!);
+      //   }
+      // }
+      // if (ts.isInterfaceDeclaration(decl)) {
+      //   for (const typeParam of decl.typeParameters ?? []) {
+      //     visitNodeWithCache(typeParam);
+      //   }
+      //   for (const member of decl.members) {
+      //     visitNodeWithCache(member);
+      //   }
+      // }
+      ts.forEachChild(decl, (node) => visitNodeWithCache(node));
+    }
+
+    const visitSymbolWithCache = (symbol: ts.Symbol) => {
+      if (visitedSymbols.has(symbol)) return true;
+      visitedSymbols.add(symbol);
+      traverse(checker.getDeclaredTypeOfSymbol(symbol), 0);
+      for (const decl of symbol.declarations ?? []) {
+        visitNodeWithCache(decl);
+      }
+      if (symbol.valueDeclaration) {
+        visitNodeWithCache(symbol.valueDeclaration);
+      }
+    }
+    return visitNodeWithCache(node);
+    // return traverse(node, 0);
+
+    function traverse(type: ts.Type, depth = 0, force = false) {
+      // check revisted
+      if (visitedTypes.has(type) && !force) {
+        debugLog("  ".repeat(depth), "(cached)", checker.typeToString(type));
+        return;
+      }
+      // mark visited
+      visitedTypes.add(type);
+      // cache symbols
+      if (type.symbol) {
+        if (visitSymbolWithCache(type.symbol)) return;
+      }
+      // check manual stop
+      const typeString = checker.typeToString(type);
+      // const {checker: _, ...rest} = type;
+      debugLog(
+        "  ".repeat(depth),
+        "[Type]",
+        typeString,
+        {
+          ...type,
+          checker: undefined,
+        },
+        // strip
+        // type.aliasSymbol && type.aliasSymbol.name,
+      );
+      // type a = ts.Type
+
+      // if (type.flags & ts.TypeFlags.NumberLiteral) {
+      //   return;
+      // }
+
+      if (type.aliasSymbol) {
+        if (visitSymbolWithCache(type.aliasSymbol)) return;
+        const aliasType = checker.getDeclaredTypeOfSymbol(type.aliasSymbol);
+        traverse(aliasType, depth + 1);
+      }
+      if (type.aliasTypeArguments) {
+        for (const typeArg of type.aliasTypeArguments) {
+          traverse(typeArg);
+        }
+      }
+      if (type.isUnion()) {
+        for (const t of type.types) {
+          debugLog("  ".repeat(depth + 1), "[Union]");
+          traverse(t, depth + 1);
+        }
+      }
+      if (type.isIntersection()) {
+        for (const t of type.types) {
+          debugLog("  ".repeat(depth + 1), "[Intersection]");
+          traverse(t, depth + 1);
+        }
+      }
+
+      for (const property of type.getProperties()) {
+        if (property.valueDeclaration == null) {
+          // TODO
+          continue;
+        }
+        if (visitSymbolWithCache(property)) continue;
+        debugLog("  ".repeat(depth + 1), "[Property]", property.name);
+        const propertyType = checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration);
+        traverse(propertyType, depth + 2);
+      };
+
+      // TODO: Handle pattern?
+      // if (type.pattern) {
+      // }
+
+      for (const signature of checker.getSignaturesOfType(type, ts.SignatureKind.Call)) {
+        debugLog("  ".repeat(depth), "[CallSignature]");
+        const nextDebug = debug;
+        for (const param of signature.parameters) {
+          if (param.valueDeclaration) {
+            const paramType = checker.getTypeOfSymbolAtLocation(param, param.valueDeclaration);
+            if (visitSymbolWithCache(param)) continue;
+            debugLog("  ".repeat(depth + 1), "[Parameter]", param.name, checker.typeToString(paramType));
+            traverse(paramType, depth + 2, nextDebug);
+          }
+        }
+        if (signature.typeParameters) {
+          for (const typeParam of signature.typeParameters) {
+            debugLog("  ".repeat(depth + 1), "[TypeParameter]", checker.typeToString(typeParam));
+            // const typeParamType = checker.getTypeOfSymbolAtLocation(typeParam, typeParam.valueDeclaration!);
+            traverse(typeParam, depth + 2, nextDebug);
+          }
+        }
+        const returnType = checker.getReturnTypeOfSignature(signature);
+        debugLog("  ".repeat(depth + 1), "[ReturnType]", checker.typeToString(returnType));
+        traverse(returnType, depth + 2, nextDebug);
+      }
+    }
+  };
+  // console.log("[precache primitives]", visitedTypes.size, visitedSymbols.size, visitedDeclarations.size);
+  return visitor;
+}
+
+
 export type Visitor = (node: ts.Node, depth?: number) => boolean | void;
 export function composeVisitors(...visitors: Visitor[]): Visitor {
   const visit = (node: ts.Node, depth = 0) => {
@@ -202,6 +361,33 @@ export function composeVisitors(...visitors: Visitor[]): Visitor {
   };
   return visit;
 }
+
+type VisitableSignature = ts.PropertySignature | ts.MethodSignature;
+
+export const createVisitSignature = (
+  checker: ts.TypeChecker,
+  visitor: (symbol: ts.Symbol, property: VisitableSignature) => void,
+  debug = false
+): Visitor => {
+  return (node: ts.Node) => {
+    const addNameIfExist = (node: ts.Node) => {
+      const name = (node as any)["name"];
+      if (name && ts.isIdentifier(name)) {
+        const symbol = checker.getSymbolAtLocation(name);
+        symbol && visitor(symbol, node as VisitableSignature);
+      }
+    };
+    // if (ts.isPropertyAssignment(node)) {
+    //   addNameIfExist(node);
+    // }
+    if (ts.isPropertySignature(node)) {
+      addNameIfExist(node);
+    }
+    if (ts.isMethodSignature(node)) {
+      addNameIfExist(node);
+    }
+  };
+};
 
 export const createVisitScoped = (
   checker: ts.TypeChecker,
@@ -221,15 +407,10 @@ export const createVisitScoped = (
       addNameIfExist(node);
     }
 
-    if (ts.isPropertyAssignment(node)) {
-      addNameIfExist(node);
-    }
-    if (ts.isPropertySignature(node)) {
-      addNameIfExist(node);
-    }
-    if (ts.isMethodSignature(node)) {
-      addNameIfExist(node);
-    }
+    /// Example: const obj = { vvv: 1 };
+    // if (ts.isPropertyAssignment(node)) {
+    //   addNameIfExist(node);
+    // }
 
     if (ts.isPropertyDeclaration(node)) {
       addNameIfExist(node);

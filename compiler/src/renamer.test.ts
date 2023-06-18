@@ -3,7 +3,7 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
 import { createTestLanguageService } from "./testHarness";
-import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols } from "./analyzer";
+import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols, collectScopedSignatures } from "./analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
@@ -47,6 +47,7 @@ test("batch renaming", () => {
     sourceFile,
     ySymbol.valueDeclaration!.getStart(),
     RenameSourceKind.ScopedIdentifier,
+    
     ySymbol.name,
     "y_changed",
   );
@@ -131,9 +132,7 @@ test("rename exported", () => {
     normalizePath,
   } = createTestLanguageService();
 
-  const tempSource = ts.createSourceFile(
-    "src/index.ts",
-    `
+  const tempSource =`
     const xxx = 1;
 
     const yyy = 2;
@@ -141,9 +140,7 @@ test("rename exported", () => {
       xxx,
       yyy as zzz
     }
-    `,
-    ts.ScriptTarget.ESNext,
-  );
+    `;
   const preprocessed = preprocess(tempSource);
 
   service.writeSnapshotContent(
@@ -152,7 +149,7 @@ test("rename exported", () => {
   );
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsFromFile(service, source);
+  const renameItems = collectRenameItemsForScopedFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
@@ -163,6 +160,93 @@ const $ = 2;
 export { _ as xxx, $ as zzz };
 `);
 });
+
+
+test.skip("rename local object member", () => {
+  // type Local = {
+  //   xxx: number;
+  // };
+  // const local: Local = {
+  //   xxx: 1,
+  // };  
+  const {
+    service,
+    normalizePath,
+  } = createTestLanguageService();
+
+  const code = `
+    type Local = {
+      xxx: number;
+    };
+    type Pub = {
+      pub: number;
+    };
+    const local: Local = {
+      xxx: 1,
+    };
+    export const pub: Pub = {
+      pub: 1,
+    };
+    `;
+  const preprocessed = preprocess(code);
+  service.writeSnapshotContent(
+    "src/index.ts",
+    preprocessed,
+  );
+  const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
+
+  const renameItems = collectRenameItemsForScopedFromFile(service, source);
+  // console.log(renameItems);
+  const state = getRenameAppliedState(renameItems, (fname) => {
+    const source = service.getCurrentSourceFile(fname);
+    return source && source.text;
+  }, normalizePath);
+  const result = state.get(normalizePath("src/index.ts"))![0];
+  // console.log(result);
+  expect(result).toBe(`type Local = {
+    xxx: number;
+};
+type Pub = {
+    pub: number;
+};
+const _: Local = { xxx: 1 };
+const $: Pub = { pub: 1 };
+export { $ as pub };
+`);
+  // return;
+  {
+    // try to rename signature
+    const source = service.getCurrentSourceFile('src/index.ts')!;
+    const renameItems = collectRenameItemsForSignatureFromFile(service, source);
+    // console.log(renameItems);
+    const state = getRenameAppliedState(renameItems, (fname) => {
+      const source = service.getCurrentSourceFile(fname);
+      return source && source.text;
+    }, normalizePath);
+    const result = state.get(normalizePath("src/index.ts"))![0];
+    // console.log(result);
+    expect(result).toBe(`type Local = {
+    _: number;
+};
+type Pub = {
+    $: number;
+};
+const local: Local = { _: 1 };
+const pub: Pub = { $: 1 };
+export { pub };
+`);
+  }
+});
+  // expect(result).toBe(`type Local = {
+//   expect(result).toBe(`type Local = {
+//     _: number;
+// };
+// const $: Local = {
+//     _: 1
+// }
+// export const exported = 1;
+// `);
+
 
 test("rewire exports: complex", () => {
   const {
@@ -205,7 +289,7 @@ test("rewire exports: complex", () => {
 
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsFromFile(service, source);
+  const renameItems = collectRenameItemsForScopedFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
@@ -255,7 +339,7 @@ test.skip("rename multi file", () => {
   const source = program.getSourceFile("sub/index.ts")!;
   console.log(
     collectExportSymbols(program, source),
-  )
+  );
   // const renameItems = collectRenameItemsFromFile(service, source);
 //   const state = getRenameAppliedState(renameItems, (fname) => {
 //     const source = program.getSourceFile(fname);
@@ -285,7 +369,7 @@ test("rewire exports: enum", () => {
 
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const renameItems = collectRenameItemsFromFile(service, source);
+  const renameItems = collectRenameItemsForScopedFromFile(service, source);
   const state = getRenameAppliedState(renameItems, (fname) => {
     const source = program.getSourceFile(fname);
     return source && source.text;
@@ -298,7 +382,7 @@ export { _ as Eee };
 `);
 });
 
-function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.SourceFile) {
+function collectRenameItemsForScopedFromFile(service: ts.LanguageService, file: ts.SourceFile) {
   const program = service.getProgram()!;
   const symbolBuilder = createSymbolBuilder();
   const scopedSymbols = collectScopedSymbols(program, file);
@@ -322,3 +406,29 @@ function collectRenameItemsFromFile(service: ts.LanguageService, file: ts.Source
   }
   return renameItems;  
 }
+
+export function collectRenameItemsForSignatureFromFile(service: ts.LanguageService, file: ts.SourceFile) {
+  const program = service.getProgram()!;
+  const symbolBuilder = createSymbolBuilder();
+  const scopedSignatures = collectScopedSignatures(program, file);
+  const renameItems: RenameItem[] = [];
+  const unsafeRenameTargets = collectUnsafeRenameTargets(program, file, scopedSignatures);
+
+  for (const blockedSymbol of scopedSignatures) {
+    const declaration = blockedSymbol.symbol.valueDeclaration;
+    if (declaration) {
+      const original = blockedSymbol.symbol.getName();
+      const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
+      const locs = collectRenameItems(
+        service, declaration.getSourceFile(),
+        declaration.getStart(),
+        RenameSourceKind.ScopedSignature,
+        original,
+        newName
+      );
+      locs && renameItems.push(...locs);
+    }
+  }
+  return renameItems;  
+}
+

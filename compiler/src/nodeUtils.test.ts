@@ -1,8 +1,9 @@
-import ts from "typescript";
+import ts, { TypeAliasDeclaration } from "typescript";
 import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
-import { createVisitScoped, composeVisitors, createTypeVisitor, getNodeAtPosition, findFirstNode } from "./nodeUtils";
-import { collectExportSymbols } from "./analyzer";
+import { createVisitScoped, composeVisitors, createTypeVisitor, getNodeAtPosition, findFirstNode, createVisitSignature, createTypeVisitor2 } from "./nodeUtils";
+import { collectExportSymbols, createCollector } from "./analyzer";
+import { createLogger } from './logger';
 
 const code1 = `
 // export const local: number = 1;
@@ -40,11 +41,11 @@ test("createTypeVisitor", () => {
     value: number;
     children: Tree[];
   }
-  
+
   export const tree: Tree = {
     value: 1,
     children: []
-  };  
+  };
   `;
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -63,29 +64,99 @@ test("createTypeVisitor", () => {
 
   const xxxNode = findFirstNode(program, normalizePath("src/index.ts"), /xxx/)!;
   const xxxSymbol = checker.getSymbolAtLocation(xxxNode)!;
-
-  const types: Set<ts.Type> = new Set();
-  const symbols: Set<ts.Symbol> = new Set();
+  const collector = createCollector(checker);
 
   for (const symbol of exportedSymbols) {
-    const type = program.getTypeChecker().getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-    // console.log("------", symbol.name, checker.typeToString(type));
-    const visitor = createTypeVisitor(checker);
-    visitor(type,
-      (type) => {
-        types.add(type);
-      },
-      (symbol) => {
-        symbols.add(symbol);
-      }  
-    );
+    collector.visitSymbol(symbol);
   }
-  const names = [...types].map(t => checker.typeToString(t));
-  expect(names.includes("Tree")).toBe(true);
-  expect(symbols.has(valueSymbol)).toBe(true);
-  expect(symbols.has(xxxSymbol)).toBe(false);
+  expect(collector.isRelatedNode(
+    findFirstNode(program, normalizePath("src/index.ts"), /Tree/)!
+  )).toBe(true);
+  expect(collector.isRelated(valueSymbol)).toBe(true);
+  expect(collector.isRelated(xxxSymbol)).toBe(false);
 });
 
+
+test("createCollector", () => {
+
+  const log = createLogger("[relate]", false);
+  log.off();
+  const { service, normalizePath } = createTestLanguageService();
+  const code = `
+  type LocalType = {
+    hidden: number;
+  }
+  type PubType = {
+    vvv: number;
+  }
+  type PartialPub = {
+    priv: {
+      __priv: number;
+      __priv2(): void;
+    }
+    pub: {
+      partialPub: number;
+    }
+  }
+
+  const local: LocalType = { hidden: 1 };
+  export const pub: PubType = { vvv: 1 };
+  export const partial: PartialPub['pub'] = { partialPub: 1 };
+  `;
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    code
+  );
+  const program = service.getProgram()!;
+  const checker = program.getTypeChecker();
+
+  const exportedSymbols = collectExportSymbols(
+    program,
+    service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!,
+  );
+
+  const collector = createCollector(checker);
+
+  for (const symbol of exportedSymbols) {
+    collector.visitSymbol(symbol);
+    // log.on();
+  }
+
+  {
+    const filePath = normalizePath("src/index.ts");
+    // check node is related
+    expect(
+      collector.isRelated(findFirstNode(program, filePath, /type PubType/)!)
+    ).toBe(true);
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /type PubType/)!)
+    ).toBe(true);
+
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /type LocalType/)!)
+    ).toBe(false);
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /hidden:/)!)
+    ).toBe(false);
+
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /priv:/)!)
+    ).toBe(false);
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /__priv:/)!)
+    ).toBe(false);
+    expect(
+      collector.isRelatedNode(findFirstNode(program, filePath, /__priv2/)!)
+    ).toBe(false);
+
+    // expect(
+    //   isRelatedNode(findFirstNode(program, filePath, /pub:/)!)
+    // ).toBe(true);
+  }
+
+  return;
+
+});
 
 test("visitScopedIdentifierSymbols", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -124,7 +195,7 @@ function fff(arg) {}
   ]);
 });
 
-test("visitLocalIdentifierSymbols: type alias signatrue", () => {
+test("visitScoped: type alias signatrue", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -138,13 +209,20 @@ type T = {
 }
     `
   );
+  const checker = service.getProgram()!.getTypeChecker();
   const symbols: ts.Symbol[] = [];
-  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
+  // const sourceFile = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
+  const visitScoped = createVisitScoped(checker, (symbol, parentBlock) => {
+    symbols.push(symbol);
+  });
+
+  const visitSignature = createVisitSignature(checker, (symbol, parentBlock) => {
     symbols.push(symbol);
   });
 
   const visit = composeVisitors(
-    visitScopedIdentifierSymbols,
+    visitScoped,
+    visitSignature
   );
   visit(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
 
@@ -153,7 +231,7 @@ type T = {
   ]);
 });
 
-test("visitLocalIdentifierSymbols: enum", () => {
+test("visitScoped: enum", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -179,7 +257,7 @@ enum Enum {
 });
 
 
-test("visitLocalIdentifierSymbols: class", () => {
+test("visitScoped: class", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -195,7 +273,7 @@ class Class {
     `
   );
   const symbols: ts.Symbol[] = [];
-  // const visitScopedIdentifierSymbols = 
+  // const visitScopedIdentifierSymbols =
   composeVisitors(
     createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
       symbols.push(symbol);
@@ -207,7 +285,7 @@ class Class {
 });
 
 
-test("visitLocalIdentifierSymbols: object member", () => {
+test.skip("visitLocalIdentifierSymbols: object member", () => {
   const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),

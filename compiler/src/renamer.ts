@@ -3,6 +3,7 @@ import { getNodeAtPosition } from "./nodeUtils";
 
 export enum RenameSourceKind {
   ScopedIdentifier = 1,
+  ScopedSignature,
   IntermediateExportedSpecifier,
   IntermediateImportSpecifier,
 }

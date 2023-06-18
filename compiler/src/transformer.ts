@@ -21,7 +21,7 @@ export function isPreprocessedNeeded(code: string) {
 }
 
 export function preprocess(file: ts.SourceFile | string) {
-  file = typeof file === "string" ? ts.createSourceFile("tmp.tsx", file, ts.ScriptTarget.Latest) : file;
+  file = typeof file === "string" ? ts.createSourceFile(`${Math.random().toString(32).substring(2)}_tmp.tsx`, file, ts.ScriptTarget.Latest) : file;
   const transformed = ts.transform(file, [exportRewireTransformerFactory]);
   const printer = ts.createPrinter();
   const out = printer.printFile(

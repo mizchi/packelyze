@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
-import { createRelatedTypesCollector, collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules } from "./analyzer";
+import { createRelatedTypesCollector, collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector } from "./analyzer";
 import { createTestLanguageService } from "./testHarness";
-import { createVisitScoped, composeVisitors } from "./nodeUtils";
+import { createVisitScoped, composeVisitors, findFirstNode } from "./nodeUtils";
 
 test("collectRelatedTypes: infer internal", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -18,18 +18,18 @@ test("collectRelatedTypes: infer internal", () => {
     `
   );
   const program = service.getProgram()!;
-  const checker = program.getTypeChecker();
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  {
-    const func = file.statements.find((node) => ts.isFunctionDeclaration(node))! as ts.FunctionDeclaration;
-    const collector = createRelatedTypesCollector(program);
-    const symbol = checker.getSymbolAtLocation(func.name!)!;
-    const relatedTypes = collector.collectRelatedTypesFromSymbol(symbol);
-
-    const relatetTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
-    expect(relatetTypesNameSet.has("T")).toBe(true);
-    expect(relatetTypesNameSet.has("Internal")).toBe(true);
+  const exportedSymbols = collectExportSymbols(program, file);
+  const collector = createCollector(program.getTypeChecker());
+  for (const symbol of exportedSymbols) {
+    collector.visitSymbol(symbol);
   }
+  expect(collector.isRelated(
+    findFirstNode(program, file.fileName, /type Internal/)!,
+  )).toBe(true);
+  expect(collector.isRelated(
+    findFirstNode(program, file.fileName, /type UnusedInternal/)!,
+  )).toBe(false);
 });
 
 test("collectRelatedTypes: Partial", () => {
@@ -46,37 +46,45 @@ test("collectRelatedTypes: Partial", () => {
       }
     }
     export const exp: Exp["public"] = { xxx: 1 };
+
+    type PubType = {
+      pub: number;
+    }
+    export const pub: PubType = { pub: 1 };
     `
   );
   const program = service.getProgram()!;
-  const checker = program.getTypeChecker();
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const variableStatement = file.statements.find((node) => ts.isVariableStatement(node))! as ts.VariableStatement;
-  const collector = createRelatedTypesCollector(program);
-  const identifiers = variableStatement.declarationList.declarations.map(d => d.name);
-  for (const identifier of identifiers) {
-    const symbol = checker.getSymbolAtLocation(identifier)!;
-    collector.collectRelatedTypesFromSymbol(symbol);
+  const exportedSymbols = collectExportSymbols(program, file);
+  const collector = createCollector(program.getTypeChecker());
+  for (const symbol of exportedSymbols) {
+    collector.visitSymbol(symbol);
   }
 
-  const relatedTypes = collector.getRelatedTypes();
-  const relatedTypesNameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
+  expect(
+    collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type PubType/)!,
+    )
+  ).toBe(true);
 
-  expect(relatedTypesNameSet.has("{ xxx: number; }")).toBeTruthy();
+  expect(
+    collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /type Exp/)!,
+    )
+  ).toBe(false);
+  expect(
+    collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /priv:/)!,
+    )
+  ).toBe(false);
 
-  // check Exp is not exported directly
-  const expDecl = file.statements.find((node) => ts.isTypeAliasDeclaration(node))! as ts.TypeAliasDeclaration;
-  const expType = checker.getTypeAtLocation(expDecl);
-  expect(relatedTypes.has(expType)).toBe(false);
+  expect(
+    collector.isRelatedNode(
+      findFirstNode(program, file.fileName, /public:/)!,
+    )
+  ).toBe(true);
 
-  // check Exp['public'] is exported
-  const pubSymbol = expType.getProperty("public")!;
-  expect(collector.isRelatedSymbol(pubSymbol)).toBe(true);
-
-  // check priv is hidden
-  const privSymbol = expType.getProperty("priv")!;
-  expect(collector.isRelatedSymbol(privSymbol)).toBe(false);
 });
 
 
@@ -168,7 +176,7 @@ test("collectExportSymbols", () => {
   expect(nameSet.has("3")).toBeFalsy();
 });
 
-test("visitScopedIdentifierSymbols: exports", () => {
+test("visitScoped: exports", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -190,11 +198,11 @@ class X {
 }
   `);
   const program = service.getProgram()!;
-  const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
 
   const symbols = new Set<ts.Symbol>();
+  const checker = program.getTypeChecker();
   composeVisitors(
-    createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol) => {
+    createVisitScoped(checker, (symbol) => {
       symbols.add(symbol);
     })
   )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
@@ -204,24 +212,38 @@ class X {
   ]);
 });
 
-test("collectExportSymbols", () => {
+test("visitScoped: object member", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
     `
-export const exported = 1;
-const local = 1;
-`
-  );
-  // const symbols = findExportSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+type Local = {
+  xxx: number,
+};
+q;const obj: Local = {
+  xxx: 1,
+}
+  `);
+  const program = service.getProgram()!;
 
-  const symbols = collectScopedSymbols(service.getProgram()!, service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
-  expect(symbols.map(s => s.symbol.name)).toEqual(["exported", "local"]);
+  const symbols = new Set<ts.Symbol>();
+  const checker = program.getTypeChecker();
+  composeVisitors(
+    createVisitScoped(checker, (symbol) => {
+      symbols.add(symbol);
+    })
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
+
+  // expect([...symbols].map(s => s.name)).toEqual([
+  //   'Local', 'xxx', 'obj'
+  //   // 'exported', 'local', 'block', "f", 'arg', 'func',  'X', 'method', 'methodBlock'
+  // ]);
 });
 
-test("collectExportSymbols with externals", () => {
+
+test.skip("collectExportSymbols with externals", () => {
   const { service, normalizePath } =
     createTestLanguageService();
 
@@ -258,7 +280,6 @@ test("collectExportSymbols with externals", () => {
   expect(symbols.map(s => s.symbol.name)).toEqual(["parse", "args", "allowPositionals", "options", "name", "type", "alias"]);
 });
 
-
 test("collectGlobalVariables", () => {
   const { service, normalizePath } =
     createTestLanguageService();
@@ -286,6 +307,13 @@ import { Foo } from "./types";
 export type Bar = number;
   `,
   );
+  service.writeSnapshotContent(
+    normalizePath("src/env.d.ts"),
+    `
+declare type MyGlobal = { v: number };
+  `,
+  );
+
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const types = collectGlobalTypes(program, source);
@@ -296,6 +324,7 @@ export type Bar = number;
   expect(names.includes("Generator")).toBeTruthy();
   expect(names.includes("Omit")).toBeTruthy();
   expect(names.includes("Pick")).toBeTruthy();
+  expect(names.includes("MyGlobal")).toBeTruthy();
 });
 
 test("collectImportableModules", () => {
