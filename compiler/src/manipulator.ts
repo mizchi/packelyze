@@ -3,8 +3,8 @@
  */
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
-import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer";
-import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
+import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer/analyzer";
+import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./transformer/renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(

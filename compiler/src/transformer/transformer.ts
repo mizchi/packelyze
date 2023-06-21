@@ -1,6 +1,6 @@
 import { cloneNode } from 'ts-clone-node';
 import ts from "typescript";
-import { AnyExportableDeclaration, isExportableDeclaration } from "./nodeUtils";
+import { AnyExportableDeclaration, isExportableDeclaration } from "../nodeUtils";
 
 const hasExportKeyword = (node: AnyExportableDeclaration) => node.modifiers?.find(mod => mod.kind === ts.SyntaxKind.ExportKeyword);
 const cloneWithoutExport = (node: AnyExportableDeclaration) => {

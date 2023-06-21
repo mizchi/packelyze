@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { writeRenamedFileState } from "./manipulator";
 import { createTestLanguageService } from "./testHarness";
-import { isPreprocessedNeeded, preprocess } from "./transformer";
+import { isPreprocessedNeeded, preprocess } from "./transformer/transformer";
 
 test("writeRenamedFileState", () => {
   const { service, normalizePath } = createTestLanguageService();

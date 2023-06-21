@@ -2,11 +2,11 @@ import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
 import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
-import { createTestLanguageService } from "./testHarness";
-import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols, collectScopedSignatures, createCollector } from "./analyzer";
+import { createTestLanguageService } from "../testHarness";
+import { collectUnsafeRenameTargets, collectExportSymbols, collectScopedSymbols, collectScopedSignatures, createCollector } from "../analyzer/analyzer";
 import { preprocess } from "./transformer";
-import { createSymbolBuilder } from "./symbolBuilder";
-import { findFirstNode } from "./nodeUtils";
+import { createSymbolBuilder } from "../symbolBuilder";
+import { findFirstNode } from "../nodeUtils";
 
 test("batch renaming", () => {
   const projectPath = path.join(__dirname, "../examples");

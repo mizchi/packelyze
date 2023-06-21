@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { getNodeAtPosition } from "./nodeUtils";
+import { getNodeAtPosition } from "../nodeUtils";
 
 export enum RenameSourceKind {
   ScopedIdentifier = 1,

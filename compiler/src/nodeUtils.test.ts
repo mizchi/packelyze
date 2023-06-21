@@ -2,7 +2,7 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
 import { createVisitScoped, composeVisitors, findFirstNode, createVisitSignature } from "./nodeUtils";
-import { collectExportSymbols, createCollector } from "./analyzer";
+import { collectExportSymbols, createCollector } from "./analyzer/analyzer";
 import { createLogger } from './logger';
 
 const code1 = `

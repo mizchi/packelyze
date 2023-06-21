@@ -1,6 +1,6 @@
 import ts from "typescript";
-import { TraverseableNode, createVisitScoped, composeVisitors, createVisitSignature } from "./nodeUtils";
-import { createLogger } from "./logger";
+import { TraverseableNode, createVisitScoped, composeVisitors, createVisitSignature } from "../nodeUtils";
+import { createLogger } from "../logger";
 
 export type ScopedSymbol = {
   symbol: ts.Symbol;

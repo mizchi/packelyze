@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
 import { collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector, createPrebuiltCollectorFactory, isIdentifierInferredByRhs, findRenamebaleObjectMember } from "./analyzer";
-import { createOneshotTestProgram, createTestLanguageService } from "./testHarness";
-import { createVisitScoped, composeVisitors, findFirstNode, createVisitScopedName } from "./nodeUtils";
+import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
+import { createVisitScoped, composeVisitors, findFirstNode, createVisitScopedName } from "../nodeUtils";
 
 test("collectRelatedTypes: infer internal", () => {
   const { service, normalizePath } = createTestLanguageService();
