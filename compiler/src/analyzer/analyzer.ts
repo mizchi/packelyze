@@ -296,7 +296,7 @@ export function createPrebuiltCollectorFactory(program: ts.Program, debug = fals
   return () => createCollector(checker, cleanCache, debug);
 }
 
-type CollectorCache = {
+export type CollectorCache = {
   visitedSymbols: Set<ts.Symbol>;
   visitedTypes: Set<ts.Type>;
   visitedNodes: Set<ts.Node>;
