@@ -258,7 +258,6 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
       });
       return cloned;
     }
-
     const clonedAsExpression = ts.factory.createClassExpression(
       node.modifiers && ensureNoExportModifier(node.modifiers) as TS.Modifier[],
       node.name,

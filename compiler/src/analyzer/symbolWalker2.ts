@@ -2,7 +2,13 @@
 
 import ts from "typescript";
 import { createLogger } from "../logger";
-import { CollectorCache } from "./analyzer";
+
+// does not work: inifinite loop
+export type CollectorCache = {
+  visitedSymbols: Set<ts.Symbol>;
+  visitedTypes: Set<ts.Type>;
+  visitedNodes: Set<ts.Node>;
+};
 
 export function getSymbolWalker(checker: ts.TypeChecker, cache?: CollectorCache, debug = false) {
   const log = createLogger("[symbol-walker]", debug);
@@ -66,7 +72,6 @@ export function getSymbolWalker(checker: ts.TypeChecker, cache?: CollectorCache,
     if (ts.isMethodSignature(node.parent) && node.parent.type) {
       return isRelated(node.parent.type);
     }
-
     const symbol = checker.getSymbolAtLocation(node);
     const type = checker.getTypeAtLocation(node);
     if (symbol) {
