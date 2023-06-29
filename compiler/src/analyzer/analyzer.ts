@@ -287,6 +287,7 @@ export function createPrebuiltCollectorFactory(program: ts.Program, debug = fals
     checker.getBigIntType(),
     checker.getESSymbolType(),
   ];
+
   const globalTypes = collectGlobalTypes(program, program.getSourceFile(program.getRootFileNames()[0])!);
   const globalVariables = collectGlobalVariables(program, program.getSourceFile(program.getRootFileNames()[0])!);
 

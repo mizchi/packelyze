@@ -203,3 +203,19 @@ test("scoped variables: block", () => {
   const ascendantLocals = findAcendantLocals(checker, node as ts.Block);
   expect([...ascendantLocals].map((s) => s.name)).toEqual(["v3", "v4", "v5", "v6", "v8", "v7"]);
 });
+
+test("scoped variables: shadowed", () => {
+  const { program, file } = createOneshotTestProgram(`
+  export const x = 1;
+  const v = 1;
+  {
+    const v = 1;
+    const w = 1;
+  }
+`);
+
+  const checker = program.getTypeChecker();
+  const result = analyzeScope(checker, file);
+  expect([...result.locals].map((x) => x.name)).toEqual(["x", "v"]);
+  expect([...result.children[0].locals].map((x) => x.name)).toEqual(["v", "w"]);
+});
