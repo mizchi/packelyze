@@ -8,7 +8,7 @@ import {
   getNodeReserved,
   getCloudflareWorkersReserved,
   getCssReserved,
-  getReactReserved
+  getReactReserved,
 } from "../lib/precollect.mjs";
 import { httpHeaders } from "../gen/httpHeaders.mjs";
 
@@ -21,20 +21,14 @@ function getHttpHeadersReserved() {
 }
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
-export async function dumpReservedWords(){
-  const tsPath = path.join(__dirname, '../../node_modules/typescript/lib/typescript.js');
-  const terserMainPath = path.join(__dirname, '../node_modules/terser/dist/bundle.min.js');
+export async function dumpReservedWords() {
+  const tsPath = path.join(__dirname, "../../node_modules/typescript/lib/typescript.js");
+  const terserMainPath = path.join(__dirname, "../node_modules/terser/dist/bundle.min.js");
   const cfWorkersTypesPath = path.join(__dirname, "../node_modules/@cloudflare/workers-types/index.d.ts");
   const cssDtsPath = path.join(__dirname, "../node_modules/csstype/index.d.ts");
 
-  const nodeDtsDir = path.join(
-    __dirname,
-    "../node_modules/@types/node",
-  );
-  const reactDtsDir = path.join(
-    __dirname,
-    "../node_modules/@types/react",
-  );
+  const nodeDtsDir = path.join(__dirname, "../node_modules/@types/node");
+  const reactDtsDir = path.join(__dirname, "../node_modules/@types/react");
 
   const tsLibDir = path.dirname(tsPath);
   const cssReserved = await getCssReserved(cssDtsPath);
@@ -68,7 +62,7 @@ export const node = ${JSON.stringify([...nodeReserved].sort(), null, 2)};
 export const cloudflareWorkers = ${JSON.stringify([...cloudflareWorkersReserved].sort(), null, 2)};
 export const domprops = ${JSON.stringify([...dompropsReserved].sort(), null, 2)};
 `;
-  await fs.writeFile(path.join(__dirname, '../gen/builtins.mjs'), output);
+  await fs.writeFile(path.join(__dirname, "../gen/builtins.mjs"), output);
 }
 
 await dumpReservedWords();

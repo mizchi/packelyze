@@ -5,11 +5,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import process from "node:process";
 
-export async function bundle(
-  input: string,
-  terserOptions: Options,
-  rollupExternal: string[] = [],
-) {
+export async function bundle(input: string, terserOptions: Options, rollupExternal: string[] = []) {
   const gen = await rollup({
     input,
     external: rollupExternal,
@@ -26,15 +22,14 @@ export async function bundle(
   return output.output[0].code;
 }
 
-export async function execBuild(
-  cwd: string = process.cwd(),
-  opts: { builtins?: string[] } = {},
-) {
+export async function execBuild(cwd: string = process.cwd(), opts: { builtins?: string[] } = {}) {
   const execAsync = promisify(exec);
   const p = await execAsync(
-    `pnpm tsc -p . --emitDeclarationOnly --declaration && tsm ../../src/cli.mts analyze-dts -i input.d.ts -o analyzed.json ${
-      (opts.builtins ?? []).map((b) => `-b ${b}`).join(" ")
-    }`,
+    `pnpm tsc -p . --emitDeclarationOnly --declaration && tsm ../../src/cli.mts analyze-dts -i input.d.ts -o analyzed.json ${(
+      opts.builtins ?? []
+    )
+      .map((b) => `-b ${b}`)
+      .join(" ")}`,
     {
       cwd: cwd,
     },

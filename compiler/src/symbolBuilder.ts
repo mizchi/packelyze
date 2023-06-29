@@ -1,12 +1,7 @@
 // TODO: sort this by usage rate https://tex2e.github.io/blog/crypto/letter-frequency
-const FIRST_CHARS = [
-  ...'_$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-] as const;
+const FIRST_CHARS = [..."_$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
 
-const CHARS = [
-  ...FIRST_CHARS,
-  ...'0123456789'
-] as const;
+const CHARS = [...FIRST_CHARS, ..."0123456789"] as const;
 
 /**
  * create symbol builder that generates unique symbol for rename
@@ -18,7 +13,7 @@ export function createSymbolBuilder() {
   const reset = (next = 0) => {
     skipped.clear();
     state = next;
-  }
+  };
 
   const MAX_TRY_COUNT = 100000;
   const create = (validate?: (char: string) => boolean) => {
@@ -47,19 +42,19 @@ export function createSymbolBuilder() {
       }
     }
     throw new Error(`createSymbolBuilder: MAX_LEN reached`);
-  }
+  };
 
   return {
     create,
-    reset
-  }
+    reset,
+  };
 }
 
 /**
  * Generate identifier symbol from number
  * @internal
  */
-function numToSymbol (n: number) {
+function numToSymbol(n: number) {
   if (n < 0) {
     throw new Error("invalid source");
   }
@@ -81,5 +76,4 @@ function numToSymbol (n: number) {
   }
 
   return FIRST_CHARS[remaining] + result;
-};
-
+}

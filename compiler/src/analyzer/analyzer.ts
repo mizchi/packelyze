@@ -6,9 +6,14 @@ export type ScopedSymbol = {
   symbol: ts.Symbol;
   parentBlock: TraverseableNode;
   isExportRelated?: boolean;
-}
+};
 
-export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
+export function collectScopedSymbols(
+  program: ts.Program,
+  file: ts.SourceFile,
+  externals: string[] = [],
+  debug = false,
+): ScopedSymbol[] {
   const checker = program.getTypeChecker();
   const collector = createCollector(checker, undefined, debug);
 
@@ -43,44 +48,51 @@ export function collectScopedSymbols(program: ts.Program, file: ts.SourceFile, e
           collector.visitSymbol(symbol);
         }
       }
-    }  
+    }
   }
 
   const result: ScopedSymbol[] = [];
 
   // const checker = program.getTypeChecker();
-  const visitScopedIdentifierSymbols = createVisitScoped(checker, (symbol, parentBlock) => {
-    if (symbol.valueDeclaration == null) {
-      const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
-      const isExportRelated = collector.isRelated(type, symbol);
-      result.push({
-        symbol,
-        parentBlock,
-        isExportRelated,
-      });
-    } else {
-      if (symbol.declarations) {
-        for (const decl of symbol.declarations) {
-          // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
-          const isExportRelated = collector.isRelatedNode(decl);
-          result.push({
-            symbol,
-            parentBlock,
-            isExportRelated,
-          });  
-        }  
+  const visitScopedIdentifierSymbols = createVisitScoped(
+    checker,
+    (symbol, parentBlock) => {
+      if (symbol.valueDeclaration == null) {
+        const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!);
+        const isExportRelated = collector.isRelated(type, symbol);
+        result.push({
+          symbol,
+          parentBlock,
+          isExportRelated,
+        });
+      } else {
+        if (symbol.declarations) {
+          for (const decl of symbol.declarations) {
+            // const type = checker.getTypeOfSymbolAtLocation(symbol, decl);
+            const isExportRelated = collector.isRelatedNode(decl);
+            result.push({
+              symbol,
+              parentBlock,
+              isExportRelated,
+            });
+          }
+        }
       }
-    }
-  }, debug);
+    },
+    debug,
+  );
 
-  composeVisitors(
-    visitScopedIdentifierSymbols,
-  )(file);
+  composeVisitors(visitScopedIdentifierSymbols)(file);
   return result;
 }
 
-export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile, externals: string[] = [], debug = false): ScopedSymbol[] {
-  const log = createLogger(`[collectScopedSignatures]`,debug);
+export function collectScopedSignatures(
+  program: ts.Program,
+  file: ts.SourceFile,
+  externals: string[] = [],
+  debug = false,
+): ScopedSymbol[] {
+  const log = createLogger(`[collectScopedSignatures]`, debug);
   const checker = program.getTypeChecker();
   const exportSymbols = collectExportSymbols(program, file, debug);
   const globalVariables = collectGlobalVariables(program, file);
@@ -111,7 +123,7 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
           collector.visitSymbol(symbol);
         }
       }
-    }  
+    }
   }
   // colect export related types
   log.on();
@@ -124,28 +136,32 @@ export function collectScopedSignatures(program: ts.Program, file: ts.SourceFile
 
   // const checker = program.getTypeChecker();
   composeVisitors(
-    createVisitSignature(checker, (symbol, parentBlock) => {
-      if (symbol.valueDeclaration) {
-        const isExportRelated = collector.isRelatedNode(symbol.valueDeclaration);
-        const isRelatedDeclaration = collector.isRelatedNode(symbol.valueDeclaration);
-        log("visitSignature:declaration", symbol.name, isExportRelated, isRelatedDeclaration);
-        result.push({
-          symbol,
-          parentBlock,
-          isExportRelated,
-        });
-      } else {
-        // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
-        const isExportRelated = collector.isRelatedSymbol(symbol);
-        log("visitSignature", symbol.name, isExportRelated);  
-        result.push({
-          symbol,
-          parentBlock,
-          isExportRelated,
-        });  
-      }
-      return;
-    }, debug)
+    createVisitSignature(
+      checker,
+      (symbol, parentBlock) => {
+        if (symbol.valueDeclaration) {
+          const isExportRelated = collector.isRelatedNode(symbol.valueDeclaration);
+          const isRelatedDeclaration = collector.isRelatedNode(symbol.valueDeclaration);
+          log("visitSignature:declaration", symbol.name, isExportRelated, isRelatedDeclaration);
+          result.push({
+            symbol,
+            parentBlock,
+            isExportRelated,
+          });
+        } else {
+          // const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
+          const isExportRelated = collector.isRelatedSymbol(symbol);
+          log("visitSignature", symbol.name, isExportRelated);
+          result.push({
+            symbol,
+            parentBlock,
+            isExportRelated,
+          });
+        }
+        return;
+      },
+      debug,
+    ),
   )(file);
   return result;
 }
@@ -168,12 +184,12 @@ export function collectExportSymbols(program: ts.Program, source: ts.SourceFile,
 export function collectImportableModules(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();
   const values = checker.getSymbolsInScope(file, ts.SymbolFlags.ValueModule);
-  return values;  
+  return values;
 }
 
 export function collectGlobalVariables(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();
-  const scopedSymbols =  new Set(checker.getSymbolsInScope(file, ts.SymbolFlags.BlockScoped));
+  const scopedSymbols = new Set(checker.getSymbolsInScope(file, ts.SymbolFlags.BlockScoped));
 
   const variables = checker.getSymbolsInScope(file, ts.SymbolFlags.Variable).filter((s) => {
     return !scopedSymbols.has(s);
@@ -212,7 +228,7 @@ export function collectUnsafeRenameTargets(program: ts.Program, source: ts.Sourc
       unsafeRenameTargets.add(symbol.name);
     }
   }
-  return unsafeRenameTargets;  
+  return unsafeRenameTargets;
 }
 
 export const symbolToRelatedTypes = (symbol: ts.Symbol, checker: ts.TypeChecker) => {
@@ -229,7 +245,7 @@ export const symbolToRelatedTypes = (symbol: ts.Symbol, checker: ts.TypeChecker)
     types.push(type);
   }
   return types;
-}
+};
 
 export const symbolToRelatedNodes = (symbol: ts.Symbol): ts.Node[] => {
   const nodes: ts.Node[] = [];
@@ -242,7 +258,7 @@ export const symbolToRelatedNodes = (symbol: ts.Symbol): ts.Node[] => {
     nodes.push(symbol.valueDeclaration);
   }
   return nodes;
-}
+};
 
 // const primitives: ts.Type[] = [
 //   checker.getNumberType(),
@@ -304,7 +320,7 @@ export type CollectorCache = {
 export type Collector = ReturnType<typeof createCollector>;
 export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache, debug = false) {
   const log = createLogger("[collector]", debug);
-  const visitedSymbols = cache ? new Set(cache.visitedSymbols) :  new Set<ts.Symbol>();
+  const visitedSymbols = cache ? new Set(cache.visitedSymbols) : new Set<ts.Symbol>();
   const visitedTypes = cache ? new Set(cache.visitedTypes) : new Set<ts.Type>();
   const visitedNodes = cache ? new Set(cache.visitedNodes) : new Set<ts.Node>();
 
@@ -314,7 +330,7 @@ export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache,
         visitedSymbols,
         visitedTypes,
         visitedNodes,
-      }
+      };
     },
     getNewTypes: () => {
       const newTypes = new Set<ts.Type>();
@@ -353,7 +369,7 @@ export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache,
     visitNode,
     visitType,
     visitSymbol,
-  }
+  };
 
   function isRelatedNode(node: ts.Node) {
     // console.log("isRelatedNode", ts.SyntaxKind[node.kind], node.getText().slice(0, 10));
@@ -377,23 +393,25 @@ export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache,
     const type = checker.getDeclaredTypeOfSymbol(symbol);
     const node = symbol.valueDeclaration;
 
-    return isRelated(symbol, type, ...[
-      ...node ? [node] : [],
-      ...symbol.declarations ? symbol.declarations : [],
-    ]);
+    return isRelated(symbol, type, ...[...(node ? [node] : []), ...(symbol.declarations ? symbol.declarations : [])]);
   }
   function isRelatedType(type: ts.Type) {
     return visitedTypes.has(type);
   }
 
   function isRelated(...symbols: Array<ts.Symbol | ts.Type | ts.Node>) {
-    return symbols.some(symbol => visitedSymbols.has(symbol as ts.Symbol) || visitedTypes.has(symbol as ts.Type) || visitedNodes.has(symbol as ts.Node));
+    return symbols.some(
+      (symbol) =>
+        visitedSymbols.has(symbol as ts.Symbol) ||
+        visitedTypes.has(symbol as ts.Type) ||
+        visitedNodes.has(symbol as ts.Node),
+    );
   }
 
   function visitNode(node: ts.Node, depth = 0) {
     if (visitedNodes.has(node)) return;
     visitedNodes.add(node);
-    log("  ".repeat(depth),"[node]", ts.SyntaxKind[node.kind], node.getText().slice(0, 10));
+    log("  ".repeat(depth), "[node]", ts.SyntaxKind[node.kind], node.getText().slice(0, 10));
     // ts.forEachChild(node, (node => visitNode(node, depth + 1)));
 
     const type = checker.getTypeAtLocation(node);
@@ -431,7 +449,7 @@ export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache,
 
     for (const property of type.getProperties()) {
       visitSymbol(property, depth + 1);
-    };
+    }
 
     // // TODO: Handle pattern?
     // // if (type.pattern) {
@@ -460,7 +478,7 @@ export function createCollector(checker: ts.TypeChecker, cache?: CollectorCache,
     if (symbol.valueDeclaration) {
       visitNode(symbol.valueDeclaration, depth + 1);
     }
-    for (const decl of symbol.declarations??[]) {
+    for (const decl of symbol.declarations ?? []) {
       visitNode(decl, depth + 1);
     }
 

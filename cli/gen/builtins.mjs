@@ -560,7 +560,7 @@ export const es = [
   "weekday",
   "writable",
   "xor",
-  "year"
+  "year",
 ];
 export const dom = [
   "-khtml-box-align",
@@ -6739,7 +6739,7 @@ export const dom = [
   "z",
   "z-index",
   "zIndex",
-  "zoom"
+  "zoom",
 ];
 export const css = [
   "-khtml-box-align",
@@ -8947,7 +8947,7 @@ export const css = [
   "writingMode",
   "z-index",
   "zIndex",
-  "zoom"
+  "zoom",
 ];
 export const worker = [
   "ABORT_ERR",
@@ -10695,7 +10695,7 @@ export const worker = [
   "written",
   "x",
   "y",
-  "z"
+  "z",
 ];
 export const httpHeaders = [
   "ACCEPT",
@@ -11103,7 +11103,7 @@ export const httpHeaders = [
   "x-requested-with",
   "x-robots-tag",
   "x-ua-compatible",
-  "x-xss-protection"
+  "x-xss-protection",
 ];
 export const react = [
   "$$typeof",
@@ -14439,7 +14439,7 @@ export const react = [
   "z-index",
   "zIndex",
   "zoom",
-  "zoomAndPan"
+  "zoomAndPan",
 ];
 export const node = [
   ".js",
@@ -17701,7 +17701,7 @@ export const node = [
   "www-authenticate",
   "x",
   "y",
-  "zlib"
+  "zlib",
 ];
 export const cloudflareWorkers = [
   "$public",
@@ -18348,7 +18348,7 @@ export const cloudflareWorkers = [
   "writeHttpMetadata",
   "written",
   "x",
-  "y"
+  "y",
 ];
 export const domprops = [
   "$&",
@@ -26137,5 +26137,5 @@ export const domprops = [
   "zIndex",
   "zoom",
   "zoomAndPan",
-  "zoomRectScreen"
+  "zoomRectScreen",
 ];

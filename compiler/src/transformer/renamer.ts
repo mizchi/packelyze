@@ -12,7 +12,7 @@ export enum RenameTargetKind {
   Local = 1,
   Shorthand,
   ExportedSpecifier,
-  ImportSpecifier
+  ImportSpecifier,
 }
 
 export type RenameItem = ts.RenameLocation & {
@@ -32,13 +32,7 @@ export function collectRenameItems(
   to: string,
   prefs: ts.UserPreferences = {},
 ): RenameItem[] | undefined {
-  const renames = service.findRenameLocations(
-    file.fileName,
-    pos,
-    false,
-    false,
-    prefs,
-  ) as RenameItem[] | undefined;
+  const renames = service.findRenameLocations(file.fileName, pos, false, false, prefs) as RenameItem[] | undefined;
   if (renames == null) {
     return;
   }
@@ -54,7 +48,7 @@ export function collectRenameItems(
 
     const targetNode = getNodeAtPosition(file, rename.textSpan.start);
     if (checker.getShorthandAssignmentValueSymbol(targetNode.parent) != null) {
-    // check shorthand
+      // check shorthand
       rename.targetKind = RenameTargetKind.Shorthand;
       rename.target = buildNewText(rename.source, rename.target, rename);
     } else if (ts.isExportSpecifier(targetNode.parent) && targetNode.parent.propertyName == null) {
@@ -76,9 +70,7 @@ export function getRenameAppliedState(
   normalizePath: (fname: string) => string,
 ): Map<string, [changed: string, start: number, end: number]> {
   // rewire renames by each files
-  const targetFiles = new Set(
-    renames.map((r) => normalizePath(r.fileName))
-  );
+  const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
   const rewiredRenames: Map<string, RenameItem[]> = new Map();
   for (const targetFile of targetFiles) {
     const sortedRenames: RenameItem[] = renames
@@ -88,17 +80,11 @@ export function getRenameAppliedState(
   }
 
   // get unique files
-  const changes = new Map<
-    string,
-    [changed: string, start: number, end: number]
-  >();
+  const changes = new Map<string, [changed: string, start: number, end: number]>();
   for (const [fileName, renames] of rewiredRenames.entries()) {
     const targetFile = fileName;
     const current = readCurrentFile(targetFile)!;
-    const [renamed, changedStart, changedEnd] = applyRewiredRenames(
-      current,
-      renames,
-    );
+    const [renamed, changedStart, changedEnd] = applyRewiredRenames(current, renames);
     changes.set(targetFile, [renamed, changedStart, changedEnd]);
   }
   return changes;
@@ -130,7 +116,7 @@ export function applyRewiredRenames(
     const toName = rename.target;
     const start = rename.textSpan.start;
     const end = rename.textSpan.start + rename.textSpan.length;
-    debugLog("[name:from]", rename.source, '[name:to]', toName);
+    debugLog("[name:from]", rename.source, "[name:to]", toName);
 
     if (changedStart === 0 || changedStart > start) {
       changedStart = start;
@@ -138,8 +124,7 @@ export function applyRewiredRenames(
     if (changedEnd === 0 || changedEnd < end) {
       changedEnd = end;
     }
-    current = current.slice(0, start + offset) + toName +
-      current.slice(end + offset);
+    current = current.slice(0, start + offset) + toName + current.slice(end + offset);
     offset += toName.length - (end - start);
   }
   return [current, changedStart, changedEnd];

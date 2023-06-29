@@ -2,11 +2,7 @@ import ts from "typescript";
 import { type OutputChunk, rollup } from "rollup";
 import dts from "rollup-plugin-dts";
 
-export function emitLibDts(
-  files: string[],
-  outDir: string,
-  options: ts.CompilerOptions,
-) {
+export function emitLibDts(files: string[], outDir: string, options: ts.CompilerOptions) {
   const shouldOverrideConfigs: Partial<ts.CompilerOptions> = {
     outDir,
     declaration: true,
@@ -22,14 +18,17 @@ export function emitLibDts(
   return emitResult;
 }
 
-export async function bundleDts(
-  { input, external, compilerOptions, respectExternal = false }: {
-    input: string;
-    respectExternal?: boolean;
-    external?: string[];
-    compilerOptions?: ts.CompilerOptions;
-  },
-) {
+export async function bundleDts({
+  input,
+  external,
+  compilerOptions,
+  respectExternal = false,
+}: {
+  input: string;
+  respectExternal?: boolean;
+  external?: string[];
+  compilerOptions?: ts.CompilerOptions;
+}) {
   const bundle = await rollup({
     input: input,
     external,
@@ -39,13 +38,15 @@ export async function bundleDts(
         return;
       }
     },
-    plugins: [dts({
-      respectExternal,
-      compilerOptions: {
-        ...compilerOptions,
-        preserveSymlinks: false,
-      } as any,
-    })],
+    plugins: [
+      dts({
+        respectExternal,
+        compilerOptions: {
+          ...compilerOptions,
+          preserveSymlinks: false,
+        } as any,
+      }),
+    ],
   });
   const out = await bundle.generate({
     format: "es",
@@ -111,10 +112,7 @@ if (import.meta.vitest) {
   });
 
   test.skip("bundleDts: with-node-process - respectExternal: true", async () => {
-    const dtsPath = path.join(
-      __dirname,
-      "__fixtures/with-node-process.d.ts",
-    );
+    const dtsPath = path.join(__dirname, "__fixtures/with-node-process.d.ts");
     const dtsCode = await bundleDts({
       input: dtsPath,
       external: [],

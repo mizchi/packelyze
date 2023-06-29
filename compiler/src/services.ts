@@ -3,7 +3,7 @@ import ts from "typescript";
 import fs from "node:fs";
 import path from "node:path";
 import { createLogger, Logger } from "./logger";
-import { blue, green } from 'colorette';
+import { blue, green } from "colorette";
 
 export interface IncrementalSnapshot extends ts.IScriptSnapshot {
   /** If snapshot analyzed by typeChecker, it will be true */
@@ -29,7 +29,7 @@ export interface IncrementalLanguageService extends ts.LanguageService {
   writeSnapshotContent(fileName: string, content: string): void;
   deleteSnapshot(fileName: string): void;
   normalizePath(fileName: string): string;
-  logger: Logger
+  logger: Logger;
 }
 
 export type InMemoryCache = {
@@ -37,7 +37,7 @@ export type InMemoryCache = {
   fileContents: Map<string, string | undefined>;
   fileSnapshots: Map<string, IncrementalSnapshot | undefined>;
   virtualExistedDirectories: Set<string>;
-}
+};
 
 export function createIncrementalLanguageService(
   host: IncrementalLanguageServiceHost,
@@ -49,9 +49,9 @@ export function createIncrementalLanguageService(
       return green(item);
     }
     return item;
-  }
+  };
   const log = createLogger("[Srvs]", debug, stripRoot(host.getCurrentDirectory()), colorlize);
-  
+
   const projectRoot = host.getCurrentDirectory();
   const normalizePath = (fname: string) => {
     if (fname.startsWith("/")) {
@@ -60,10 +60,7 @@ export function createIncrementalLanguageService(
     return path.join(projectRoot, fname);
   };
 
-  const languageService = ts.createLanguageService(
-    host,
-    documentRegistry,
-  );
+  const languageService = ts.createLanguageService(host, documentRegistry);
   const getCurrentSourceFile = (fileName: string) => {
     fileName = normalizePath(fileName);
     log("getCurrentSourceFile", fileName);
@@ -88,16 +85,16 @@ export function createIncrementalLanguageService(
   function readSnapshot(fileName: string) {
     log("readSnapshot", fileName);
     return host.readSnapshot(fileName);
-  };
+  }
 
   function readSnapshotContent(fileName: string) {
     log("readSnapshot", fileName);
     return host.readSnapshotContent(fileName);
-  };
+  }
 
   function deleteSnapshot(fileName: string) {
     log("deleteSnapshot", fileName);
-  };
+  }
   return {
     ...languageService,
     getCurrentSourceFile,
@@ -112,13 +109,13 @@ export function createIncrementalLanguageService(
   };
 }
 
-const stripRoot = (rootDir: string) => (item: any)=> {
+const stripRoot = (rootDir: string) => (item: any) => {
   if (typeof item === "string" && item.startsWith(rootDir)) {
-    return item.replace(rootDir + "/", '~/');
+    return item.replace(rootDir + "/", "~/");
   } else {
     return item;
   }
-}
+};
 
 export function createIncrementalLanguageServiceHost(
   projectRoot: string,
@@ -132,25 +129,15 @@ export function createIncrementalLanguageServiceHost(
       return blue(item);
     }
     return item;
-  }
+  };
 
   const log = createLogger("[Host]", debug, stripRoot(projectRoot), colorlize);
 
   // Setup compiler options
-  const tsconfigPath = ts.findConfigFile(
-    path.join(projectRoot, "tsconfig.json"),
-    ts.sys.fileExists,
-  )!;
-  const tsconfig = ts.readConfigFile(
-    tsconfigPath,
-    ts.sys.readFile,
-  );
+  const tsconfigPath = ts.findConfigFile(path.join(projectRoot, "tsconfig.json"), ts.sys.fileExists)!;
+  const tsconfig = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (options == null) {
-    const parsed = ts.parseJsonConfigFileContent(
-      tsconfig.config,
-      ts.sys,
-      projectRoot,
-    );
+    const parsed = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, projectRoot);
     options = parsed.options;
     if (fileNames.length === 0) {
       fileNames = parsed.fileNames;
@@ -189,32 +176,25 @@ export function createIncrementalLanguageServiceHost(
     return path.join(projectRoot, fname);
   };
 
-  function readSnapshot(
-    fileName: string
-  ): IncrementalSnapshot | undefined {
+  function readSnapshot(fileName: string): IncrementalSnapshot | undefined {
     fileName = normalizePath(fileName);
     log("readSnapshot", fileName);
     if (fileSnapshots.has(fileName)) {
       const snapshot = fileSnapshots.get(fileName);
       return snapshot;
     }
-  };
+  }
 
-  function readSnapshotContent(
-    fileName: string
-  ) {
+  function readSnapshotContent(fileName: string) {
     fileName = normalizePath(fileName);
     log("readFileSnapshot", fileName);
     if (fileContents.has(fileName)) {
       return fileContents.get(fileName) as string;
     }
     return ts.sys.readFile(fileName);
-  };
+  }
 
-  function writeSnapshot(
-    fileName: string,
-    snapshot: IncrementalSnapshot,
-  ) {
+  function writeSnapshot(fileName: string, snapshot: IncrementalSnapshot) {
     fileName = normalizePath(fileName);
     log("writeSnapshot", fileName);
     const nextVersion = (fileVersions.get(fileName) || 0) + 1;
@@ -225,11 +205,7 @@ export function createIncrementalLanguageServiceHost(
     fileSnapshots.set(fileName, snapshot);
     currentFileNames = [...currentFileNames, fileName];
   }
-  function writeSnapshotContent(
-    fileName: string,
-    content: string,
-    range: [number, number] | undefined,
-  ) {
+  function writeSnapshotContent(fileName: string, content: string, range: [number, number] | undefined) {
     fileName = normalizePath(fileName);
     log("writeSnapshotContent", fileName);
     addVirtualExistedDirectories(fileName);
@@ -237,7 +213,7 @@ export function createIncrementalLanguageServiceHost(
     const snapshot = createIncrementalSnapshot(content, range, prev);
     writeSnapshot(fileName, snapshot);
     return;
-  };
+  }
 
   const defaultHost = ts.createCompilerHost(options);
 
@@ -250,7 +226,7 @@ export function createIncrementalLanguageServiceHost(
       fileSnapshots,
       virtualExistedDirectories,
     };
-  }
+  };
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
@@ -260,7 +236,7 @@ export function createIncrementalLanguageServiceHost(
     fileSnapshots.clear();
     fileVersions.clear();
     virtualExistedDirectories.clear();
-  }
+  };
   const serviceHost: IncrementalLanguageServiceHost = {
     dispose,
     readSnapshotContent,
@@ -323,10 +299,7 @@ export function createIncrementalLanguageServiceHost(
       const rawFileResult = ts.sys.readFile(fname, encode);
       if (rawFileResult) {
         fileContents.set(fname, rawFileResult);
-        fileVersions.set(
-          fname,
-          (fileVersions.get(fname) ?? 0),
-        );
+        fileVersions.set(fname, fileVersions.get(fname) ?? 0);
         // write cache on init
         // const snapshot = ts.ScriptSnapshot.fromString(rawFileResult) as IncrementalSnapshot;
         const snapshot = createIncrementalSnapshot(rawFileResult);
@@ -416,7 +389,7 @@ export function createIncrementalSnapshot(
             length: maxEnd - minStart,
           },
           newLength: content.length,
-        }
+        };
       }
     }
     return {
@@ -426,9 +399,8 @@ export function createIncrementalSnapshot(
       },
       newLength: content.length,
     };
-  }
+  };
   snapshot.loaded = false;
   snapshot.incremental = true;
   return snapshot;
 }
-

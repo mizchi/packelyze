@@ -11,7 +11,7 @@ export function writeRenamedFileState(
   service: ts.LanguageService,
   source: ts.SourceFile,
   normalizePath: (path: string) => string,
-  writeFile: (fname: string, content: string) => void
+  writeFile: (fname: string, content: string) => void,
 ) {
   const program = service.getProgram()!;
   const scopedSymbols = collectScopedSymbols(program, source);
@@ -32,18 +32,21 @@ export function writeRenamedFileState(
         blockedSymbol.symbol.getName(),
         newName,
       );
-      locs && renames.push(...locs);  
+      locs && renames.push(...locs);
     }
   }
 
-  const state = getRenameAppliedState(renames, (fname) => {
-    const source = program.getSourceFile(fname);
-    return source && source.text;
-  }, normalizePath);
-  
+  const state = getRenameAppliedState(
+    renames,
+    (fname) => {
+      const source = program.getSourceFile(fname);
+      return source && source.text;
+    },
+    normalizePath,
+  );
+
   for (const [fname, content] of state) {
     const [changed, changedStart, changedEnd] = content;
     writeFile(fname, changed);
   }
 }
-

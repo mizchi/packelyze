@@ -24,17 +24,11 @@ test("writeRenamedFileState", () => {
     bbb
   }
   `;
-  service.writeSnapshotContent(
-    normalizePath("src/index.ts"),
-    code,
-  );
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
   let source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   if (isPreprocessedNeeded(code)) {
     const pre = preprocess(source);
-    service.writeSnapshotContent(
-      normalizePath("src/index.ts"),
-      pre,
-    );
+    service.writeSnapshotContent(normalizePath("src/index.ts"), pre);
     source = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
   }
   // const program = service.getProgram()!;
@@ -71,5 +65,3 @@ test("writeRenamedFileState", () => {
   //   `
   // );
 });
-
-

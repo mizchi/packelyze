@@ -9,9 +9,7 @@ export async function doctor() {
   if (fs.existsSync(gitignorePath)) {
     const gitignore = fs.readFileSync(gitignorePath, "utf-8");
     if (!gitignore.includes("_packelyze-analyzed.json")) {
-      console.error(
-        "[packelyze:doctor] .gitignore does not include _packelyze-analyzed.json",
-      );
+      console.error("[packelyze:doctor] .gitignore does not include _packelyze-analyzed.json");
       process.exit(1);
     }
   }
@@ -28,12 +26,7 @@ export async function doctor() {
   const tsconfigPath = path.join(cwd, "tsconfig.json");
   const tsconfigpackelyzePath = path.join(cwd, "tsconfig.packelyze.json");
   let existsAny = false;
-  for (
-    const configPath of [
-      tsconfigpackelyzePath,
-      tsconfigPath,
-    ]
-  ) {
+  for (const configPath of [tsconfigpackelyzePath, tsconfigPath]) {
     if (fs.existsSync(configPath)) {
       // TODO: check with typescript config extends
       existsAny = true;
@@ -41,24 +34,18 @@ export async function doctor() {
       const basename = path.basename(configPath);
       // check rootDir: src
       if (tsconfig.compilerOptions?.outDir !== "lib") {
-        console.error(
-          `[packelyze:doctor] ${basename} does not include "rootDir": "lib"`,
-        );
+        console.error(`[packelyze:doctor] ${basename} does not include "rootDir": "lib"`);
       }
 
       // check declaration: true
       if (tsconfig.compilerOptions?.declaration !== true) {
-        console.error(
-          `[packelyze:doctor] ${basename} does not include "declaration": true`,
-        );
+        console.error(`[packelyze:doctor] ${basename} does not include "declaration": true`);
       }
       break;
     }
   }
   if (!existsAny) {
-    console.error(
-      "[packelyze:doctor] tsconfig.packelyze.json / tsconfig.json does not exist",
-    );
+    console.error("[packelyze:doctor] tsconfig.packelyze.json / tsconfig.json does not exist");
     process.exit(1);
   }
   process.exit(0);

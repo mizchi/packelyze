@@ -53,15 +53,14 @@ export async function bundleForCompare(input: string, reserved: string[]) {
   console.log(`opt: ${opt.length} bytes, ${optGzip.length} bytes gzipped`);
 }
 
-export async function execBuild(
-  cwd: string = process.cwd(),
-  opts: { builtins?: string[] } = {},
-) {
+export async function execBuild(cwd: string = process.cwd(), opts: { builtins?: string[] } = {}) {
   const execAsync = promisify(exec);
   const p = await execAsync(
-    `pnpm tsc -p . --emitDeclarationOnly --declaration && tsm ../../src/cli.mts analyze-dts -i input.d.ts -o analyzed.json ${
-      (opts.builtins ?? []).map((b) => `-b ${b}`).join(" ")
-    }`,
+    `pnpm tsc -p . --emitDeclarationOnly --declaration && tsm ../../src/cli.mts analyze-dts -i input.d.ts -o analyzed.json ${(
+      opts.builtins ?? []
+    )
+      .map((b) => `-b ${b}`)
+      .join(" ")}`,
     {
       cwd: cwd,
     },

@@ -36,10 +36,7 @@ test.skip("Eff", async () => {
     document.body.append(div);
   }
 
-  async function doSend(): Promise<
-    & void
-    & Eff<FetchOp<MyFetchRule>>
-  > {
+  async function doSend(): Promise<void & Eff<FetchOp<MyFetchRule>>> {
     const fetch = globalThis.fetch as TypedFetch<MyFetchRule>;
     const stringify = JSON.stringify as TypedJSON$stringify;
     try {
@@ -86,12 +83,5 @@ test.skip("Eff", async () => {
     console.log("step", _op);
   }
 
-  type _cases = [
-    Assert<
-      Eq<
-        ExtractOps<typeof main>,
-        DomOp | FetchOp<MyFetchRule> | ThrowOp<MyError>
-      >
-    >,
-  ];
+  type _cases = [Assert<Eq<ExtractOps<typeof main>, DomOp | FetchOp<MyFetchRule> | ThrowOp<MyError>>>];
 });

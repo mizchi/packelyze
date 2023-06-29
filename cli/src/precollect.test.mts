@@ -14,24 +14,12 @@ import {
 test("check reserved", async () => {
   const typescriptPath = require.resolve("typescript");
   const terserMainPath = require.resolve("terser");
-  const cfWorkersPath = path.join(
-    __dirname,
-    "../node_modules/@cloudflare/workers-types/index.d.ts",
-  );
-  const cssDtsPath = path.join(
-    __dirname,
-    "../node_modules/csstype/index.d.ts",
-  );
+  const cfWorkersPath = path.join(__dirname, "../node_modules/@cloudflare/workers-types/index.d.ts");
+  const cssDtsPath = path.join(__dirname, "../node_modules/csstype/index.d.ts");
 
-  const nodeExternalDtsDir = path.join(
-    __dirname,
-    "../node_modules/@types/node",
-  );
+  const nodeExternalDtsDir = path.join(__dirname, "../node_modules/@types/node");
 
-  const reactDtsDir = path.join(
-    __dirname,
-    "../node_modules/@types/react",
-  );
+  const reactDtsDir = path.join(__dirname, "../node_modules/@types/react");
 
   const tsLibDir = path.dirname(typescriptPath);
   const cssReserved = await getCssReserved(cssDtsPath);
@@ -41,23 +29,13 @@ test("check reserved", async () => {
 
   const workerReserved = await getWorkerReserved(tsLibDir);
   const esReserved = await getEsReserved(tsLibDir);
-  const nodeExternalReserved = await getNodeReserved(
-    nodeExternalDtsDir,
-  );
-  const reactReserved = await getReactReserved(
-    reactDtsDir,
-    cssReserved,
-  );
+  const nodeExternalReserved = await getNodeReserved(nodeExternalDtsDir);
+  const reactReserved = await getReactReserved(reactDtsDir, cssReserved);
 
   const cfWorkersReserved = await getCloudflareWorkersReserved(cfWorkersPath);
 
   const full = new Set([...esReserved, ...domReserved, ...workerReserved]);
-  const fullWithDomprops = new Set([
-    ...esReserved,
-    ...domReserved,
-    ...workerReserved,
-    ...dompropsReserved,
-  ]);
+  const fullWithDomprops = new Set([...esReserved, ...domReserved, ...workerReserved, ...dompropsReserved]);
 
   expect(esReserved.size).toBeGreaterThan(500);
   expect(domReserved.size).toBeGreaterThan(4000);

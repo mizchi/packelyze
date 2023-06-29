@@ -6,7 +6,7 @@ function isTypeInferredFromValueDeclaration(type: ts.Type) {
   return type.symbol?.valueDeclaration === type.symbol?.declarations?.[0];
 }
 
-test('check one declaration', () => {
+test("check one declaration", () => {
   const { program, file } = createOneshotTestProgram(`
   type X = {
     x: number;
@@ -20,18 +20,16 @@ test('check one declaration', () => {
   const symbol = checker.getSymbolAtLocation(decl.name)!;
   expect(symbol.declarations?.length).toBe(1);
   expect(symbol.valueDeclaration).toBeTruthy();
-  expect(symbol.declarations?.[0].getText()).toContain('x: X');
-  expect(symbol.declarations?.[0].getText()).toContain('x: 1');
+  expect(symbol.declarations?.[0].getText()).toContain("x: X");
+  expect(symbol.declarations?.[0].getText()).toContain("x: 1");
   expect(symbol.valueDeclaration === symbol.declarations?.[0]).toBeTruthy();
   const type = checker.getTypeFromTypeNode(decl.type!);
   expect(type.symbol?.declarations?.length).toBe(1);
   expect(type.symbol?.valueDeclaration).toBeFalsy();
-  expect(
-    type.symbol?.declarations?.[0].getText()
-  ).toContain('x: number');
+  expect(type.symbol?.declarations?.[0].getText()).toContain("x: number");
 });
 
-test('check multiple declarations', () => {
+test("check multiple declarations", () => {
   const { program, file } = createOneshotTestProgram(`
   interface X {
     x: number;
@@ -51,9 +49,9 @@ test('check multiple declarations', () => {
   expect(symbol.declarations?.length).toBe(1);
   expect(symbol.valueDeclaration).toBeTruthy();
   // declaration is the same as valueDeclaration
-  expect(symbol.declarations?.[0].getText()).toContain('x: X');
-  expect(symbol.declarations?.[0].getText()).toContain('x: 1');
-  expect(symbol.declarations?.[0].getText()).toContain('y: 2');
+  expect(symbol.declarations?.[0].getText()).toContain("x: X");
+  expect(symbol.declarations?.[0].getText()).toContain("x: 1");
+  expect(symbol.declarations?.[0].getText()).toContain("y: 2");
   expect(symbol.valueDeclaration === symbol.declarations?.[0]).toBeTruthy();
   // const symbol = checker.getSymbolAtLocation(decl.type);
   const type = checker.getTypeFromTypeNode(decl.type!);
@@ -61,19 +59,13 @@ test('check multiple declarations', () => {
   expect(type.symbol?.declarations?.length).toBe(2);
   // type has no valueDeclaration
   expect(type.symbol?.valueDeclaration).toBeFalsy();
-  expect(
-    type.symbol?.declarations?.[0].getText()
-  ).toContain('x: number');
-  expect(
-    type.symbol?.declarations?.[1].getText()
-  ).toContain('y: number');
+  expect(type.symbol?.declarations?.[0].getText()).toContain("x: number");
+  expect(type.symbol?.declarations?.[1].getText()).toContain("y: number");
 
-  expect(
-    isTypeInferredFromValueDeclaration(type)
-  ).toBeFalsy();
+  expect(isTypeInferredFromValueDeclaration(type)).toBeFalsy();
 });
 
-test('check literal type', () => {
+test("check literal type", () => {
   const { program, file } = createOneshotTestProgram(`
   export const x: { x: number } = {
     x: 1,
@@ -84,35 +76,30 @@ test('check literal type', () => {
   const symbol = checker.getSymbolAtLocation(decl.name)!;
   expect(symbol.declarations?.length).toBe(1);
   expect(symbol.valueDeclaration).toBeTruthy();
-  expect(symbol.declarations?.[0].getText()).toContain('x: 1');
+  expect(symbol.declarations?.[0].getText()).toContain("x: 1");
   expect(symbol.valueDeclaration === symbol.declarations?.[0]).toBeTruthy();
 
   const type = checker.getTypeFromTypeNode(decl.type!);
   expect(type.symbol?.declarations?.length).toBe(1);
   expect(type.symbol?.valueDeclaration).toBeFalsy();
-  expect(
-    type.symbol?.declarations?.[0].getText()
-  ).toContain('x: number');
+  expect(type.symbol?.declarations?.[0].getText()).toContain("x: number");
 
-  expect(
-    isTypeInferredFromValueDeclaration(type)
-  ).toBeFalsy();
+  expect(isTypeInferredFromValueDeclaration(type)).toBeFalsy();
 });
 
-
-test('check infered type from value', () => {
+test("check infered type from value", () => {
   const { program, file } = createOneshotTestProgram(`
   export const x = {
     x: 1,
   };
   `);
   const checker = program.getTypeChecker();
-  
+
   const decl = (file.statements[0] as ts.VariableStatement).declarationList.declarations[0];
   const symbol = checker.getSymbolAtLocation(decl.name)!;
   expect(symbol.declarations?.length).toBe(1);
   expect(symbol.valueDeclaration).toBeTruthy();
-  expect(symbol.declarations?.[0].getText()).toContain('x: 1');
+  expect(symbol.declarations?.[0].getText()).toContain("x: 1");
   expect(symbol.valueDeclaration === symbol.declarations?.[0]).toBeTruthy();
 
   const type = checker.getTypeOfSymbol(symbol);
@@ -120,13 +107,12 @@ test('check infered type from value', () => {
 
   // infered type has valueDeclaration
   expect(type.symbol?.valueDeclaration).toBeTruthy();
-  expect(type.symbol?.declarations?.[0].getText()).toContain('x: 1');
+  expect(type.symbol?.declarations?.[0].getText()).toContain("x: 1");
 
   expect(isTypeInferredFromValueDeclaration(type)).toBeTruthy();
 });
 
-
-test('getTypeOfSymbol with cast', () => {
+test("getTypeOfSymbol with cast", () => {
   const { program, file } = createOneshotTestProgram(`
   type X = {
     x: number;
@@ -139,20 +125,18 @@ test('getTypeOfSymbol with cast', () => {
   for (const stmt of file.statements) {
     if (ts.isVariableStatement(stmt)) {
       for (const decl of stmt.declarationList.declarations) {
-        if (decl.name.getText() === 'x') {
+        if (decl.name.getText() === "x") {
           const symbol = checker.getSymbolAtLocation(decl.name)!;
           expect(symbol.declarations?.length).toBe(1);
           expect(symbol.valueDeclaration).toBeTruthy();
-          expect(symbol.declarations?.[0].getText()).toContain('x: 1');
+          expect(symbol.declarations?.[0].getText()).toContain("x: 1");
           expect(symbol.valueDeclaration === symbol.declarations?.[0]).toBeTruthy();
           // infered type has no type annotation
           expect(decl.type).toBeFalsy();
           const type = checker.getTypeOfSymbol(symbol);
           expect(type.symbol?.declarations?.length).toBe(1);
           expect(type.symbol?.valueDeclaration).toBeFalsy();
-          expect(
-            type.symbol?.declarations?.[0].getText()
-          ).toContain('x: number');
+          expect(type.symbol?.declarations?.[0].getText()).toContain("x: number");
           expect(type.aliasSymbol).toBeTruthy();
         }
       }
@@ -167,14 +151,14 @@ test("imported type", () => {
     `
     import { sub } from "./sub";
     export const x = sub;
-    `
+    `,
   );
   service.writeSnapshotContent(
     normalizePath("src/sub.ts"),
     `
     type Sub = { sub: number }
     export const sub: Sub = { sub: 1 };
-    `
+    `,
   );
   const program = service.getProgram()!;
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;

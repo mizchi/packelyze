@@ -1,6 +1,10 @@
 import ts from "typescript";
 import path from "node:path";
-import { IncrementalLanguageServiceHost, createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./services";
+import {
+  IncrementalLanguageServiceHost,
+  createIncrementalLanguageService,
+  createIncrementalLanguageServiceHost,
+} from "./services";
 
 let lastRegistry: ts.DocumentRegistry | undefined = undefined;
 let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
@@ -10,15 +14,8 @@ export function createTestLanguageService(
   revertRootFiles = true,
 ) {
   // console.time("createTestLanguageService");
-  const tsconfig = ts.readConfigFile(
-    path.join(projectPath, "tsconfig.json"),
-    ts.sys.readFile,
-  );
-  const options = ts.parseJsonConfigFileContent(
-    tsconfig.config,
-    ts.sys,
-    projectPath,
-  );
+  const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);
+  const options = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, projectPath);
 
   // release old cache
   if (revertRootFiles && lastRegistry && lastHost) {
@@ -43,17 +40,9 @@ export function createTestLanguageService(
   }
   // const registory = lastRegistry ?? createDocumentRegistry();
   const registry = ts.createDocumentRegistry();
-  const host = createIncrementalLanguageServiceHost(
-    projectPath,
-    options.fileNames,
-    options.options,
-    lastHost,
-  );
+  const host = createIncrementalLanguageServiceHost(projectPath, options.fileNames, options.options, lastHost);
   // const snapshotManager = serviceHost.getSnapshotManager(registory);
-  const service = createIncrementalLanguageService(
-    host,
-    registry,
-  );
+  const service = createIncrementalLanguageService(host, registry);
   lastRegistry = registry;
   lastHost = host;
   // console.timeEnd("createTestLanguageService");
@@ -77,16 +66,9 @@ let oldOneshotProgram: ts.Program | undefined = undefined;
 export function createOneshotTestProgram(
   indexCode: string,
   projectPath: string = path.join(__dirname, "__fixtures__/minimum"),
-): { file: ts.SourceFile, program: ts.Program, checker: ts.TypeChecker } {
-  const tsconfig = ts.readConfigFile(
-    path.join(projectPath, "tsconfig.json"),
-    ts.sys.readFile,
-  );
-  const options = ts.parseJsonConfigFileContent(
-    tsconfig.config,
-    ts.sys,
-    projectPath,
-  );
+): { file: ts.SourceFile; program: ts.Program; checker: ts.TypeChecker } {
+  const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);
+  const options = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, projectPath);
 
   const host = ts.createCompilerHost(options.options);
   host.getCurrentDirectory = () => projectPath;
@@ -94,13 +76,11 @@ export function createOneshotTestProgram(
     const resolved = fname.startsWith("/") ? fname : path.join(projectPath, fname);
     if (resolved === path.join(projectPath, "index.ts")) {
       return indexCode;
-    } 
+    }
     return ts.sys.readFile(resolved);
-  }
+  };
   // host.reda
-  const program = ts.createProgram([
-    path.join(projectPath, "index.ts"),
-  ], options.options, host, oldOneshotProgram);
+  const program = ts.createProgram([path.join(projectPath, "index.ts")], options.options, host, oldOneshotProgram);
   const file = program.getSourceFile(path.join(projectPath, "index.ts"))!;
   oldOneshotProgram = program;
   return {

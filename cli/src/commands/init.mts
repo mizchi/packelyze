@@ -26,8 +26,7 @@ export async function init() {
     const configPath = path.join(cwd, args.values.config);
     if (fs.existsSync(configPath)) {
       const isContinue = await confirm({
-        message:
-          "packelyze.config.json already exists. Continue with override?",
+        message: "packelyze.config.json already exists. Continue with override?",
         default: false,
       });
       if (!isContinue) {
@@ -57,8 +56,7 @@ export async function init() {
     });
 
     const checked = await checkbox({
-      message:
-        "Select reserved buitins. (If you use terser builtins, you don't need to select)",
+      message: "Select reserved buitins. (If you use terser builtins, you don't need to select)",
       choices: [
         { name: "es", value: "es", checked: true },
         { name: "dom", value: "dom", checked: true },
@@ -109,14 +107,9 @@ export async function init() {
           2,
         ),
       );
-      console.info(
-        "[packelyze:init] generate tsconfig.packelyze.json >",
-        tsConfigpackelyzePath,
-      );
+      console.info("[packelyze:init] generate tsconfig.packelyze.json >", tsConfigpackelyzePath);
     } else {
-      console.info(
-        "[packelyze:init] skip. Ensure to emit lib/*.d.ts by yourself",
-      );
+      console.info("[packelyze:init] skip. Ensure to emit lib/*.d.ts by yourself");
     }
 
     // check tsconfig.json exists

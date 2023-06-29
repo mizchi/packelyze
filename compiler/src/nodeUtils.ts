@@ -3,16 +3,12 @@ import ts from "typescript";
 import { createLogger } from "./logger";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
-export function getNodeAtPosition(
-  sourceFile: ts.SourceFile,
-  position: number,
-): ts.Node {
+export function getNodeAtPosition(sourceFile: ts.SourceFile, position: number): ts.Node {
   let current: ts.Node = sourceFile;
   const getContainingChild = (child: ts.Node) => {
     if (
       child.pos <= position &&
-      (position < child.end ||
-        (position === child.end && (child.kind === ts.SyntaxKind.EndOfFileToken)))
+      (position < child.end || (position === child.end && child.kind === ts.SyntaxKind.EndOfFileToken))
     ) {
       return child;
     }
@@ -45,7 +41,7 @@ type VisitableSignature = ts.PropertySignature | ts.MethodSignature;
 export const createVisitSignature = (
   checker: ts.TypeChecker,
   visitor: (symbol: ts.Symbol, property: VisitableSignature) => void,
-  debug = false
+  debug = false,
 ): Visitor => {
   return (node: ts.Node) => {
     const addNameIfExist = (node: ts.Node) => {
@@ -70,7 +66,7 @@ export const createVisitSignature = (
 export const createVisitScoped = (
   checker: ts.TypeChecker,
   visitor: (symbol: ts.Symbol, decl: TraverseableNode) => void,
-  debug = false
+  debug = false,
 ): Visitor => {
   return (node: ts.Node) => {
     const addNameIfExist = (node: ts.Node) => {
@@ -116,13 +112,13 @@ export const createVisitScoped = (
     if (ts.isParameter(node)) {
       addNameIfExist(node);
     }
-  }
-}
+  };
+};
 
 export const createVisitScopedName = (
   checker: ts.TypeChecker,
   visitor: (symbol: ts.Identifier, decl: TraverseableNode) => void,
-  debug = false
+  debug = false,
 ): Visitor => {
   return (node: ts.Node) => {
     const addNameIfExist = (node: ts.Node) => {
@@ -142,7 +138,7 @@ export const createVisitScopedName = (
     if (ts.isPropertyAssignment(node)) {
       addNameIfExist(node);
     }
-    
+
     if (ts.isPropertySignature(node)) {
       addNameIfExist(node);
     }
@@ -175,8 +171,8 @@ export const createVisitScopedName = (
     if (ts.isParameter(node)) {
       addNameIfExist(node);
     }
-  }
-}
+  };
+};
 
 export type TraverseableNode =
   | ts.Block
@@ -230,9 +226,7 @@ export type AnyExportableDeclaration =
   | ts.EnumDeclaration
   | ts.ModuleDeclaration;
 
-export function isExportableDeclaration(
-  node: ts.Node,
-): node is AnyExportableDeclaration {
+export function isExportableDeclaration(node: ts.Node): node is AnyExportableDeclaration {
   return (
     ts.isVariableStatement(node) ||
     // ts.isVariableDeclaration(node) ||
@@ -260,5 +254,4 @@ export const findFirstNode = (program: ts.Program, fileName: string, matcher: st
     const node = getNodeAtPosition(source, pos);
     return node;
   }
-}
-
+};

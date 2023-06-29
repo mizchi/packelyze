@@ -1,19 +1,20 @@
-import { cloneNode } from 'ts-clone-node';
+import { cloneNode } from "ts-clone-node";
 import ts from "typescript";
 import { AnyExportableDeclaration, isExportableDeclaration } from "../nodeUtils";
 
-const hasExportKeyword = (node: AnyExportableDeclaration) => node.modifiers?.find(mod => mod.kind === ts.SyntaxKind.ExportKeyword);
+const hasExportKeyword = (node: AnyExportableDeclaration) =>
+  node.modifiers?.find((mod) => mod.kind === ts.SyntaxKind.ExportKeyword);
 const cloneWithoutExport = (node: AnyExportableDeclaration) => {
   return cloneNode(node, {
-    hook: _child => {
+    hook: (_child) => {
       return {
-        modifiers: modifiers => {
-          return modifiers?.filter(mod => mod.kind !== ts.SyntaxKind.ExportKeyword);
-        }
+        modifiers: (modifiers) => {
+          return modifiers?.filter((mod) => mod.kind !== ts.SyntaxKind.ExportKeyword);
+        },
       };
-    }
+    },
   });
-}
+};
 
 const SEARCH_EXPORT_DECL_REGEX = /export\s+(const |let |var |function|class |type(?!\s*{)|interface |enum )/;
 export function isPreprocessedNeeded(code: string) {
@@ -21,12 +22,13 @@ export function isPreprocessedNeeded(code: string) {
 }
 
 export function preprocess(file: ts.SourceFile | string) {
-  file = typeof file === "string" ? ts.createSourceFile(`${Math.random().toString(32).substring(2)}_tmp.tsx`, file, ts.ScriptTarget.Latest) : file;
+  file =
+    typeof file === "string"
+      ? ts.createSourceFile(`${Math.random().toString(32).substring(2)}_tmp.tsx`, file, ts.ScriptTarget.Latest)
+      : file;
   const transformed = ts.transform(file, [exportRewireTransformerFactory]);
   const printer = ts.createPrinter();
-  const out = printer.printFile(
-    transformed.transformed[0],
-  );
+  const out = printer.printFile(transformed.transformed[0]);
   return out;
 }
 
@@ -47,52 +49,45 @@ export const exportRewireTransformerFactory: ts.TransformerFactory<any> = (conte
               if (ts.isIdentifier(decl.name)) {
                 exportedIdentifiers.push(decl.name);
               }
-            }  
+            }
           }
           return cloneWithoutExport(node);
         }
         if (hasExportKeyword(node)) {
           if (node.name && ts.isIdentifier(node.name)) {
             exportedIdentifiers.push(node.name);
-          }      
+          }
         }
         return cloneWithoutExport(node);
       }
       if (ts.isSourceFile(node)) {
         const visited = ts.visitEachChild(node, visit, context);
         // console.log("export strip", exportedIdentifiers.map(x => x.getText()));
-        const exsitedSpecifiers = noModuleSpecifierExportDeclarations.map((stmt) => {
-          if (stmt.exportClause && ts.isNamedExports(stmt.exportClause)) {
-            return stmt.exportClause.elements.map((elem) => cloneNode(elem));
-          }
-          return [];
-        }).flat();
+        const exsitedSpecifiers = noModuleSpecifierExportDeclarations
+          .map((stmt) => {
+            if (stmt.exportClause && ts.isNamedExports(stmt.exportClause)) {
+              return stmt.exportClause.elements.map((elem) => cloneNode(elem));
+            }
+            return [];
+          })
+          .flat();
 
         const needRewired = exportedIdentifiers.length > 0 || exsitedSpecifiers.length > 0;
         const rewiredExportDeclaration = ts.factory.createExportDeclaration(
           undefined,
           // TODO: keep typeOnly
           false,
-          ts.factory.createNamedExports(
-            [
-              ...exsitedSpecifiers,
-              ...exportedIdentifiers.map((id) => {
-                return ts.factory.createExportSpecifier(
-                  false,
-                  undefined,
-                  id
-                  );
-              })  
-            ]
-          ),
+          ts.factory.createNamedExports([
+            ...exsitedSpecifiers,
+            ...exportedIdentifiers.map((id) => {
+              return ts.factory.createExportSpecifier(false, undefined, id);
+            }),
+          ]),
         );
 
         return ts.factory.updateSourceFile(
           visited,
-          [
-            ...visited.statements,
-            ...(needRewired ? [rewiredExportDeclaration] : []),
-          ],
+          [...visited.statements, ...(needRewired ? [rewiredExportDeclaration] : [])],
           visited.isDeclarationFile,
           visited.referencedFiles,
           visited.typeReferenceDirectives,
@@ -101,7 +96,7 @@ export const exportRewireTransformerFactory: ts.TransformerFactory<any> = (conte
         );
       }
       return node;
-    }
+    };
     return ts.visitNode(node, (node) => visit(node));
-  }
-}
+  };
+};

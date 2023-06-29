@@ -1,11 +1,8 @@
 import { expect, test } from "vitest";
-import {createSymbolBuilder} from "./symbolBuilder";
+import { createSymbolBuilder } from "./symbolBuilder";
 
 test("createSymbolBuilder", () => {
-  const bannedNames = [
-    "c",
-    "_a"
-  ]
+  const bannedNames = ["c", "_a"];
   const symbolBuilder = createSymbolBuilder();
   const banFilter = (name: string) => {
     return !bannedNames.includes(name);
@@ -29,4 +26,4 @@ test("createSymbolBuilder", () => {
 
   // re-pick c with no filter
   expect(symbolBuilder.create()).toBe("_a");
-})
+});

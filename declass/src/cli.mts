@@ -21,12 +21,7 @@ const filepath = args.positionals[0];
 const absFilepath = path.resolve(process.cwd(), filepath);
 
 const code = fs.readFileSync(absFilepath, "utf-8");
-const sourceFile = ts.createSourceFile(
-  absFilepath,
-  code,
-  ts.ScriptTarget.ESNext,
-  true,
-);
+const sourceFile = ts.createSourceFile(absFilepath, code, ts.ScriptTarget.ESNext, true);
 const result = ts.transform(sourceFile, [declassTransformerFactory]);
 const transformedSourceFile = result.transformed[0];
 

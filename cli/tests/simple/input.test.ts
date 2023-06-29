@@ -8,9 +8,7 @@ const cwd = path.dirname(new URL(import.meta.url).pathname);
 let analyzed: any;
 beforeAll(async () => {
   await execBuild(cwd);
-  analyzed = JSON.parse(
-    fs.readFileSync(path.join(cwd, "analyzed.json"), "utf-8"),
-  );
+  analyzed = JSON.parse(fs.readFileSync(path.join(cwd, "analyzed.json"), "utf-8"));
 });
 
 test("compile with analyze", async () => {
@@ -23,19 +21,7 @@ test("compile with analyze", async () => {
       },
     },
   });
-  expect(analyzed.reserved).toEqual([
-    "0",
-    "1",
-    "100",
-    "A",
-    "B",
-    "C",
-    "a",
-    "b",
-    "bar",
-    "f",
-    "g",
-  ]);
+  expect(analyzed.reserved).toEqual(["0", "1", "100", "A", "B", "C", "a", "b", "bar", "f", "g"]);
   expect(out).includes("bar");
   expect(out).includes(".filter");
   expect(out).includes("console.log");

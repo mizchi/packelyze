@@ -20,20 +20,12 @@ export async function createLoadedProjectWatcher(tsconfigPath: string) {
 }
 
 export function getTsconfigPath() {
-  const configpackelyzePath = ts.findConfigFile(
-    "./",
-    ts.sys.fileExists,
-    "tsconfig.json",
-  );
+  const configpackelyzePath = ts.findConfigFile("./", ts.sys.fileExists, "tsconfig.json");
   if (configpackelyzePath) {
     return configpackelyzePath;
   }
 
-  const configPath = ts.findConfigFile(
-    "./",
-    ts.sys.fileExists,
-    "tsconfig.json",
-  );
+  const configPath = ts.findConfigFile("./", ts.sys.fileExists, "tsconfig.json");
   if (configPath) {
     return configPath;
   }

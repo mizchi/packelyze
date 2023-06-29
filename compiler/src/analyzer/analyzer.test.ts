@@ -1,6 +1,16 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
-import { collectExportSymbols, collectGlobalTypes, collectGlobalVariables, collectScopedSymbols, collectImportableModules, createCollector, createPrebuiltCollectorFactory, isIdentifierInferredByRhs, findRenamebaleObjectMember } from "./analyzer";
+import {
+  collectExportSymbols,
+  collectGlobalTypes,
+  collectGlobalVariables,
+  collectScopedSymbols,
+  collectImportableModules,
+  createCollector,
+  createPrebuiltCollectorFactory,
+  isIdentifierInferredByRhs,
+  findRenamebaleObjectMember,
+} from "./analyzer";
 import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
 import { createVisitScoped, composeVisitors, findFirstNode, createVisitScopedName } from "../nodeUtils";
 
@@ -15,7 +25,7 @@ test("collectRelatedTypes: infer internal", () => {
       const internal: Internal = { v: "foo", t };
       return internal
     }
-    `
+    `,
   );
   const program = service.getProgram()!;
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
@@ -24,12 +34,8 @@ test("collectRelatedTypes: infer internal", () => {
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
   }
-  expect(collector.isRelated(
-    findFirstNode(program, file.fileName, /type Internal/)!,
-  )).toBe(true);
-  expect(collector.isRelated(
-    findFirstNode(program, file.fileName, /type UnusedInternal/)!,
-  )).toBe(false);
+  expect(collector.isRelated(findFirstNode(program, file.fileName, /type Internal/)!)).toBe(true);
+  expect(collector.isRelated(findFirstNode(program, file.fileName, /type UnusedInternal/)!)).toBe(false);
 });
 
 test("collectRelatedTypes: Partial", () => {
@@ -51,7 +57,7 @@ test("collectRelatedTypes: Partial", () => {
       pub: number;
     }
     export const pub: PubType = { pub: 1 };
-    `
+    `,
   );
   const program = service.getProgram()!;
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
@@ -62,31 +68,13 @@ test("collectRelatedTypes: Partial", () => {
     collector.visitSymbol(symbol);
   }
 
-  expect(
-    collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type PubType/)!,
-    )
-  ).toBe(true);
+  expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type PubType/)!)).toBe(true);
 
-  expect(
-    collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type Exp/)!,
-    )
-  ).toBe(false);
-  expect(
-    collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /priv:/)!,
-    )
-  ).toBe(false);
+  expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type Exp/)!)).toBe(false);
+  expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /priv:/)!)).toBe(false);
 
-  expect(
-    collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /public:/)!,
-    )
-  ).toBe(true);
-
+  expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /public:/)!)).toBe(true);
 });
-
 
 test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -106,7 +94,7 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
     }
     type Exp = A | B;
     export const exp: Exp = null as any as Exp;
-    `
+    `,
   );
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
@@ -118,18 +106,10 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
     collector.visitSymbol(symbol);
   }
   {
-    expect(collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type Exp/)!,
-    )).toBe(true);
-    expect(collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type A/)!,
-    )).toBe(true);
-    expect(collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type B/)!,
-    )).toBe(true);
-    expect(collector.isRelatedNode(
-      findFirstNode(program, file.fileName, /type C/)!,
-    )).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type Exp/)!)).toBe(true);
+    expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type A/)!)).toBe(true);
+    expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type B/)!)).toBe(true);
+    expect(collector.isRelatedNode(findFirstNode(program, file.fileName, /type C/)!)).toBe(false);
     // expect(nameSet.has('"a"')).toBeTruthy();
     // expect(nameSet.has('"b"')).toBeTruthy();
   }
@@ -143,7 +123,7 @@ test("collectExportSymbols", () => {
     export const sub1 = 1;
     export const sub2 = 2;
     export const sub3 = 3;
-    `
+    `,
   );
 
   service.writeSnapshotContent(
@@ -160,17 +140,14 @@ test("collectExportSymbols", () => {
     export type Foo = {
       b: number;
     }
-    `
+    `,
   );
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const exportSymbols = collectExportSymbols(program, source);
 
-
-  expect(exportSymbols.map(x => x.getName())).toEqual([
-    "sub1", "a", "b", "Foo"
-  ]);
+  expect(exportSymbols.map((x) => x.getName())).toEqual(["sub1", "a", "b", "Foo"]);
 
   // const collector = createRelatedTypesCollector(program);
   const collector = createCollector(checker);
@@ -180,7 +157,7 @@ test("collectExportSymbols", () => {
   }
 
   const relatedTypes = collector.getNewTypes();
-  const nameSet = new Set([...relatedTypes.values()].map(x => checker.typeToString(x)));
+  const nameSet = new Set([...relatedTypes.values()].map((x) => checker.typeToString(x)));
   expect(nameSet.has("Foo")).toBeTruthy();
   expect(nameSet.has("1")).toBeTruthy();
   expect(nameSet.has("2")).toBeTruthy();
@@ -188,8 +165,7 @@ test("collectExportSymbols", () => {
 });
 
 test("visitScoped: exports", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -207,7 +183,8 @@ class X {
     const methodBlock = 4;
   }
 }
-  `);
+  `,
+  );
   const program = service.getProgram()!;
 
   const symbols = new Set<ts.Symbol>();
@@ -215,17 +192,24 @@ class X {
   composeVisitors(
     createVisitScoped(checker, (symbol) => {
       symbols.add(symbol);
-    })
+    }),
   )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
 
-  expect([...symbols].map(s => s.name)).toEqual([
-    'exported', 'local', 'block', "f", 'arg', 'func',  'X', 'method', 'methodBlock'
+  expect([...symbols].map((s) => s.name)).toEqual([
+    "exported",
+    "local",
+    "block",
+    "f",
+    "arg",
+    "func",
+    "X",
+    "method",
+    "methodBlock",
   ]);
 });
 
 test("visitScoped: object member", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -236,7 +220,8 @@ type Local = {
 q;const obj: Local = {
   xxx: 1,
 }
-  `);
+  `,
+  );
   const program = service.getProgram()!;
 
   const symbols = new Set<ts.Symbol>();
@@ -244,7 +229,7 @@ q;const obj: Local = {
   composeVisitors(
     createVisitScoped(checker, (symbol) => {
       symbols.add(symbol);
-    })
+    }),
   )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
 
   // expect([...symbols].map(s => s.name)).toEqual([
@@ -253,10 +238,8 @@ q;const obj: Local = {
   // ]);
 });
 
-
 test.skip("collectExportSymbols with externals", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -280,36 +263,37 @@ test.skip("collectExportSymbols with externals", () => {
         }
       });
     }
-`
+`,
   );
-  const externals = [
-    '"node:util"'
-  ];
+  const externals = ['"node:util"'];
   const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
   const symbols = collectScopedSymbols(service.getProgram()!, source, externals);
   // TODO: trace external import related symbols
-  expect(symbols.map(s => s.symbol.name)).toEqual(["parse", "args", "allowPositionals", "options", "name", "type", "alias"]);
+  expect(symbols.map((s) => s.symbol.name)).toEqual([
+    "parse",
+    "args",
+    "allowPositionals",
+    "options",
+    "name",
+    "type",
+    "alias",
+  ]);
 });
 
 test("collectGlobalVariables", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
-  service.writeSnapshotContent(
-    normalizePath("src/index.ts"),
-    `export const exported = 1;`,
-  );
+  service.writeSnapshotContent(normalizePath("src/index.ts"), `export const exported = 1;`);
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const vars = collectGlobalVariables(program, source);
-  expect(vars.map(s => s.name).includes("exported")).toBeFalsy();
-  expect(vars.map(s => s.name).includes("Object")).toBeTruthy();
-  expect(vars.map(s => s.name).includes("Generator")).toBeFalsy();
+  expect(vars.map((s) => s.name).includes("exported")).toBeFalsy();
+  expect(vars.map((s) => s.name).includes("Object")).toBeTruthy();
+  expect(vars.map((s) => s.name).includes("Generator")).toBeFalsy();
 });
 
 test("collectGlobalTypes", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -328,7 +312,7 @@ declare type MyGlobal = { v: number };
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const types = collectGlobalTypes(program, source);
-  const names = types.map(s => s.name);
+  const names = types.map((s) => s.name);
 
   expect(names.includes("Foo")).toBeFalsy();
   expect(names.includes("Bar")).toBeFalsy();
@@ -339,8 +323,7 @@ declare type MyGlobal = { v: number };
 });
 
 test("collectImportableModules", () => {
-  const { service, normalizePath } =
-    createTestLanguageService();
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
     normalizePath("src/index.ts"),
@@ -352,13 +335,12 @@ export type Bar = number;
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const modules = collectImportableModules(program, source);
-  const names = modules.map(s => s.name);
+  const names = modules.map((s) => s.name);
   // console.log(names);
   expect(names.includes('"foo"')).toBeTruthy();
   expect(names.includes('"bar"')).toBeTruthy();
   expect(names.includes('"node:util"')).toBeTruthy();
 });
-
 
 test("isNodeInferredByRhs", () => {
   const code = `export const aaa = {
@@ -382,20 +364,20 @@ test("isNodeInferredByRhs", () => {
   const { program: project, file, checker } = createOneshotTestProgram(code);
 
   const createCollector = createPrebuiltCollectorFactory(project);
-  const aaaIdent =  findFirstNode(project, file.fileName, /aaa/)! as ts.Identifier;
+  const aaaIdent = findFirstNode(project, file.fileName, /aaa/)! as ts.Identifier;
   expect(isIdentifierInferredByRhs(checker, aaaIdent)).toBe(true);
 
-  const bbbIdent =  findFirstNode(project, file.fileName, /bbb/)! as ts.Identifier;
+  const bbbIdent = findFirstNode(project, file.fileName, /bbb/)! as ts.Identifier;
   expect(isIdentifierInferredByRhs(checker, bbbIdent)).toBe(false);
 
   const aRenameables = findRenamebaleObjectMember(project, aaaIdent, createCollector());
   // console.log(aRenameables.map(r => r.text));
-  expect([...aRenameables].map(r => r.text)).toEqual(["num", "foo", "nested", "v"]);
+  expect([...aRenameables].map((r) => r.text)).toEqual(["num", "foo", "nested", "v"]);
 
   const bRenameables = findRenamebaleObjectMember(project, bbbIdent, createCollector()) as ts.Identifier[];
 
   // console.log(bRenameables.map(r => r.text));
-  expect([...bRenameables].map(r => r.text)).toEqual(["v", "w", "x", "y"]);
+  expect([...bRenameables].map((r) => r.text)).toEqual(["v", "w", "x", "y"]);
 });
 
 test.skip("isNodeInferredByRhs with rename", () => {

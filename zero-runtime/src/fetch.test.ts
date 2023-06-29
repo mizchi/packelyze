@@ -5,50 +5,50 @@ import type { TypedJSON$stringify } from "./json";
 test.skip("run", async () => {
   const fetch = globalThis.fetch as TypedFetch<
     | FetchRule<{
-      $method: "POST";
-      $url: "/api/:id";
-      $headers: {
-        "Content-Type": "application/json";
-      };
-      $body: { text: string };
-      $response: { ok: boolean };
-    }>
+        $method: "POST";
+        $url: "/api/:id";
+        $headers: {
+          "Content-Type": "application/json";
+        };
+        $body: { text: string };
+        $response: { ok: boolean };
+      }>
     | FetchRule<{
-      $method: "POST";
-      $url: "/xxx";
-      $headers: {
-        "Content-Type": "application/json";
-      };
-      $body: { text: string };
-      $response: { error: boolean };
-    }>
+        $method: "POST";
+        $url: "/xxx";
+        $headers: {
+          "Content-Type": "application/json";
+        };
+        $body: { text: string };
+        $response: { error: boolean };
+      }>
     | FetchRule<{
-      $method: "PUT";
-      $url: "/foo/:id";
-      $headers: {
-        "Content-Type": "application/json";
-      };
-      $body: {};
-      $response: { result: string };
-    }>
+        $method: "PUT";
+        $url: "/foo/:id";
+        $headers: {
+          "Content-Type": "application/json";
+        };
+        $body: {};
+        $response: { result: string };
+      }>
     | FetchRule<{
-      $method: "POST";
-      $url: "https://example.test/zzz";
-      $headers: {
-        "Content-Type": "application/json";
-      };
-      $body: {};
-      $response: { result: string };
-    }>
+        $method: "POST";
+        $url: "https://example.test/zzz";
+        $headers: {
+          "Content-Type": "application/json";
+        };
+        $body: {};
+        $response: { result: string };
+      }>
     | FetchRule<{
-      $method: "GET";
-      $url: `/search`;
-      $headers: {
-        "Content-Type": "application/json";
-      };
-      $search: { q: string };
-      $response: { items: string[] };
-    }>
+        $method: "GET";
+        $url: `/search`;
+        $headers: {
+          "Content-Type": "application/json";
+        };
+        $search: { q: string };
+        $response: { items: string[] };
+      }>
   >;
   const stringify = JSON.stringify as TypedJSON$stringify;
   const res = await fetch("/api/xxx", {

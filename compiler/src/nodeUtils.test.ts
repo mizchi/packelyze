@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { createTestLanguageService } from "./testHarness";
 import { createVisitScoped, composeVisitors, findFirstNode, createVisitSignature } from "./nodeUtils";
 import { collectExportSymbols, createCollector } from "./analyzer/analyzer";
-import { createLogger } from './logger';
+import { createLogger } from "./logger";
 
 const code1 = `
 // export const local: number = 1;
@@ -27,7 +27,7 @@ export type Tree = {
 export type Tree = {
   value: number;
   children: Tree[];
-}
+};
 
 test("createTypeVisitor", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -47,10 +47,7 @@ test("createTypeVisitor", () => {
     children: []
   };
   `;
-  service.writeSnapshotContent(
-    normalizePath("src/index.ts"),
-    code
-  );
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
   const program = service.getProgram()!;
 
   const exportedSymbols = collectExportSymbols(
@@ -69,16 +66,12 @@ test("createTypeVisitor", () => {
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
   }
-  expect(collector.isRelatedNode(
-    findFirstNode(program, normalizePath("src/index.ts"), /Tree/)!
-  )).toBe(true);
+  expect(collector.isRelatedNode(findFirstNode(program, normalizePath("src/index.ts"), /Tree/)!)).toBe(true);
   expect(collector.isRelated(valueSymbol)).toBe(true);
   expect(collector.isRelated(xxxSymbol)).toBe(false);
 });
 
-
 test("createCollector", () => {
-
   const log = createLogger("[relate]", false);
   log.off();
   const { service, normalizePath } = createTestLanguageService();
@@ -103,10 +96,7 @@ test("createCollector", () => {
   export const pub: PubType = { vvv: 1 };
   export const partial: PartialPub['pub'] = { partialPub: 1 };
   `;
-  service.writeSnapshotContent(
-    normalizePath("src/index.ts"),
-    code
-  );
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
 
@@ -125,29 +115,15 @@ test("createCollector", () => {
   {
     const filePath = normalizePath("src/index.ts");
     // check node is related
-    expect(
-      collector.isRelated(findFirstNode(program, filePath, /type PubType/)!)
-    ).toBe(true);
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /type PubType/)!)
-    ).toBe(true);
+    expect(collector.isRelated(findFirstNode(program, filePath, /type PubType/)!)).toBe(true);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /type PubType/)!)).toBe(true);
 
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /type LocalType/)!)
-    ).toBe(false);
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /hidden:/)!)
-    ).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /type LocalType/)!)).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /hidden:/)!)).toBe(false);
 
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /priv:/)!)
-    ).toBe(false);
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /__priv:/)!)
-    ).toBe(false);
-    expect(
-      collector.isRelatedNode(findFirstNode(program, filePath, /__priv2/)!)
-    ).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /priv:/)!)).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /__priv:/)!)).toBe(false);
+    expect(collector.isRelatedNode(findFirstNode(program, filePath, /__priv2/)!)).toBe(false);
 
     // expect(
     //   isRelatedNode(findFirstNode(program, filePath, /pub:/)!)
@@ -155,7 +131,6 @@ test("createCollector", () => {
   }
 
   return;
-
 });
 
 test("visitScopedIdentifierSymbols", () => {
@@ -179,19 +154,29 @@ function fff(arg) {}
     }
   }
 }
-`
+`,
   );
   const symbols: ts.Symbol[] = [];
-  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
-    symbols.push(symbol);
-  });
-  const visit = composeVisitors(
-    visitScopedIdentifierSymbols,
+  const visitScopedIdentifierSymbols = createVisitScoped(
+    service.getProgram()!.getTypeChecker(),
+    (symbol, parentBlock) => {
+      symbols.push(symbol);
+    },
   );
+  const visit = composeVisitors(visitScopedIdentifierSymbols);
   visit(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
   // console.log(symbols.map(s => s.name));
-  expect(symbols.map(s => s.name)).toEqual([
-    "exported", "local", "fff", "arg", "nested", "Class", "v",  "cstrInternal", "method", "internal"
+  expect(symbols.map((s) => s.name)).toEqual([
+    "exported",
+    "local",
+    "fff",
+    "arg",
+    "nested",
+    "Class",
+    "v",
+    "cstrInternal",
+    "method",
+    "internal",
   ]);
 });
 
@@ -207,7 +192,7 @@ type T = {
   // get bar(): number;
   // set bar(v: number);
 }
-    `
+    `,
   );
   const checker = service.getProgram()!.getTypeChecker();
   const symbols: ts.Symbol[] = [];
@@ -220,15 +205,10 @@ type T = {
     symbols.push(symbol);
   });
 
-  const visit = composeVisitors(
-    visitScoped,
-    visitSignature
-  );
+  const visit = composeVisitors(visitScoped, visitSignature);
   visit(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
 
-  expect(symbols.map(s => s.name)).toEqual([
-    "vvv", "foo"
-  ]);
+  expect(symbols.map((s) => s.name)).toEqual(["vvv", "foo"]);
 });
 
 test("visitScoped: enum", () => {
@@ -241,21 +221,19 @@ enum Enum {
   bbbb = 2,
   cccc,
 }
-    `
+    `,
   );
   const symbols: ts.Symbol[] = [];
-  const visitScopedIdentifierSymbols = createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
-    symbols.push(symbol);
-  });
-  composeVisitors(
-    visitScopedIdentifierSymbols,
-  )(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
+  const visitScopedIdentifierSymbols = createVisitScoped(
+    service.getProgram()!.getTypeChecker(),
+    (symbol, parentBlock) => {
+      symbols.push(symbol);
+    },
+  );
+  composeVisitors(visitScopedIdentifierSymbols)(service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!);
 
-  expect(symbols.map(s => s.name)).toEqual([
-    "Enum", "aaaa", "bbbb", "cccc"
-  ]);
+  expect(symbols.map((s) => s.name)).toEqual(["Enum", "aaaa", "bbbb", "cccc"]);
 });
-
 
 test("visitScoped: class", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -270,20 +248,17 @@ class Class {
   consturctor() {
   }
 }
-    `
+    `,
   );
   const symbols: ts.Symbol[] = [];
   // const visitScopedIdentifierSymbols =
   composeVisitors(
     createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
       symbols.push(symbol);
-    })
+    }),
   )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
-  expect(symbols.map(s => s.name)).toEqual([
-    "Class", "vvv", "foo", "arg", "local", "consturctor"
-  ]);
+  expect(symbols.map((s) => s.name)).toEqual(["Class", "vvv", "foo", "arg", "local", "consturctor"]);
 });
-
 
 test.skip("visitLocalIdentifierSymbols: object member", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -296,17 +271,19 @@ const localObj = {
 export const exportedObj = {
   foo: 1,
 }
-    `
+    `,
   );
   const symbols: ts.Symbol[] = [];
   composeVisitors(
     createVisitScoped(service.getProgram()!.getTypeChecker(), (symbol, parentBlock) => {
       symbols.push(symbol);
-    })
+    }),
   )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
-  expect(symbols.map(s => s.name)).toEqual([
-    "localObj", "vvv", "exportedObj", "foo"
+  expect(symbols.map((s) => s.name)).toEqual([
+    "localObj",
+    "vvv",
+    "exportedObj",
+    "foo",
     // "Class", "vvv", "foo", "arg", "local", "consturctor"
   ]);
 });
-

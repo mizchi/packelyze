@@ -1,10 +1,10 @@
 import ts from "typescript";
 
 export type AnalyzedScope = {
-  block: ts.Block | ts.SourceFile,
+  block: ts.Block | ts.SourceFile;
   locals: Set<ts.Symbol>;
   children: AnalyzedScope[];
-}
+};
 
 /** get all scoped locals */
 export function analyzeScope(checker: ts.TypeChecker, file: ts.SourceFile): AnalyzedScope {
@@ -21,7 +21,7 @@ export function analyzeScope(checker: ts.TypeChecker, file: ts.SourceFile): Anal
     return {
       block,
       locals,
-      children: [...children]
+      children: [...children],
     };
   }
   function getDirectChildren(node: ts.Block | ts.SourceFile): Set<ts.Block> {
@@ -45,8 +45,7 @@ export function getGlobalsFromFile(checker: ts.TypeChecker, file: ts.SourceFile)
     // special reserved words
     if (value.name === "globalThis" || value.name === "undefined") {
       globals.add(value);
-    }
-    else if (value.declarations?.some(d => d.getSourceFile() !== file)) {
+    } else if (value.declarations?.some((d) => d.getSourceFile() !== file)) {
       globals.add(value);
     }
   }
@@ -57,7 +56,7 @@ export function getLocals(checker: ts.TypeChecker, node: ts.Node): Set<ts.Symbol
   if (ts.isSourceFile(node)) {
     const locals: Set<ts.Symbol> = new Set();
     for (const symbol of checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariableExcludes)) {
-      if (symbol.declarations?.some(d => d.getSourceFile() === node)) {
+      if (symbol.declarations?.some((d) => d.getSourceFile() === node)) {
         locals.add(symbol);
       }
     }
@@ -88,12 +87,12 @@ export function getClosestBlock(node: ts.Node): ts.Node {
   throw new Error("unreachable");
 }
 
-export function getLocalsInScope(checker: ts.TypeChecker, globals: Set<ts.Symbol>,  node: ts.Node): Set<ts.Symbol> {
+export function getLocalsInScope(checker: ts.TypeChecker, globals: Set<ts.Symbol>, node: ts.Node): Set<ts.Symbol> {
   if (ts.isSourceFile(node)) {
     // const globals = getGlobalsFromFile(checker, node);
     const locals: Set<ts.Symbol> = new Set();
     for (const value of checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariableExcludes)) {
-      if (value.declarations?.some(d => d.getSourceFile() === node)) {
+      if (value.declarations?.some((d) => d.getSourceFile() === node)) {
         locals.add(value);
       }
     }
@@ -113,7 +112,11 @@ export function getLocalsInScope(checker: ts.TypeChecker, globals: Set<ts.Symbol
     const parentLocals = getLocals(checker, parent);
     // delete from parent
     for (const parentLocal of parentLocals) {
-      const isRegistered = parentLocal.name === "arguments" || parentLocal.name === "this" || parentLocal.name === "super" || parentLocal.name === "globalThis";
+      const isRegistered =
+        parentLocal.name === "arguments" ||
+        parentLocal.name === "this" ||
+        parentLocal.name === "super" ||
+        parentLocal.name === "globalThis";
       if (isRegistered) continue;
       locals.delete(parentLocal);
     }
@@ -223,7 +226,15 @@ export function getLocalBindings(node: ts.Node) {
     }
     ts.forEachChild(node, visit);
   }
-  function visitBinding(node: ts.BindingPattern | ts.BindingElement | ts.Identifier | ts.ArrayBindingElement | ts.ObjectBindingPattern |ts.PropertyName) {
+  function visitBinding(
+    node:
+      | ts.BindingPattern
+      | ts.BindingElement
+      | ts.Identifier
+      | ts.ArrayBindingElement
+      | ts.ObjectBindingPattern
+      | ts.PropertyName,
+  ) {
     if (ts.isIdentifier(node)) {
       idents.push(node);
     }
@@ -258,7 +269,7 @@ export function findAcendantLocals(checker: ts.TypeChecker, block: ts.Block) {
       return;
     }
     ts.forEachChild(node, visit);
-  }
+  };
   ts.forEachChild(block, visit);
 
   const currentLocals = getLocals(checker, block);
@@ -271,7 +282,7 @@ export function findAcendantLocals(checker: ts.TypeChecker, block: ts.Block) {
       }
     }
     // recursive
-    for (const ascendantLocal of findAcendantLocals(checker, block) ) {
+    for (const ascendantLocal of findAcendantLocals(checker, block)) {
       if (!currentLocals.has(ascendantLocal)) {
         ascendantLocals.add(ascendantLocal);
       }

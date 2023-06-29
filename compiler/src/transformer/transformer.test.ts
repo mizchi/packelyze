@@ -1,4 +1,4 @@
-import {expect, test} from "vitest";
+import { expect, test } from "vitest";
 import { isPreprocessedNeeded, preprocess } from "./transformer";
 // import { createSourceFile, ScriptTarget } from "typescript";
 import ts from "typescript";
@@ -21,7 +21,7 @@ test("preprocess", () => {
     export const x = 1;
     `,
     ts.ScriptTarget.Latest,
-    true
+    true,
   );
   const preprocessed = preprocess(source);
   expect(preprocessed).toBe(`const x = 1;\nexport { x };\n`);
@@ -34,7 +34,7 @@ test("preprocess without namedExportsn", () => {
     export default 1;
     `,
     ts.ScriptTarget.Latest,
-    true
+    true,
   );
   const preprocessed = preprocess(source);
   expect(preprocessed).toBe(`export default 1;\n`);
@@ -66,7 +66,7 @@ test("preprocess export declaration", () => {
     }
     `,
     ts.ScriptTarget.Latest,
-    true
+    true,
   );
   const preprocessed = preprocess(source);
   expect(preprocessed).toBe(`export { sub } from "./sub";
@@ -88,4 +88,3 @@ const y = 2;
 export { v, y as z, x, f, C, E, T, I };
 `);
 });
-

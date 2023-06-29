@@ -1,12 +1,6 @@
 import { test } from "vitest";
 import type { Assert, Eq } from "./utils";
-import type {
-  GetMatchedRest,
-  IsAcceptableUrlPattern,
-  ParsePath,
-  ParseURLInput,
-  ParseURLPattern,
-} from "./url";
+import type { GetMatchedRest, IsAcceptableUrlPattern, ParsePath, ParseURLInput, ParseURLPattern } from "./url";
 
 test("url", () => {
   type _cases = [
@@ -27,7 +21,6 @@ test("url", () => {
         }
       >
     >,
-
     Assert<
       Eq<
         ParseURLPattern<`https://example.test/foo?${string}`>,
@@ -50,7 +43,6 @@ test("url", () => {
         }
       >
     >,
-
     Assert<
       Eq<
         ParseURLPattern<"https://example.test/foo/:id">,
@@ -62,74 +54,73 @@ test("url", () => {
         }
       >
     >,
-
     Assert<
       Eq<
         ParseURLPattern<`${"https" | "http"}://example.test/send`>,
-        {
-          protocol: "https";
-          host: "example.test";
-          path: `send`;
-          search: false;
-        } | {
-          protocol: "http";
-          host: "example.test";
-          path: `send`;
-          search: false;
-        }
+        | {
+            protocol: "https";
+            host: "example.test";
+            path: `send`;
+            search: false;
+          }
+        | {
+            protocol: "http";
+            host: "example.test";
+            path: `send`;
+            search: false;
+          }
       >
     >,
-
     Assert<
       Eq<
         ParseURLPattern<`https://${"prod.test" | "staging.test"}/send`>,
-        {
-          protocol: "https";
-          host: "prod.test";
-          path: `send`;
-          search: false;
-        } | {
-          protocol: "https";
-          host: "staging.test";
-          path: `send`;
-          search: false;
-        }
+        | {
+            protocol: "https";
+            host: "prod.test";
+            path: `send`;
+            search: false;
+          }
+        | {
+            protocol: "https";
+            host: "staging.test";
+            path: `send`;
+            search: false;
+          }
       >
     >,
-
     Assert<
       Eq<
-        ParseURLPattern<
-          `https://${"prod.example.test" | "staging.example.test"}/send`
-        >,
-        {
-          protocol: "https";
-          host: "prod.example.test";
-          path: `send`;
-          search: false;
-        } | {
-          protocol: "https";
-          host: "staging.example.test";
-          path: `send`;
-          search: false;
-        }
+        ParseURLPattern<`https://${"prod.example.test" | "staging.example.test"}/send`>,
+        | {
+            protocol: "https";
+            host: "prod.example.test";
+            path: `send`;
+            search: false;
+          }
+        | {
+            protocol: "https";
+            host: "staging.example.test";
+            path: `send`;
+            search: false;
+          }
       >
     >,
     // Has host or skip
     Assert<
       Eq<
         ParseURLPattern<`${"https://example.test" | ""}/foo/:id`>,
-        {
-          protocol: "https";
-          host: "example.test";
-          path: `foo/${string}`;
-          search: false;
-        } | {
-          protocol: "";
-          host: "";
-          path: `foo/${string}`;
-          search: false;
-        }
+        | {
+            protocol: "https";
+            host: "example.test";
+            path: `foo/${string}`;
+            search: false;
+          }
+        | {
+            protocol: "";
+            host: "";
+            path: `foo/${string}`;
+            search: false;
+          }
       >
     >,
   ];
@@ -140,22 +131,10 @@ test("url", () => {
       Assert<ExactPattern<`/xxx/${string}/yyy/${string}`, "/xxx/xid">>,
       // @ts-expect-error
       Assert<ExactPattern<`/xxx/${string}/yyy/${string}`, "/xxx/xid/yyy">>,
-      Assert<
-        Eq<
-          GetMatchedRest<
-            `xxx/${string}/yyy/${string}`,
-            "xxx/xid/yyy/yid/xxx"
-          >,
-          "xxx"
-        >
-      >,
-
+      Assert<Eq<GetMatchedRest<`xxx/${string}/yyy/${string}`, "xxx/xid/yyy/yid/xxx">, "xxx">>,
       Assert<
         // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id`>,
-          ParseURLInput<`/foo/x/x`>
-        >
+        IsAcceptableUrlPattern<ParseURLPattern<`/foo/:id`>, ParseURLInput<`/foo/x/x`>>
       >,
       Assert<
         // @ts-expect-error
@@ -167,90 +146,44 @@ test("url", () => {
       // Overrun
       Assert<
         // @ts-expect-error
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id`>,
-          ParseURLInput<`/foo/pid/over`>
-        >
-      >,
-
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`https://example.test/foo`>,
-          ParseURLInput<`https://example.test/foo`>
-        >
+        IsAcceptableUrlPattern<ParseURLPattern<`/foo/:id`>, ParseURLInput<`/foo/pid/over`>>
       >,
       Assert<
-        Eq<ParseURLInput<"/foo">, {
-          protocol: "";
-          host: "";
-          path: "foo";
-          search: never;
-        }>
+        IsAcceptableUrlPattern<ParseURLPattern<`https://example.test/foo`>, ParseURLInput<`https://example.test/foo`>>
       >,
-
       Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`https://example.test/foo`>,
-          ParseURLInput<`https://example.test/foo`>
+        Eq<
+          ParseURLInput<"/foo">,
+          {
+            protocol: "";
+            host: "";
+            path: "foo";
+            search: never;
+          }
         >
       >,
       Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`${"https://example.test" | ""}/foo`>,
-          ParseURLInput<`/foo`>
-        >
+        IsAcceptableUrlPattern<ParseURLPattern<`https://example.test/foo`>, ParseURLInput<`https://example.test/foo`>>
       >,
-
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`${"https://example.test" | ""}/foo`>, ParseURLInput<`/foo`>>>,
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`${"https://example.test" | ""}/foo`>,
           ParseURLInput<`https://example.test/foo`>
         >
       >,
-
       Assert<
         IsAcceptableUrlPattern<
-          ParseURLPattern<
-            `${"https://example.test" | "https://example2.test"}/foo`
-          >,
+          ParseURLPattern<`${"https://example.test" | "https://example2.test"}/foo`>,
           ParseURLInput<`https://example2.test/foo`>
         >
       >,
-
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`${"https://example.test" | ""}/foo`>,
-          ParseURLInput<`/foo`>
-        >
-      >,
-
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo`>,
-          ParseURLInput<`/foo`>
-        >
-      >,
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id`>,
-          ParseURLInput<`/foo/x`>
-        >
-      >,
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id?${string}`>,
-          ParseURLInput<`/foo/x?xxx`>
-        >
-      >,
-
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`${"https://example.test" | ""}/foo`>, ParseURLInput<`/foo`>>>,
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`/foo`>, ParseURLInput<`/foo`>>>,
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`/foo/:id`>, ParseURLInput<`/foo/x`>>>,
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`/foo/:id?${string}`>, ParseURLInput<`/foo/x?xxx`>>>,
       // TODO: Unacceptable search pattern
-      Assert<
-        IsAcceptableUrlPattern<
-          ParseURLPattern<`/foo/:id`>,
-          ParseURLInput<`/foo/x?xxx`>
-        >
-      >,
-
+      Assert<IsAcceptableUrlPattern<ParseURLPattern<`/foo/:id`>, ParseURLInput<`/foo/x?xxx`>>>,
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`https://example.test/foo?${string}`>,
@@ -263,21 +196,18 @@ test("url", () => {
           ParseURLInput<`https://example.test/foo/bar`>
         >
       >,
-
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`https://example.test/foo/bar/baz`>,
           ParseURLInput<`https://example.test/foo/bar/baz`>
         >
       >,
-
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`https://example.test/foo/:id`>,
           ParseURLInput<`https://example.test/foo/x`>
         >
       >,
-
       Assert<
         IsAcceptableUrlPattern<
           ParseURLPattern<`https://example.test/foo/:id/p/:pid`>,

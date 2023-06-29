@@ -1,11 +1,6 @@
 import type { TypedJSONString } from "./primitive";
 import type { TypedFormData } from "./form";
-import type {
-  ExtractAcceptableURLPattern,
-  ParsedURLPattern,
-  ParseURLInput,
-  ParseURLPattern,
-} from "./url";
+import type { ExtractAcceptableURLPattern, ParsedURLPattern, ParseURLInput, ParseURLPattern } from "./url";
 
 export interface TypedRequestConstructor {
   new <T extends { [key: string]: any }, Method extends string, HT extends {}>(
@@ -74,20 +69,11 @@ export type FetchRuleInternal<
   $response: Response;
 };
 
-export type TypedFetch<
-  Op extends FetchRuleInternal<any, any, any, any, any, any>,
-> = <
+export type TypedFetch<Op extends FetchRuleInternal<any, any, any, any, any, any>,> = <
   InputUrl extends string,
   InputMethod extends string,
-  Matched extends Extract<
-    Op,
-    { $url: ExtractAcceptableURLPattern<Op["$url"], ParseURLInput<InputUrl>> }
-  >,
+  Matched extends Extract<Op, { $url: ExtractAcceptableURLPattern<Op["$url"], ParseURLInput<InputUrl>> }>,
 >(
   input: InputUrl,
-  init: TypedRequestInit<
-    InputMethod,
-    Matched["$body"],
-    Matched["$headers"]
-  >,
+  init: TypedRequestInit<InputMethod, Matched["$body"], Matched["$headers"]>,
 ) => Promise<TypedResponse<Matched["$response"]>>;

@@ -139,5 +139,5 @@ export const httpHeaders = [
   "X-Pingback",
   "X-Requested-With",
   "X-Robots-Tag",
-  "X-UA-Compatible"
+  "X-UA-Compatible",
 ];

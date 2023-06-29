@@ -85,17 +85,19 @@ export function getSymbolWalker(checker: ts.TypeChecker, cache?: CollectorCache,
     const type = checker.getDeclaredTypeOfSymbol(symbol);
     const node = symbol.valueDeclaration;
 
-    return isRelated(symbol, type, ...[
-      ...node ? [node] : [],
-      ...symbol.declarations ? symbol.declarations : [],
-    ]);
+    return isRelated(symbol, type, ...[...(node ? [node] : []), ...(symbol.declarations ? symbol.declarations : [])]);
   }
   function isRelatedType(type: ts.Type) {
     return visitedTypes.has(type);
   }
 
   function isRelated(...symbols: Array<ts.Symbol | ts.Type | ts.Node>) {
-    return symbols.some(symbol => visitedSymbols.has(symbol as ts.Symbol) || visitedTypes.has(symbol as ts.Type) || visitedNodes.has(symbol as ts.Node));
+    return symbols.some(
+      (symbol) =>
+        visitedSymbols.has(symbol as ts.Symbol) ||
+        visitedTypes.has(symbol as ts.Type) ||
+        visitedNodes.has(symbol as ts.Node),
+    );
   }
 
   function visitNode(node: ts.Node, depth = 0) {
@@ -151,7 +153,7 @@ export function getSymbolWalker(checker: ts.TypeChecker, cache?: CollectorCache,
 
     for (const property of type.getProperties()) {
       visitSymbol(property, depth + 1);
-    };
+    }
 
     // traverse type object member declarations
     // if (type.flags & ts.TypeFlags.Object) {

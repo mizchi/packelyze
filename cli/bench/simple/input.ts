@@ -9,9 +9,9 @@ export function f() {
 
 export class X {
   a: number = 1;
-  "b": boolean;
+  b: boolean;
   f(): void {}
-  "g"(): void {}
+  g(): void {}
   private pf(): void {}
   private z = null;
 }

@@ -8,24 +8,24 @@ const cwd = path.dirname(new URL(import.meta.url).pathname);
 let analyzed: any;
 beforeAll(async () => {
   await execBuild(cwd, { builtins: ["es", "node"] });
-  analyzed = JSON.parse(
-    fs.readFileSync(path.join(cwd, "analyzed.json"), "utf-8"),
-  );
+  analyzed = JSON.parse(fs.readFileSync(path.join(cwd, "analyzed.json"), "utf-8"));
 });
 
 test("compile with analyze", async () => {
   const fileName = path.join(cwd, "input.ts");
-  const out = await bundle(fileName, {
-    mangle: {
-      properties: {
-        builtins: true,
-        regex: /.*/,
-        reserved: analyzed.reserved,
+  const out = await bundle(
+    fileName,
+    {
+      mangle: {
+        properties: {
+          builtins: true,
+          regex: /.*/,
+          reserved: analyzed.reserved,
+        },
       },
     },
-  }, [
-    "node:util",
-  ]);
+    ["node:util"],
+  );
   expect(out).includes("node:util");
   expect(out).includes("process.argv");
   expect(out).includes("process.env.NODE_ENV");

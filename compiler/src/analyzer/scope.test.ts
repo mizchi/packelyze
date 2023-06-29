@@ -1,6 +1,14 @@
-import {expect, test} from "vitest";
+import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../testHarness";
-import { analyzeScope, findAcendantLocals, getClosestBlock, getGlobalsFromFile, getLocalBindings, getLocals, getLocalsInScope } from "./scope";
+import {
+  analyzeScope,
+  findAcendantLocals,
+  getClosestBlock,
+  getGlobalsFromFile,
+  getLocalBindings,
+  getLocals,
+  getLocalsInScope,
+} from "./scope";
 import { getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
 
@@ -21,7 +29,7 @@ module M1 {
 declare module M2 {
   const x = 1;
   export const y = 2;
-}  
+}
 if (false as any) {
   M2.x;
   M2.y;
@@ -63,12 +71,32 @@ test("find all declarations", () => {
 
   const idents = getLocalBindings(file);
 
-  const expected = new Set(
-    [
-      "X", "Y", "Z", "x", "y", "z", "a", "b", "c", "d", "f", "param", "Nested", "nested", "deep", "cf", "deepf", "i", "j", "k", "M",
-      "Component", "p", "q"
-    ]
-  );
+  const expected = new Set([
+    "X",
+    "Y",
+    "Z",
+    "x",
+    "y",
+    "z",
+    "a",
+    "b",
+    "c",
+    "d",
+    "f",
+    "param",
+    "Nested",
+    "nested",
+    "deep",
+    "cf",
+    "deepf",
+    "i",
+    "j",
+    "k",
+    "M",
+    "Component",
+    "p",
+    "q",
+  ]);
   // expect(expected).includes
   for (const ident of idents) {
     expect(expected).includes(ident.getText());
@@ -92,11 +120,11 @@ test("scoped variables", () => {
   const checker = program.getTypeChecker();
   const result = analyzeScope(checker, file);
 
-  expect([...result.locals].map(t=>t.name)).toEqual(["f", "x", "y"]);
+  expect([...result.locals].map((t) => t.name)).toEqual(["f", "x", "y"]);
   // expect([...result.children[0].locals].map(t => t.name)).toEqual(["internalFunc", "f_internal", "arguments"]);
-  expect([...result.children[0].locals].map(t => t.name)).toEqual(["arg", "internalFunc", "f_internal", "arguments"]);
+  expect([...result.children[0].locals].map((t) => t.name)).toEqual(["arg", "internalFunc", "f_internal", "arguments"]);
 
-  expect([...result.children[0].children[0].locals].map(t => t.name)).toEqual(["f2", "iif"]);
+  expect([...result.children[0].children[0].locals].map((t) => t.name)).toEqual(["f2", "iif"]);
 });
 
 test("scoped variables: block", () => {
@@ -120,11 +148,11 @@ test("scoped variables: block", () => {
   const checker = program.getTypeChecker();
 
   const result2 = analyzeScope(checker, file);
-  expect([...result2.locals].map(x => x.name)).toEqual(["x", "y"]);
-  expect([...result2.children[0].locals].map(x => x.name)).toEqual(["blocked"]);
-  expect([...result2.children[0].children[0].locals].map(x => x.name)).toEqual(["v1"]);
-  expect([...result2.children[0].children[1].locals].map(x => x.name)).toEqual(["v2"]);
-  expect([...result2.children[1].locals].map(x => x.name)).toEqual(["exprBlock"]);
+  expect([...result2.locals].map((x) => x.name)).toEqual(["x", "y"]);
+  expect([...result2.children[0].locals].map((x) => x.name)).toEqual(["blocked"]);
+  expect([...result2.children[0].children[0].locals].map((x) => x.name)).toEqual(["v1"]);
+  expect([...result2.children[0].children[1].locals].map((x) => x.name)).toEqual(["v2"]);
+  expect([...result2.children[1].locals].map((x) => x.name)).toEqual(["exprBlock"]);
 });
 
 test("scoped variables: block", () => {
@@ -166,14 +194,12 @@ test("scoped variables: block", () => {
   const parentLocals = getLocals(checker, parent);
   const locals = getLocalsInScope(checker, globals, node);
 
-  const parentLocalNames = new Set([...parentLocals].map(s => s.name));
+  const parentLocalNames = new Set([...parentLocals].map((s) => s.name));
   expect(parentLocalNames.has("v0")).toBe(true);
   expect(parentLocalNames.has("v1")).toBe(true);
   expect(parentLocalNames.has("v2")).toBe(false);
-  expect([...locals].map(s => s.name)).toEqual(["v2"]);
+  expect([...locals].map((s) => s.name)).toEqual(["v2"]);
 
   const ascendantLocals = findAcendantLocals(checker, node as ts.Block);
-  expect([...ascendantLocals].map(s => s.name)).toEqual([
-    'v3', 'v4', 'v5', 'v6', 'v8', 'v7'
-  ]);
+  expect([...ascendantLocals].map((s) => s.name)).toEqual(["v3", "v4", "v5", "v6", "v8", "v7"]);
 });

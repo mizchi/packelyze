@@ -1,7 +1,7 @@
-import ts from 'typescript';
+import ts from "typescript";
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from '../testHarness';
-import { findClosestBlock } from '../nodeUtils';
+import { createOneshotTestProgram } from "../testHarness";
+import { findClosestBlock } from "../nodeUtils";
 
 test.skip("pure", () => {
   const code = `
@@ -18,11 +18,7 @@ test.skip("pure", () => {
     return cnt;
   }
   `;
-  const {
-    program,
-    checker,
-    file
-  } = createOneshotTestProgram(code);
+  const { program, checker, file } = createOneshotTestProgram(code);
   // expect(1).toBe(1);
   const func = file.statements[1] as ts.FunctionDeclaration;
   const ret = isPureFunc(checker, func);
@@ -34,11 +30,14 @@ function isPureFunc(checker: ts.TypeChecker, func: ts.FunctionDeclaration | ts.F
   // const outsideSymbols = checker.getSymbolsInScope(outsideBlock, ts.SymbolFlags.BlockScopedVariable);
   const outsideSymbols = checker.getSymbolsInScope(outsideBlock, ts.SymbolFlags.BlockScoped);
   // const outside = func.parent
-  console.log('outside', outsideSymbols.map(s => s.name));
+  console.log(
+    "outside",
+    outsideSymbols.map((s) => s.name),
+  );
   let outsideRefs: ts.Symbol[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isIdentifier(node)) {
-      console.log('internal ident', node.getText());
+      console.log("internal ident", node.getText());
       const symbol = checker.getSymbolAtLocation(node);
       if (symbol && outsideSymbols.includes(symbol)) {
         outsideRefs.push(symbol);
@@ -58,7 +57,7 @@ function isPureFunc(checker: ts.TypeChecker, func: ts.FunctionDeclaration | ts.F
     // ts.forEachChild(node, visit);
   };
   ts.forEachChild(func, visit);
-  console.log(outsideRefs.map(s => s.name));
+  console.log(outsideRefs.map((s) => s.name));
   return true;
 }
 
