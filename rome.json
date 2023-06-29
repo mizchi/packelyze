@@ -1,0 +1,16 @@
+{
+  "linter": {
+    "enabled": false,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentSize": 2,
+    "lineWidth": 120,
+    "ignore": []
+  }
+}
