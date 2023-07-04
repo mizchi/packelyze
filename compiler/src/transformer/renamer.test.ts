@@ -9,7 +9,7 @@ import {
   collectScopedSymbols,
   collectScopedSignatures,
   createCollector,
-} from "../analyzer/analyzer";
+} from "../__deprecated/analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "../symbolBuilder";
 import { findFirstNode } from "../nodeUtils";

@@ -48,6 +48,7 @@ export function createTestLanguageService(
   // console.timeEnd("createTestLanguageService");
   return {
     // snapshotManager,
+    projectPath,
     service,
     host,
     registory: registry,

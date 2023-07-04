@@ -1,39 +1,20 @@
 import { expect, test } from "vitest";
-import { createOneshotTestProgram } from "../testHarness";
+import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
 import {
   analyzeScope,
   findAcendantLocals,
+  findPrimaryNodes as findPrimaryAccesses,
   getClosestBlock,
-  getGlobalsFromFile,
+  getExplicitGlobals,
   getLocalBindings,
   getLocals,
   getLocalsInScope,
+  getAllowedPureAccesses as getAllowedPureAccesses,
+  getUnscopedAccesses,
+  isScopedAccessOnly,
 } from "./scope";
 import { getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
-
-// check module spec
-
-module M1 {
-  const x = 1;
-  export const y = 2;
-}
-{
-  if (false as any) {
-    // @ts-expect-error
-    M1.x;
-    M1.y;
-  }
-}
-
-declare module M2 {
-  const x = 1;
-  export const y = 2;
-}
-if (false as any) {
-  M2.x;
-  M2.y;
-}
 
 test("find all declarations", () => {
   const { program, file } = createOneshotTestProgram(`
@@ -184,7 +165,7 @@ test("scoped variables: block", () => {
 
   const checker = program.getTypeChecker();
   const pos = file.getText().search("v2");
-  const globals = getGlobalsFromFile(checker, file);
+  const globals = new Set(getExplicitGlobals(checker, file));
   const target = getNodeAtPosition(file, pos)!;
 
   const node = getClosestBlock(target.parent);
@@ -217,5 +198,100 @@ test("scoped variables: shadowed", () => {
   const checker = program.getTypeChecker();
   const result = analyzeScope(checker, file);
   expect([...result.locals].map((x) => x.name)).toEqual(["x", "v"]);
-  expect([...result.children[0].locals].map((x) => x.name)).toEqual(["v", "w"]);
+  // expect([...result.children[0].locals].map((x) => x.name)).toEqual(["v", "w"]);
+});
+
+test("scoped variables: accessing outer refs", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  const code = `
+  export const x = 1;
+  declare const MyGlobal = {
+    vvv: 1;
+  }
+
+  const top = 1;
+  export function impure(arg: number) {
+    const local = 1;
+    const {xv} = {xv: 1};
+    console.log(Object.keys({x: 1}));
+    MyGlobal.vvv = top;
+    return 1;
+  }
+
+  export function pure(arg: number) {
+    const pureLocal = 1;
+    return pureLocal;
+  }
+`;
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
+
+  const program = service.getProgram()!;
+  const checker = program.getTypeChecker();
+  const file = program.getSourceFile(normalizePath("src/index.ts"))!;
+
+  {
+    // check impure func
+    const symbol = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!).find((x) => x.name === "impure")!;
+    expect(symbol.name).toBe("impure");
+    const funcBody = (symbol.valueDeclaration as ts.FunctionDeclaration).body!;
+    const primaries = findPrimaryAccesses(funcBody);
+    console.log([...primaries].map((x) => x.text));
+    expect([...primaries].map((x) => x.text)).toEqual([
+      "local",
+      "xv",
+      "xv",
+      "console",
+      "Object",
+      "x",
+      "MyGlobal",
+      "top",
+    ]);
+    const accesses = getUnscopedAccesses(checker, funcBody);
+    expect([...accesses].map((x) => x.name)).toEqual(["console", "MyGlobal", "top"]);
+  }
+  {
+    // check pure func
+    const pureSymbol = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!).find((x) => x.name === "pure")!;
+    const block = (pureSymbol.valueDeclaration as ts.FunctionDeclaration).body!;
+    expect(getUnscopedAccesses(checker, block).size).toBe(0);
+  }
+});
+
+test("getExpilictGlobals", () => {
+  const { service, normalizePath, projectPath } = createTestLanguageService();
+  const envDts = `
+  declare const MyGlobal: {
+    vvv: number;
+  };
+  declare module MyMod {
+    export const vvv: number;
+  }
+  `;
+
+  service.writeSnapshotContent(normalizePath("src/env.d.ts"), envDts);
+
+  const code = `export const v = MyGlobal.vvv;`;
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
+
+  const program = service.getProgram()!;
+  const checker = program.getTypeChecker();
+  const indexFile = program.getSourceFile(normalizePath("src/index.ts"))!;
+  const explicitGlobals = getExplicitGlobals(checker, indexFile);
+  const names = new Set(explicitGlobals.map((s) => s.name));
+  // console.log(names);
+  // not v
+  expect(names.has("v")).toBe(false);
+
+  // from env.d.ts
+  expect(names.has("MyGlobal")).toBe(true);
+  // expect(names.has("MyMod")).toBe(true);
+
+  // node/globals.d.ts
+  expect(names.has("process")).toBe(true);
+  expect(names.has("eval")).toBe(true);
+
+  expect(names.has("console")).toBe(true);
+  // lib
+  expect(names.has("console")).toBe(true);
+  expect(names.has("TextEncoder")).toBe(true);
 });

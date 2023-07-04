@@ -3,7 +3,7 @@
  */
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
-import { collectUnsafeRenameTargets, collectScopedSymbols } from "./analyzer/analyzer";
+import { collectUnsafeRenameTargets, collectScopedSymbols } from "./__deprecated/analyzer";
 import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./transformer/renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 

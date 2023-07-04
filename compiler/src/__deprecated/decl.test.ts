@@ -120,7 +120,7 @@ test("getTypeOfSymbol with cast", () => {
   export const x = {
     x: 1,
   } as X;
-ß  `);
+`);
   const checker = program.getTypeChecker();
   for (const stmt of file.statements) {
     if (ts.isVariableStatement(stmt)) {
