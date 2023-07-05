@@ -34,11 +34,17 @@ export function collectRenameItems(
   return renames;
 }
 
-export function getRenameAppliedState(
+export type ChangedItem = {
+  fileName: string;
+  content: string;
+  start?: number;
+  end?: number;
+};
+export function getRenameAppliedChanges(
   renames: RenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
-): Map<string, [changed: string, start: number, end: number]> {
+): ChangedItem[] {
   // rewire renames by each files
   const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
   const rewiredRenames: Map<string, RenameItem[]> = new Map();
@@ -50,25 +56,19 @@ export function getRenameAppliedState(
   }
 
   // get unique files
-  const changes = new Map<string, [changed: string, start: number, end: number]>();
+  const contents: ChangedItem[] = [];
+  // const changes = new Map<string, [changed: string, start: number, end: number]>();
+  // const applied: RenameApplied[] = [];
   for (const [fileName, renames] of rewiredRenames.entries()) {
     const targetFile = fileName;
     const current = readCurrentFile(targetFile)!;
     const [renamed, changedStart, changedEnd] = applyRewiredRenames(current, renames);
-    changes.set(targetFile, [renamed, changedStart, changedEnd]);
+    contents.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
+    // changes.set(targetFile, [renamed, changedStart, changedEnd]);
+    // applied.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
   }
-  return changes;
+  return contents;
 }
-
-// function buildNewText(original: string, to: string, renameItem: RenameItem) {
-//   if (renameItem.targetKind === RenameTargetKind.Shorthand) {
-//     return `${original}: ${to}`;
-//   }
-//   if (renameItem.targetKind === RenameTargetKind.ExportedSpecifier) {
-//     return `${to} as ${original}`;
-//   }
-//   return to;
-// }
 
 export function applyRewiredRenames(
   code: string,

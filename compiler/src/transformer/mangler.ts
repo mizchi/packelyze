@@ -4,29 +4,42 @@ import { collectDeclarations } from "../analyzer/nodeWalker";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder } from "../symbolBuilder";
 
-export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile) {
+export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.SourceFile) {
   const symbolWalker = createGetSymbolWalker(checker)();
-  const exports = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  for (const exported of exports) {
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
+  for (const exported of exportedSymbols) {
     symbolWalker.walkSymbol(exported);
   }
   const visited = symbolWalker.getVisited();
-  const exportedNodes = collectDeclarations(visited);
+  return collectDeclarations(visited);
+}
+
+export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
   const bindingIdentifiers = getLocalBindings(file);
 
   const manglables = new Set<ts.Node>();
+  const fileExportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
   for (const identifier of bindingIdentifiers) {
-    const symbol = checker.getSymbolAtLocation(identifier)!;
-
     if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
       // skip: type <Foo> = { ... }
       continue;
     }
+    if (ts.isInterfaceDeclaration(identifier.parent) && identifier.parent.name === identifier) {
+      // skip: interface <Foo>{ ... }
+      continue;
+    }
+    // if (exportedNodes.has(identifier.parent) || exportedNodes.has(identifier)) {
+
     if (exportedNodes.has(identifier.parent)) {
       // console.log("[skip exported]", identifier.getText());
       continue;
     }
-    if (symbol && exports.includes(symbol)) continue;
+    const symbol = checker.getSymbolAtLocation(identifier)!;
+    if (fileExportedSymbols.includes(symbol)) {
+      // console.log("[skip exported]", identifier.getText());
+      continue;
+    }
+
     manglables.add(identifier);
   }
   return manglables;

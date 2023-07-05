@@ -2,7 +2,7 @@ import "../__vitestUtils";
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, applyRewiredRenames, collectRenameItems, getRenameAppliedState } from "./renamer";
+import { RenameItem, applyRewiredRenames, collectRenameItems, getRenameAppliedChanges } from "./renamer";
 import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../testHarness";
 import { collectScopedSymbols, collectScopedSignatures, createCollector, collectUnsafeRenameTargets } from "./analyzer";
 import { preprocess } from "./transformer";
@@ -37,7 +37,7 @@ test("batch renaming", () => {
     "y_changed",
   );
 
-  const changedFiles = getRenameAppliedState(
+  const changedFiles = getRenameAppliedChanges(
     [
       ...xRenameLocs!.map((loc) => ({
         ...loc,
@@ -53,9 +53,9 @@ test("batch renaming", () => {
     service.readSnapshotContent,
     normalizePath,
   );
-  for (const [fname, content] of changedFiles) {
-    const [changed, changedStart, changedEnd] = content;
-    service.writeSnapshotContent(fname, changed);
+  for (const change of changedFiles) {
+    // const [changed, changedStart, changedEnd] = content;
+    service.writeSnapshotContent(change.fileName, change.content);
   }
   expect(service.getSemanticDiagnostics(normalizePath("src/index.ts")).length).toBe(1);
   expect(service.readSnapshotContent(normalizePath("src/index.ts"))).toEqualFormatted(`
@@ -76,10 +76,9 @@ test("shorthand", () => {
 
   const renames = collectRenameItems(service, sourceFile, hit, "y", "y_renamed");
 
-  const changedFiles = getRenameAppliedState(renames!, service.readSnapshotContent, normalizePath);
-  for (const [fname, content] of changedFiles) {
-    const [changed, changedStart, changedEnd] = content;
-    service.writeSnapshotContent(fname, changed);
+  const changedFiles = getRenameAppliedChanges(renames!, service.readSnapshotContent, normalizePath);
+  for (const change of changedFiles) {
+    service.writeSnapshotContent(change.fileName, change.content);
   }
   expect(service.readSnapshotContent(normalizePath("src/index.ts"))).toBe(
     `function foo(): { y: 1 } { const y_renamed = 1; return { y: y_renamed } }`,
@@ -101,7 +100,7 @@ test("rename exported", () => {
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
-  const state = getRenameAppliedState(
+  const changes = getRenameAppliedChanges(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);
@@ -109,7 +108,7 @@ test("rename exported", () => {
     },
     normalizePath,
   );
-  const result = state.get(normalizePath("src/index.ts"))![0];
+  const result = changes[0].content;
   expect(result).toEqualFormatted(`const k = 1;
 const x = 2;
 export { k as xxx, x as zzz };
@@ -260,7 +259,7 @@ test("rename local object member", () => {
   const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
 
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
-  const state = getRenameAppliedState(
+  const state = getRenameAppliedChanges(
     renameItems,
     (fname) => {
       const source = service.getCurrentSourceFile(fname);
@@ -268,7 +267,7 @@ test("rename local object member", () => {
     },
     normalizePath,
   );
-  const result = state.get(normalizePath("src/index.ts"))![0];
+  const result = state[0].content;
   expect(result).toEqualFormatted(`type Local = {
     xxx: number;
 };
@@ -288,7 +287,7 @@ export { x as pub };
     //   "renames",
     //   renameItems.map((item) => `${item.source} => ${item.target} (${item.textSpan.start}, ${item.textSpan.length})`),
     // );
-    const state = getRenameAppliedState(
+    const state = getRenameAppliedChanges(
       renameItems,
       (fname) => {
         const source = service.getCurrentSourceFile(fname);
@@ -303,85 +302,6 @@ export { x as pub };
     //     _: number;
     // };
   }
-});
-
-test("rename local object member", () => {
-  const { service, normalizePath } = initTestLanguageServiceWithFiles({
-    "src/index.ts": preprocess(`
-    type Local = {
-      xxx: number;
-    };
-    type Pub = {
-      pubv: number;
-    };
-    const loc: Local = { xxx: 1 };
-    const pub: Pub = { pubv: 1 };
-    export { pub };  
-    `),
-  });
-  const collector = createCollector(service.getProgram()!.getTypeChecker());
-  const file = service.getCurrentSourceFile("src/index.ts")!;
-  const checker = service.getProgram()!.getTypeChecker();
-  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-
-  // 公開型から、その型のメンバーを参照しているシンボルを探す
-  for (const symbol of exportedSymbols) {
-    collector.visitSymbol(symbol);
-  }
-
-  // コード側から探索した node から、シンボルを探しておく
-  const source = service.getCurrentSourceFile("src/index.ts")!;
-  const pubTypeNode = findFirstNode(service.getProgram()!, "src/index.ts", "type Pub")!;
-  expect(collector.isRelatedNode(pubTypeNode)).toBe(true);
-
-  const renameCanditates: ts.Node[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isPropertySignature(node)) {
-      if (!isExportedAncestor(node, collector.isRelatedNode)) {
-        if (ts.isPropertySignature(node)) {
-          renameCanditates.push(node.name);
-        }
-        // console.log('renamer', node.getText());
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  const renameItems: RenameItem[] = [];
-  const symbolBuilder = createSymbolBuilder();
-
-  const scopedSymbols = collectScopedSymbols(service.getProgram()!, file);
-  const unsafeRenameTargets = collectUnsafeRenameTargets(service.getProgram()!, file, scopedSymbols);
-
-  for (const node of renameCanditates) {
-    const original = node.getText();
-    const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-    // const newName = `${original}_renamed`
-    const locs = collectRenameItems(service, node.getSourceFile(), node.getStart(), original, newName);
-    locs && renameItems.push(...locs);
-  }
-
-  const state = getRenameAppliedState(
-    renameItems,
-    (fname) => {
-      const source = service.getCurrentSourceFile(fname);
-      return source && source.text;
-    },
-    normalizePath,
-  );
-  const result = state.get(normalizePath("src/index.ts"))![0];
-
-  expect(result).toEqualFormatted(`
-  type Local = {
-    k: number;
-  };
-  type Pub = {
-    pubv: number;
-  };
-  const loc: Local = { k: 1 };
-  const pub: Pub = { pubv: 1 };
-  export { pub };
-  `);
 });
 
 test("rewire exports: complex", () => {
@@ -420,7 +340,7 @@ test("rewire exports: complex", () => {
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
-  const state = getRenameAppliedState(
+  const state = getRenameAppliedChanges(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);
@@ -428,7 +348,7 @@ test("rewire exports: complex", () => {
     },
     normalizePath,
   );
-  const result = state.get(normalizePath("src/index.ts"))![0];
+  const result = state[0].content;
   expect(result).toEqualFormatted(`export { sub } from "./sub";
 const k = 1;
 function x() { }
@@ -503,7 +423,7 @@ test("TS: rename multi file", () => {
 
   if (!renameItems) throw new Error("unexpected");
 
-  const state = getRenameAppliedState(
+  const state = getRenameAppliedChanges(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);
@@ -511,14 +431,13 @@ test("TS: rename multi file", () => {
     },
     normalizePath,
   );
-  const indexCode = state.get(normalizePath("src/index.ts"))![0];
+  const indexCode = state.find((x) => x.fileName.endsWith("src/index.ts"))!.content;
   expect(indexCode).toEqualFormatted(`
   import { sub } from "./sub";
   console.log(sub.sub_renamed);
   `);
 
-  const subCode = state.get(normalizePath("src/sub.ts"))![0];
-
+  const subCode = state.find((x) => x.fileName.endsWith("src/sub.ts"))!.content;
   expect(subCode).toEqualFormatted(`
   type SubLocal = {
     sub_renamed: number;
@@ -540,7 +459,7 @@ test("rewire exports: enum", () => {
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
-  const state = getRenameAppliedState(
+  const state = getRenameAppliedChanges(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);
@@ -548,7 +467,9 @@ test("rewire exports: enum", () => {
     },
     normalizePath,
   );
-  const result = state.get(normalizePath("src/index.ts"))![0];
+  // const result = state.get(normalizePath("src/index.ts"))![0];
+  const result = state[0].content;
+
   // console.log(result);
   expect(result).toEqualFormatted(`
 enum k {}
