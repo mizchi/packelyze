@@ -2,6 +2,7 @@ import type { Assertion, AsymmetricMatchersContaining } from "vitest";
 
 interface CustomMatchers<R = unknown> {
   toEqualSet(expected: any): R;
+  toEqualFormatted(expected: string): string;
 }
 
 declare module "vitest" {

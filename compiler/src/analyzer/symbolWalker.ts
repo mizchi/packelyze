@@ -1,6 +1,7 @@
 // from: TypeScript/src/compiler/symbolWalker.ts
 
 import ts from "typescript";
+import { getOwnValues } from "../utils";
 
 export type VisitedCache = {
   visitedTypes: readonly ts.Type[];
@@ -262,19 +263,6 @@ function getFirstIdentifier(node: ts.EntityNameOrEntityNameExpression): ts.Ident
       } while (node.kind !== ts.SyntaxKind.Identifier);
       return node;
   }
-}
-
-// ----- internal utility from typescript/src/compiler/core.ts --------
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-function getOwnValues<T>(collection: ts.MapLike<T> | T[]): T[] {
-  const values: T[] = [];
-  for (const key in collection) {
-    if (hasOwnProperty.call(collection, key)) {
-      values.push((collection as ts.MapLike<T>)[key]);
-    }
-  }
-
-  return values;
 }
 
 function clear(array: unknown[]): void {

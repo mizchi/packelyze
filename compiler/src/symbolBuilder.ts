@@ -4,10 +4,15 @@ const FIRST_CHARS = [..."kxjqzpfywgbvdlucmtaonirshe_$KXJQZPFYWGBVDLUCMTAONIRSHE"
 
 const CHARS = [...FIRST_CHARS, ..."0123456789"] as const;
 
+export type SymbolBuilder = {
+  create: (validate?: (char: string) => boolean) => string;
+  reset: (next?: number) => void;
+};
+
 /**
  * create symbol builder that generates unique symbol for rename
  */
-export function createSymbolBuilder() {
+export function createSymbolBuilder(): SymbolBuilder {
   let state = 0;
   const skipped = new Set<number>();
 

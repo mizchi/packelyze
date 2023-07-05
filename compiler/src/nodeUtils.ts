@@ -340,7 +340,7 @@ export type ReadableSymbol = {
 export function toReadableSymbol(
   symbol: ts.Symbol,
   useFlags: boolean = false,
-  includeParent: boolean = false,
+  includeParent: number = 0,
 ): ReadableSymbol {
   const isSingleSource =
     symbol.declarations && symbol.declarations.length === 1 && symbol.declarations[0] === symbol.valueDeclaration;

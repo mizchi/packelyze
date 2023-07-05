@@ -1,19 +1,13 @@
+import "../__vitestUtils";
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import {
-  RenameItem,
-  RenameSourceKind,
-  RenameTargetKind,
-  applyRewiredRenames,
-  collectRenameItems,
-  getRenameAppliedState,
-} from "./renamer";
-import { createTestLanguageService } from "../testHarness";
+import { RenameItem, applyRewiredRenames, collectRenameItems, getRenameAppliedState } from "./renamer";
+import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../testHarness";
 import { collectScopedSymbols, collectScopedSignatures, createCollector, collectUnsafeRenameTargets } from "./analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "../symbolBuilder";
-import { findFirstNode } from "../nodeUtils";
+import { findFirstNode, getNodeAtPosition } from "../nodeUtils";
 
 test("batch renaming", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -30,7 +24,6 @@ test("batch renaming", () => {
     service,
     sourceFile,
     xSymbol.valueDeclaration!.getStart(),
-    RenameSourceKind.ScopedIdentifier,
     xSymbol.name,
     "x_changed",
   );
@@ -40,8 +33,6 @@ test("batch renaming", () => {
     service,
     sourceFile,
     ySymbol.valueDeclaration!.getStart(),
-    RenameSourceKind.ScopedIdentifier,
-
     ySymbol.name,
     "y_changed",
   );
@@ -67,8 +58,10 @@ test("batch renaming", () => {
     service.writeSnapshotContent(fname, changed);
   }
   expect(service.getSemanticDiagnostics(normalizePath("src/index.ts")).length).toBe(1);
-  expect(service.readSnapshotContent(normalizePath("src/index.ts"))).toBe(`const x_changed: number = '';
-const y_changed: number = x_changed;`);
+  expect(service.readSnapshotContent(normalizePath("src/index.ts"))).toEqualFormatted(`
+    const x_changed: number = '';
+    const y_changed: number = x_changed;
+  `);
 });
 
 test("shorthand", () => {
@@ -81,7 +74,7 @@ test("shorthand", () => {
   const hit = newSource.text.search(regex);
   const sourceFile = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const renames = collectRenameItems(service, sourceFile, hit, RenameSourceKind.ScopedIdentifier, "y", "y_renamed");
+  const renames = collectRenameItems(service, sourceFile, hit, "y", "y_renamed");
 
   const changedFiles = getRenameAppliedState(renames!, service.readSnapshotContent, normalizePath);
   for (const [fname, content] of changedFiles) {
@@ -94,9 +87,8 @@ test("shorthand", () => {
 });
 
 test("rename exported", () => {
-  const { service, normalizePath } = createTestLanguageService();
-
-  const tempSource = `
+  const { service, normalizePath } = initTestLanguageServiceWithFiles({
+    "src/index.ts": preprocess(`
     const xxx = 1;
 
     const yyy = 2;
@@ -104,10 +96,8 @@ test("rename exported", () => {
       xxx,
       yyy as zzz
     }
-    `;
-  const preprocessed = preprocess(tempSource);
-
-  service.writeSnapshotContent("src/index.ts", preprocessed);
+    `),
+  });
   const program = service.getProgram()!;
   const source = program.getSourceFile(normalizePath("src/index.ts"))!;
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
@@ -120,13 +110,13 @@ test("rename exported", () => {
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  expect(result).toBe(`const k = 1;
+  expect(result).toEqualFormatted(`const k = 1;
 const x = 2;
 export { k as xxx, x as zzz };
 `);
 });
 
-test("TS: rename propertyAssignment", () => {
+test("TS: rename propertyAssignment and propertySignature both", () => {
   const { service, normalizePath } = createTestLanguageService();
   const code = `
 type Local = {
@@ -156,16 +146,14 @@ export const x = fff();
     const renameItems: RenameItem[] = renames?.map((r) => {
       return {
         ...r,
-        sourceKind: RenameSourceKind.ScopedSignature,
-        targetKind: RenameTargetKind.Local,
         source: "local",
-        target: "local_renamed",
+        to: "local_renamed",
       };
     })!;
     // console.log(renameItems);
     const [changed] = applyRewiredRenames(source.text, renameItems);
     // console.log(changed);
-    expect(changed).toBe(`
+    expect(changed).toEqualFormatted(`
 type Local = {
   local_renamed: number;
 };
@@ -189,16 +177,14 @@ export const x = fff();
     const renameItems: RenameItem[] = renames?.map((r) => {
       return {
         ...r,
-        sourceKind: RenameSourceKind.ScopedSignature,
-        targetKind: RenameTargetKind.Local,
         source: "local",
-        target: "local_renamed",
+        to: "local_renamed",
       };
     })!;
     // console.log(renameItems);
     const [changed] = applyRewiredRenames(source.text, renameItems);
     // console.log(changed);
-    expect(changed).toBe(`
+    expect(changed).toEqualFormatted(`
 type Local = {
   local_renamed: number;
 };
@@ -210,63 +196,70 @@ export const x = fff();
   }
 });
 
-// {
-//   // before
-//   type Local = {
-//     xxx: number;
-//   };
-//   type Pub = {
-//     pubv: number;
-//   };
-//   const local: Local = {
-//     xxx: 1,
-//   };
-//   export const pub: Pub = {
-//     pubv: 1,
-//   };
-// }
-// {
-//   // after
-//   type Local = {
-//     a: number;
-//   };
-//   type Pub = {
-//       pubv: number;
-//   };
-//   const _: Local = { a: 1 };
-//   const $: Pub = { pubv: 1 };
-//   export { $ as pub };
-// }
+test("TS: shorthand with providePrefixAndSuffixTextForRename", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  const code = `
+const vvv: number = 1;
+export const x = {vvv};
+`;
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
+  const program = service.getProgram()!;
+  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
+  {
+    // rename property signature
+    const searchText = "vvv";
+    const identPos = source.text.search(searchText);
+    const identNode = findFirstNode(program, normalizePath("src/index.ts"), searchText)!;
+    expect(identNode.getText()).toBe("vvv");
+    expect(ts.SyntaxKind[identNode.kind]).toBe("Identifier");
+
+    const renames = service.findRenameLocations(normalizePath("src/index.ts"), identPos, false, false, {
+      providePrefixAndSuffixTextForRename: true,
+    });
+
+    const renameItems: RenameItem[] = renames?.map((r) => {
+      let toName = "vvv_renamed";
+      if (r.prefixText) {
+        toName = `${r.prefixText}${toName}`;
+      }
+      if (r.suffixText) {
+        toName = `${toName}${r.suffixText}`;
+      }
+      return {
+        ...r,
+        source: searchText,
+        to: toName,
+      };
+    })!;
+    const [changed] = applyRewiredRenames(source.text, renameItems);
+    expect(changed).toEqualFormatted(`
+const vvv_renamed: number = 1;
+export const x = {vvv: vvv_renamed};
+`);
+  }
+});
 
 test("rename local object member", () => {
-  // type Local = {
-  //   xxx: number;
-  // };
-  // const local: Local = {
-  //   xxx: 1,
-  // };
-  const { service, normalizePath } = createTestLanguageService();
+  const { service, normalizePath } = initTestLanguageServiceWithFiles({
+    "src/index.ts": preprocess(`
+    type Local = {
+      xxx: number;
+    };
+    type Pub = {
+      pubv: number;
+    };
+    const local: Local = {
+      xxx: 1,
+    };
+    export const pub: Pub = {
+      pubv: 1,
+    };    
+    `),
+  });
 
-  const code = `
-type Local = {
-  xxx: number;
-};
-type Pub = {
-  pubv: number;
-};
-const local: Local = {
-  xxx: 1,
-};
-export const pub: Pub = {
-  pubv: 1,
-};
-`;
-  const preprocessed = preprocess(code);
-  service.writeSnapshotContent("src/index.ts", preprocessed);
   const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
 
   const renameItems = collectRenameItemsForScopedFromFile(service, source);
-  // console.log(renameItems);
   const state = getRenameAppliedState(
     renameItems,
     (fname) => {
@@ -276,8 +269,7 @@ export const pub: Pub = {
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  // console.log(result);
-  expect(result).toBe(`type Local = {
+  expect(result).toEqualFormatted(`type Local = {
     xxx: number;
 };
 type Pub = {
@@ -292,10 +284,10 @@ export { x as pub };
     // try to rename signature
     const source = service.getCurrentSourceFile("src/index.ts")!;
     const renameItems = collectRenameItemsForSignatureFromFile(service, source);
-    console.log(
-      "renames",
-      renameItems.map((item) => `${item.source} => ${item.target} (${item.textSpan.start}, ${item.textSpan.length})`),
-    );
+    // console.log(
+    //   "renames",
+    //   renameItems.map((item) => `${item.source} => ${item.target} (${item.textSpan.start}, ${item.textSpan.length})`),
+    // );
     const state = getRenameAppliedState(
       renameItems,
       (fname) => {
@@ -307,28 +299,26 @@ export { x as pub };
     // console.log(state)
     // const result = state.get(normalizePath("src/index.ts"))![0];
     // console.log(result);
-    //     expect(result).toBe(`type Local = {
+    //     expect(result).toEqualFormatted(`type Local = {
     //     _: number;
     // };
   }
 });
 
-test.skip("rename local object member", () => {
-  const { service, normalizePath } = createTestLanguageService();
-
-  const code = `type Local = {
-    xxx: number;
-};
-type Pub = {
-    pubv: number;
-};
-const _: Local = { xxx: 1 };
-const $: Pub = { pubv: 1 };
-export { $ as pub };
-`;
-  // const preprocessed = preprocess(code);
-  service.writeSnapshotContent("src/index.ts", code);
-
+test("rename local object member", () => {
+  const { service, normalizePath } = initTestLanguageServiceWithFiles({
+    "src/index.ts": preprocess(`
+    type Local = {
+      xxx: number;
+    };
+    type Pub = {
+      pubv: number;
+    };
+    const loc: Local = { xxx: 1 };
+    const pub: Pub = { pubv: 1 };
+    export { pub };  
+    `),
+  });
   const collector = createCollector(service.getProgram()!.getTypeChecker());
   const file = service.getCurrentSourceFile("src/index.ts")!;
   const checker = service.getProgram()!.getTypeChecker();
@@ -337,18 +327,12 @@ export { $ as pub };
   // 公開型から、その型のメンバーを参照しているシンボルを探す
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
-    // console.log('symbol', symbol.getName());
   }
 
   // コード側から探索した node から、シンボルを探しておく
   const source = service.getCurrentSourceFile("src/index.ts")!;
-
   const pubTypeNode = findFirstNode(service.getProgram()!, "src/index.ts", "type Pub")!;
   expect(collector.isRelatedNode(pubTypeNode)).toBe(true);
-
-  // console.log('pubTypeNode', ts.SyntaxKind[pubTypeNode.kind], pubTypeNode.getText());
-  // const node = findFirstNode(service.getProgram()!, 'src/index.ts', 'pubv')!;
-  // console.log('node', ts.SyntaxKind[node.kind],  ts.SyntaxKind[node.parent.kind]);
 
   const renameCanditates: ts.Node[] = [];
   const visit = (node: ts.Node) => {
@@ -373,14 +357,7 @@ export { $ as pub };
     const original = node.getText();
     const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
     // const newName = `${original}_renamed`
-    const locs = collectRenameItems(
-      service,
-      node.getSourceFile(),
-      node.getStart(),
-      RenameSourceKind.ScopedSignature,
-      original,
-      newName,
-    );
+    const locs = collectRenameItems(service, node.getSourceFile(), node.getStart(), original, newName);
     locs && renameItems.push(...locs);
   }
 
@@ -393,7 +370,18 @@ export { $ as pub };
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  // console.log(result);
+
+  expect(result).toEqualFormatted(`
+  type Local = {
+    k: number;
+  };
+  type Pub = {
+    pubv: number;
+  };
+  const loc: Local = { k: 1 };
+  const pub: Pub = { pubv: 1 };
+  export { pub };
+  `);
 });
 
 test("rewire exports: complex", () => {
@@ -441,7 +429,7 @@ test("rewire exports: complex", () => {
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  expect(result).toBe(`export { sub } from "./sub";
+  expect(result).toEqualFormatted(`export { sub } from "./sub";
 const k = 1;
 function x() { }
 class j {
@@ -461,39 +449,83 @@ export { f as vvv, y as zzz, k as xxx, x as fff, j as Ccc, q as Eee, Ttt, Iii };
 `);
 });
 
-test.skip("rename multi file", () => {
-  const { service } = createTestLanguageService();
+test("TS: rename multi file", () => {
+  const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent(
-    "src/index.ts",
+    normalizePath("src/index.ts"),
     `
       import { sub } from "./sub";
-      console.log(sub);
+      console.log(sub.sub);
     `,
   );
   service.writeSnapshotContent(
-    "src/sub.ts",
+    normalizePath("src/sub.ts"),
     `
-      const sub = 1;
+      type SubLocal = {
+        sub: number;
+      }
+      const sub: SubLocal = { sub: 1 };
       export { sub };
     `,
   );
-
   const program = service.getProgram()!;
-  const source = program.getSourceFile("sub/index.ts")!;
-  // const checker = service.getProgram()!.getTypeChecker();
-  // const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  // const index = service.getCurrentSourceFile("src/index.ts")!;
+  const sub = service.getCurrentSourceFile("src/sub.ts")!;
 
-  // const renameItems = collectRenameItemsFromFile(service, source);
-  //   const state = getRenameAppliedState(renameItems, (fname) => {
-  //     const source = program.getSourceFile(fname);
-  //     return source && source.text;
-  //   }, normalizePath);
-  //   const result = state.get(normalizePath("src/index.ts"))![0];
-  //   // console.log(result);
-  //   expect(result).toBe(`enum _ {}
-  // export { _ as Eee};
-  // `);
+  const subSignatureNode = findFirstNode(program, normalizePath("src/sub.ts"), "sub: number")!.parent!;
+  // console.log()
+  expect(subSignatureNode.getText()).toBe("sub: number;");
+  expect(ts.SyntaxKind[subSignatureNode.kind]).toBe("PropertySignature");
+
+  // const pos = subSignatureNode;
+  if (!(ts.isPropertySignature(subSignatureNode) && subSignatureNode.pos)) {
+    throw new Error("unexpected");
+  }
+  expect(ts.SyntaxKind[subSignatureNode.kind]).toBe("PropertySignature");
+  const renames = service.findRenameLocations(
+    // ar
+    normalizePath("src/sub.ts"),
+    33,
+    false,
+    false,
+    {
+      providePrefixAndSuffixTextForRename: true,
+    },
+  );
+  const renameItems: RenameItem[] = renames?.map((r) => {
+    return {
+      ...r,
+      source: "sub",
+      to: "sub_renamed",
+    };
+  })!;
+
+  if (!renameItems) throw new Error("unexpected");
+
+  const state = getRenameAppliedState(
+    renameItems,
+    (fname) => {
+      const source = program.getSourceFile(fname);
+      return source && source.text;
+    },
+    normalizePath,
+  );
+  const indexCode = state.get(normalizePath("src/index.ts"))![0];
+  expect(indexCode).toEqualFormatted(`
+  import { sub } from "./sub";
+  console.log(sub.sub_renamed);
+  `);
+
+  const subCode = state.get(normalizePath("src/sub.ts"))![0];
+
+  expect(subCode).toEqualFormatted(`
+  type SubLocal = {
+    sub_renamed: number;
+  };
+  const sub: SubLocal = { sub_renamed: 1 };
+  export { sub };
+  `);
 });
 
 test("rewire exports: enum", () => {
@@ -518,8 +550,8 @@ test("rewire exports: enum", () => {
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
   // console.log(result);
-  expect(result).toBe(`enum k {
-}
+  expect(result).toEqualFormatted(`
+enum k {}
 export { k as Eee };
 `);
 });
@@ -536,14 +568,7 @@ function collectRenameItemsForScopedFromFile(service: ts.LanguageService, file: 
     if (declaration) {
       const original = blockedSymbol.symbol.getName();
       const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-      const locs = collectRenameItems(
-        service,
-        declaration.getSourceFile(),
-        declaration.getStart(),
-        RenameSourceKind.ScopedIdentifier,
-        original,
-        newName,
-      );
+      const locs = collectRenameItems(service, declaration.getSourceFile(), declaration.getStart(), original, newName);
       locs && renameItems.push(...locs);
     }
   }
@@ -563,14 +588,7 @@ export function collectRenameItemsForSignatureFromFile(service: ts.LanguageServi
     if (declaration) {
       const original = blockedSymbol.symbol.getName();
       const newName = symbolBuilder.create((newName) => !unsafeRenameTargets.has(newName));
-      const locs = collectRenameItems(
-        service,
-        declaration.getSourceFile(),
-        declaration.getStart(),
-        RenameSourceKind.ScopedSignature,
-        original,
-        newName,
-      );
+      const locs = collectRenameItems(service, declaration.getSourceFile(), declaration.getStart(), original, newName);
       locs && renameItems.push(...locs);
     }
   }

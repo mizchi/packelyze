@@ -4,7 +4,7 @@
 // import { LanguageService, Program, SourceFile, SymbolFlags } from "typescript";
 import ts from "typescript";
 import { collectUnsafeRenameTargets, collectScopedSymbols } from "./transformer/analyzer";
-import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./transformer/renamer";
+import { RenameItem, collectRenameItems, getRenameAppliedState } from "./transformer/renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 export function writeRenamedFileState(
@@ -28,7 +28,6 @@ export function writeRenamedFileState(
         service,
         declaration.getSourceFile(),
         declaration.getStart(),
-        RenameSourceKind.ScopedIdentifier,
         blockedSymbol.symbol.getName(),
         newName,
       );

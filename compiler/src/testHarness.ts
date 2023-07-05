@@ -9,6 +9,19 @@ import {
 let lastRegistry: ts.DocumentRegistry | undefined = undefined;
 let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
 
+export function initTestLanguageServiceWithFiles(
+  files: Record<string, string>,
+  projectPath: string = path.join(__dirname, "../examples"),
+  revertRootFiles = true,
+) {
+  const testLsp = createTestLanguageService(projectPath, revertRootFiles);
+  for (const [file, content] of Object.entries(files)) {
+    testLsp.service.writeSnapshotContent(testLsp.normalizePath(file), content);
+  }
+  testLsp.service.getProgram()?.getTypeChecker();
+  return testLsp;
+}
+
 export function createTestLanguageService(
   projectPath: string = path.join(__dirname, "../examples"),
   revertRootFiles = true,
@@ -39,11 +52,11 @@ export function createTestLanguageService(
     cache.virtualExistedDirectories.clear();
   }
   // const registory = lastRegistry ?? createDocumentRegistry();
-  const registry = ts.createDocumentRegistry();
+  const registory = ts.createDocumentRegistry();
   const host = createIncrementalLanguageServiceHost(projectPath, options.fileNames, options.options, lastHost);
   // const snapshotManager = serviceHost.getSnapshotManager(registory);
-  const service = createIncrementalLanguageService(host, registry);
-  lastRegistry = registry;
+  const service = createIncrementalLanguageService(host, registory);
+  lastRegistry = registory;
   lastHost = host;
   // console.timeEnd("createTestLanguageService");
   return {
@@ -51,7 +64,7 @@ export function createTestLanguageService(
     projectPath,
     service,
     host,
-    registory: registry,
+    registory,
     normalizePath(fname: string) {
       if (fname.startsWith("/")) {
         return fname;

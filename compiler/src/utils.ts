@@ -25,3 +25,19 @@ export function isDisjoint(a: Set<string>, b: Set<string>): boolean {
 export function toMappedSet<T, U>(set: Set<T>, map: (x: T) => U): Set<U> {
   return new Set([...set].map(map));
 }
+
+// ----- internal utility from typescript/src/compiler/core.ts --------
+
+export interface MapLike<T> {
+  [index: string]: T;
+}
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+export function getOwnValues<T>(collection: MapLike<T> | T[]): T[] {
+  const values: T[] = [];
+  for (const key in collection) {
+    if (hasOwnProperty.call(collection, key)) {
+      values.push((collection as MapLike<T>)[key]);
+    }
+  }
+  return values;
+}
