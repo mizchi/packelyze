@@ -1,4 +1,4 @@
-import "./__vitestUtils";
+import "./__tests/globals";
 import { expect, test } from "vitest";
 import ts from "typescript";
 import path from "node:path";

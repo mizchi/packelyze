@@ -1,124 +1,10 @@
-import { TS } from "./types";
-import { expect, test } from "vitest";
-import { createTestLanguageService } from "./testHarness";
-import { IncrementalLanguageService } from "./services";
+import { TS } from "../types";
+import { IncrementalLanguageService } from "../services";
 import ts, { ClassDeclaration, FunctionDeclaration, FunctionExpression, VariableStatement, factory } from "typescript";
 import { cloneNode } from "ts-clone-node";
-import { getAccessesFromExpression, getUnscopedAccesses } from "./analyzer/scope";
-import { findClosestBlock } from "./nodeUtils";
+import { getAccessesFromExpression, getUnscopedAccesses } from "../analyzer/scope";
 
-test("bundle", () => {
-  const { service, normalizePath } = createTestLanguageService();
-  // TODO: skip declare function
-  const codeSub = `
-  export function f() {
-    return 1;
-  }
-  export function ff() {
-    return 1;
-  }
-  export class C {
-    public x: number = 1;
-  }
-  export const sub = () => 1;
-  export const sub2 = () => 2;
-`;
-
-  const codeIndex = `
-    import { sub, f as g, C, ff } from "./sub";
-    export const x = sub();
-  `;
-  service.writeSnapshotContent(normalizePath("src/index.ts"), codeIndex);
-  service.writeSnapshotContent(normalizePath("src/sub.ts"), codeSub);
-  // const program = service.getProgram()!;
-  const bundled = bundle(service, normalizePath("src/index.ts"));
-
-  // console.log(bundled);
-  expect(bundled).toBe(`const sub = () => 1;
-const f = function g() { return 1; };
-class C {
-    public x: number = 1;
-}
-function ff() { return 1; }
-export const x = sub();
-`);
-});
-
-test("bundle #2 with scope access", () => {
-  const { service, normalizePath } = createTestLanguageService();
-  // TODO: skip declare function
-  const codeSub = `
-  const x = 1;
-  export function f() {
-    return internal();
-  }
-  function internal() {
-    return x;
-  }
-`;
-  const codeIndex = `
-    import { f } from "./sub";
-    export const x = f();
-  `;
-
-  service.writeSnapshotContent(normalizePath("src/index.ts"), codeIndex);
-  service.writeSnapshotContent(normalizePath("src/sub.ts"), codeSub);
-  // const program = service.getProgram()!;
-  const bundled = bundle(service, normalizePath("src/index.ts"));
-  expect(bundled).toBe(`const x = 1;
-function internal() { return x; }
-function f() { return internal(); }
-export const x = f();
-`);
-
-  // console.log(bundled);
-});
-
-test("reference graph", () => {
-  const { service, normalizePath } = createTestLanguageService();
-  const codeSub = `
-  const subLocal = 1;
-  export function f() {
-    return subLocal;
-  }
-  export function ff() {
-    return 1;
-  }
-  `;
-  const codeFoo = `
-  const fooLocal = 2;
-  export function foo() {
-    return fooLocal;
-  }
-  `;
-
-  const codeBar = `
-  import { bar } from "./bar";
-  export function bar() {
-    return foo();
-  }
-  `;
-
-  const codeIndex = `
-    import { f as g, ff } from "./sub";
-    import { bar } from "./bar";
-    // export const x = g() + ff() + bar();
-    export const x = g();
-    export const y = ff();
-    export const z = bar();
-  `;
-  service.writeSnapshotContent(normalizePath("src/index.ts"), codeIndex);
-  service.writeSnapshotContent(normalizePath("src/sub.ts"), codeSub);
-  service.writeSnapshotContent(normalizePath("src/foo.ts"), codeFoo);
-  service.writeSnapshotContent(normalizePath("src/bar.ts"), codeBar);
-  const program = service.getProgram()!;
-  const graph = createModuleGraph(program, program.getSourceFile(normalizePath("src/index.ts"))!);
-  console.log(flattenGraph(graph));
-});
-
-// test.skip("bundle #3 re-export", () => {});
-
-function bundle(service: IncrementalLanguageService, entryFileName: string) {
+export function bundle(service: IncrementalLanguageService, entryFileName: string) {
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
   const indexFile = program.getSourceFile(entryFileName)!;
@@ -128,7 +14,7 @@ function bundle(service: IncrementalLanguageService, entryFileName: string) {
   return printed;
 }
 
-const flattenGraph = (graph: Map<ts.Symbol, Set<ts.Symbol>>) => {
+export const flattenGraph = (graph: Map<ts.Symbol, Set<ts.Symbol>>) => {
   const result: Array<[from: string, to: string]> = [];
   for (const [from, tos] of graph) {
     for (const to of tos) {
@@ -137,7 +23,8 @@ const flattenGraph = (graph: Map<ts.Symbol, Set<ts.Symbol>>) => {
   }
   return result;
 };
-function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
+
+export function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
   const checker = program.getTypeChecker();
   const graph = new Map<TS.Symbol, Set<TS.Symbol>>();
   const visitedSymbols = new Set<TS.Symbol>();
@@ -159,16 +46,16 @@ function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
   return graph;
 
   function visit(symbol: ts.Symbol) {
-    console.log(
-      "[visit]",
-      symbol.name,
-      ":",
-      symbol.valueDeclaration && ts.SyntaxKind[symbol.valueDeclaration.kind],
-      "=>",
-      symbol.valueDeclaration?.getText(),
-      "[decls]",
-      symbol.declarations?.map((x) => x.getText()),
-    );
+    // console.log(
+    //   "[visit]",
+    //   symbol.name,
+    //   ":",
+    //   symbol.valueDeclaration && ts.SyntaxKind[symbol.valueDeclaration.kind],
+    //   "=>",
+    //   symbol.valueDeclaration?.getText(),
+    //   "[decls]",
+    //   symbol.declarations?.map((x) => x.getText()),
+    // );
     if (visitedSymbols.has(symbol)) {
       return;
     }

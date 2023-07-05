@@ -26,6 +26,40 @@ export function toMappedSet<T, U>(set: Set<T>, map: (x: T) => U): Set<U> {
   return new Set([...set].map(map));
 }
 
+export type Graph<T> = Map<T, Set<T>>;
+
+export function topoSort<T>(graph: Graph<T>, onCircularDep?: (t: T) => void): Array<T> {
+  const result: Array<T> = [];
+  const visited: Set<T> = new Set();
+  const tempVisited: Set<T> = new Set();
+  function visit(node: T) {
+    if (tempVisited.has(node)) {
+      onCircularDep?.(node);
+      return;
+    }
+    if (visited.has(node)) {
+      return;
+    }
+
+    tempVisited.add(node);
+
+    const dependencies = graph.get(node);
+    if (dependencies) {
+      for (const dependency of dependencies) {
+        visit(dependency);
+      }
+    }
+    visited.add(node);
+    tempVisited.delete(node);
+    result.unshift(node);
+  }
+
+  for (const node of graph.keys()) {
+    visit(node);
+  }
+
+  return result.reverse();
+}
 // ----- internal utility from typescript/src/compiler/core.ts --------
 
 export interface MapLike<T> {

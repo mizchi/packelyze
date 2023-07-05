@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from "../testHarness";
+import { createOneshotTestProgram } from "../__tests/testHarness";
 import { findClosestBlock } from "../nodeUtils";
 
 test.skip("pure", () => {

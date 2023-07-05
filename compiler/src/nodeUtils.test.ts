@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { createTestLanguageService } from "./testHarness";
+import { createTestLanguageService } from "./__tests/testHarness";
 import { createVisitScoped, composeVisitors, findFirstNode, createVisitSignature } from "./nodeUtils";
 
 // export type Tree = {
@@ -161,4 +161,78 @@ export const exportedObj = {
     "foo",
     // "Class", "vvv", "foo", "arg", "local", "consturctor"
   ]);
+});
+
+test("visitScoped: exports", () => {
+  const { service, normalizePath } = createTestLanguageService();
+
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+export const exported = 1;
+const local = 1;
+{
+  const block = 2;
+}
+function f(arg: number) {
+  const func = 3;
+}
+class X {
+  method() {
+    const methodBlock = 4;
+  }
+}
+  `,
+  );
+  const program = service.getProgram()!;
+
+  const symbols = new Set<ts.Symbol>();
+  const checker = program.getTypeChecker();
+  composeVisitors(
+    createVisitScoped(checker, (symbol) => {
+      symbols.add(symbol);
+    }),
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
+
+  expect([...symbols].map((s) => s.name)).toEqual([
+    "exported",
+    "local",
+    "block",
+    "f",
+    "arg",
+    "func",
+    "X",
+    "method",
+    "methodBlock",
+  ]);
+});
+
+test("visitScoped: object member", () => {
+  const { service, normalizePath } = createTestLanguageService();
+
+  service.writeSnapshotContent(
+    normalizePath("src/index.ts"),
+    `
+type Local = {
+  xxx: number,
+};
+q;const obj: Local = {
+  xxx: 1,
+}
+  `,
+  );
+  const program = service.getProgram()!;
+
+  const symbols = new Set<ts.Symbol>();
+  const checker = program.getTypeChecker();
+  composeVisitors(
+    createVisitScoped(checker, (symbol) => {
+      symbols.add(symbol);
+    }),
+  )(service.getCurrentSourceFile(normalizePath("src/index.ts"))!);
+
+  // expect([...symbols].map(s => s.name)).toEqual([
+  //   'Local', 'xxx', 'obj'
+  //   // 'exported', 'local', 'block', "f", 'arg', 'func',  'X', 'method', 'methodBlock'
+  // ]);
 });

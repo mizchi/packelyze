@@ -1,2 +1,1 @@
-export { createIncrementalLanguageServiceHost as createInMemoryLanguageServiceHost } from "./services";
-export { writeRenamedFileState } from "./manipulator";
+export { createIncrementalLanguageServiceHost } from "./services";

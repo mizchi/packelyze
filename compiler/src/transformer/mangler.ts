@@ -2,7 +2,8 @@ import ts from "typescript";
 import { getLocalBindings } from "../analyzer/scope";
 import { collectDeclarations } from "../analyzer/nodeWalker";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
-import { SymbolBuilder } from "../symbolBuilder";
+import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
+import { FindRenameLocations, collectRenameItems } from "./renamer";
 
 export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.SourceFile) {
   const symbolWalker = createGetSymbolWalker(checker)();
@@ -76,5 +77,25 @@ export function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
   const localNames = new Set(locals.map((x) => x.name));
   return (newName: string) => {
     return !localNames.has(newName);
+  };
+}
+
+export function createGetMangleRenameItems(
+  checker: ts.TypeChecker,
+  findRenameLocations: FindRenameLocations,
+  getSourceFile: (fileName: string) => ts.SourceFile | undefined,
+  entry: string,
+) {
+  const root = getSourceFile(entry)!;
+  const exportedNodes = findExportedNodesFromRoot(checker, root);
+  const symbolBuilder = createSymbolBuilder();
+  return (target: string) => {
+    symbolBuilder.reset();
+    const file = getSourceFile(target)!;
+    const nodes = findMangleNodes(checker, file, exportedNodes);
+    return [...nodes].flatMap((node) => {
+      const action = getRenameActionsFromMangleNode(checker, symbolBuilder, node);
+      return collectRenameItems(findRenameLocations, file, action.start, action.original, action.to) ?? [];
+    });
   };
 }

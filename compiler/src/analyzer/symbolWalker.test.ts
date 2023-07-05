@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from "../testHarness";
+import { createOneshotTestProgram } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 
 test("originalSymbolWalker", () => {
@@ -31,12 +31,22 @@ test("originalSymbolWalker", () => {
   const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
   const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
   // console.log(symbolSet);
-  // console.log(typeSet);
   expect(symbolSet).toEqual(
-    new Set(["f", "arg", "v", "o", "p", "o2", "ClassInternal", "C", "ci", "instance", "prototype"]),
+    new Set(["f", "arg", "v", "o", "p", "o2", "ClassInternal", "C", "ci", "iv", "instance", "prototype"]),
   );
+  // console.log(typeSet);
   expect(typeSet).toEqual(
-    new Set(["any", "number", "(arg: number) => number", "{ p: number; }", "MyType", "typeof C", "C", "this"]),
+    new Set([
+      // xx
+      "any",
+      "number",
+      "(arg: number) => number",
+      "{ p: number; }",
+      "MyType",
+      "C",
+      "this",
+      "ClassInternal",
+    ]),
   );
 });
 

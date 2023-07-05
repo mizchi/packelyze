@@ -1,4 +1,4 @@
-import { blue, bold, underline, gray } from "colorette";
+import { bold, gray } from "colorette";
 
 export type Logger = {
   (...args: any): void;

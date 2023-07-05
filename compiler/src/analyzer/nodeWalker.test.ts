@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from "../testHarness";
+import { createOneshotTestProgram } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 import ts from "typescript";
 import { collectDeclarations } from "./nodeWalker";

@@ -1,7 +1,7 @@
-import "../__vitestUtils";
+import "../__tests/globals";
 import { expect, test } from "vitest";
 
-import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
+import { createOneshotTestProgram, createTestLanguageService } from "../__tests/testHarness";
 import {
   analyzeScope,
   findAcendantLocals,

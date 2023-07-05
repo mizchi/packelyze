@@ -12,9 +12,12 @@ export type ScopedSymbol = {
   isExportRelated?: boolean;
 };
 
+export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
+
 /** wrap service.findRenameLocations */
 export function collectRenameItems(
-  service: ts.LanguageService,
+  // service: ts.LanguageService,
+  findRenameLocations: FindRenameLocations,
   file: ts.SourceFile,
   pos: number,
   original: string,
@@ -24,7 +27,7 @@ export function collectRenameItems(
     allowRenameOfImportPath: true,
   },
 ): RenameItem[] | undefined {
-  const renames = service.findRenameLocations(file.fileName, pos, false, false, prefs) as RenameItem[] | undefined;
+  const renames = findRenameLocations(file.fileName, pos, false, false, prefs) as RenameItem[] | undefined;
   if (!renames) return;
   // check is export related
   for (const rename of renames) {
@@ -40,7 +43,7 @@ export type ChangedItem = {
   start?: number;
   end?: number;
 };
-export function getRenameAppliedChanges(
+export function getRenamedChanges(
   renames: RenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,

@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import ts from "typescript";
-import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
+import { createOneshotTestProgram, createTestLanguageService } from "../__tests/testHarness";
 
 test("incoming internal source", () => {
   const { service, normalizePath } = createTestLanguageService();
