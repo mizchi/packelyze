@@ -17,7 +17,8 @@ export function collectScopedSymbols(
   const checker = program.getTypeChecker();
   const collector = createCollector(checker, undefined, debug);
 
-  const exportSymbols = collectExportSymbols(program, file, debug);
+  const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
@@ -94,7 +95,7 @@ export function collectScopedSignatures(
 ): ScopedSymbol[] {
   const log = createLogger(`[collectScopedSignatures]`, debug);
   const checker = program.getTypeChecker();
-  const exportSymbols = collectExportSymbols(program, file, debug);
+  const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
   const globalVariables = collectGlobalVariables(program, file);
   const globalTypes = collectGlobalTypes(program, file);
 
@@ -126,7 +127,7 @@ export function collectScopedSignatures(
     }
   }
   // colect export related types
-  log.on();
+  // log.on();
   for (const symbol of exportSymbols) {
     // log.on();
     collector.visitSymbol(symbol);
@@ -174,12 +175,12 @@ export function collectExportRelatedSymbols(program: ts.Program, source: ts.Sour
   // return exportSymbols;
 }
 
-export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
-  const checker = program.getTypeChecker();
-  const symbol = checker.getSymbolAtLocation(source);
-  const exportSymbols = checker.getExportsOfModule(symbol!);
-  return exportSymbols;
-}
+// export function collectExportSymbols(program: ts.Program, source: ts.SourceFile, debug = false): ts.Symbol[] {
+//   const checker = program.getTypeChecker();
+//   const symbol = checker.getSymbolAtLocation(source);
+//   const exportSymbols = checker.getExportsOfModule(symbol!);
+//   return exportSymbols;
+// }
 
 export function collectImportableModules(program: ts.Program, file: ts.SourceFile) {
   const checker = program.getTypeChecker();

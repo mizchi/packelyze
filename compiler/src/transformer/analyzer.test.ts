@@ -2,7 +2,7 @@ import "../__vitestUtils";
 import ts from "typescript";
 import { test, expect } from "vitest";
 import {
-  collectExportSymbols,
+  // collectExportSymbols,
   collectGlobalTypes,
   collectGlobalVariables,
   collectScopedSymbols,
@@ -30,7 +30,8 @@ test("collectRelatedTypes: infer internal", () => {
   );
   const program = service.getProgram()!;
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const exportedSymbols = collectExportSymbols(program, file);
+  const checker = program.getTypeChecker();
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
   const collector = createCollector(program.getTypeChecker());
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
@@ -63,7 +64,9 @@ test("collectRelatedTypes: Partial", () => {
   const program = service.getProgram()!;
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const exportedSymbols = collectExportSymbols(program, file);
+  const checker = program.getTypeChecker();
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
   const collector = createCollector(program.getTypeChecker());
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
@@ -98,10 +101,12 @@ test("collectRelatedTypes: Union & Intersetion StringLiteral", () => {
     `,
   );
   const program = service.getProgram()!;
-  const checker = program.getTypeChecker();
 
   const file = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const exportedSymbols = collectExportSymbols(program, file);
+  const checker = program.getTypeChecker();
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
+  // const exportedSymbols = collectExportSymbols(program, file);
   const collector = createCollector(checker);
   for (const symbol of exportedSymbols) {
     collector.visitSymbol(symbol);
@@ -145,10 +150,12 @@ test("collectExportSymbols", () => {
   );
   const program = service.getProgram()!;
   const checker = program.getTypeChecker();
-  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const exportSymbols = collectExportSymbols(program, source);
+  const file = program.getSourceFile(normalizePath("src/index.ts"))!;
+  // const exportSymbols = collectExportSymbols(program, source);
+  // const checker = program.getTypeChecker();
+  const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
 
-  expect(exportSymbols.map((x) => x.getName())).toEqual(["sub1", "a", "b", "Foo"]);
+  expect([...exportSymbols].map((x) => x.getName())).toEqual(["sub1", "a", "b", "Foo"]);
 
   // const collector = createRelatedTypesCollector(program);
   const collector = createCollector(checker);
@@ -400,7 +407,8 @@ test.skip("isNodeInferredByRhs with rename", () => {
 
   const createCollector = createPrebuiltCollectorFactory(project);
   const exportRelatedCollector = createCollector();
-  const exportedSymbols = collectExportSymbols(project, file);
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
   for (const symbol of exportedSymbols) {
     exportRelatedCollector.visitSymbol(symbol);
   }

@@ -1,5 +1,6 @@
 import ts from "typescript";
-import { getNodeAtPosition } from "../nodeUtils";
+import { TraverseableNode, getNodeAtPosition } from "../nodeUtils";
+// import { collectGlobalVariables } from "../__deprecated/analyzer";
 
 export enum RenameSourceKind {
   ScopedIdentifier = 1,
@@ -22,6 +23,12 @@ export type RenameItem = ts.RenameLocation & {
   target: string;
 };
 
+export type ScopedSymbol = {
+  symbol: ts.Symbol;
+  parentBlock: TraverseableNode;
+  isExportRelated?: boolean;
+};
+
 /** wrap service.findRenameLocations */
 export function collectRenameItems(
   service: ts.LanguageService,
@@ -30,7 +37,9 @@ export function collectRenameItems(
   sourceKind: RenameSourceKind,
   source: string,
   to: string,
-  prefs: ts.UserPreferences = {},
+  prefs: ts.UserPreferences = {
+    providePrefixAndSuffixTextForRename: true,
+  },
 ): RenameItem[] | undefined {
   const renames = service.findRenameLocations(file.fileName, pos, false, false, prefs) as RenameItem[] | undefined;
   if (renames == null) {

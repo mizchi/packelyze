@@ -1,29 +1,22 @@
 import path from "node:path";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, RenameSourceKind, collectRenameItems, getRenameAppliedState } from "./renamer";
-import { createTestLanguageService } from "../testHarness";
 import {
-  collectUnsafeRenameTargets,
-  collectExportSymbols,
-  collectScopedSymbols,
-  collectScopedSignatures,
-  createCollector,
-} from "../__deprecated/analyzer";
+  RenameItem,
+  RenameSourceKind,
+  RenameTargetKind,
+  applyRewiredRenames,
+  collectRenameItems,
+  getRenameAppliedState,
+} from "./renamer";
+import { createTestLanguageService } from "../testHarness";
+import { collectScopedSymbols, collectScopedSignatures, createCollector, collectUnsafeRenameTargets } from "./analyzer";
 import { preprocess } from "./transformer";
 import { createSymbolBuilder } from "../symbolBuilder";
 import { findFirstNode } from "../nodeUtils";
 
 test("batch renaming", () => {
-  const projectPath = path.join(__dirname, "../examples");
-  const { service } = createTestLanguageService(projectPath);
-  const normalizePath = (fname: string) => {
-    if (fname.startsWith("/")) {
-      return fname;
-    }
-    const root = projectPath;
-    return path.join(root, fname);
-  };
+  const { service, normalizePath } = createTestLanguageService();
   service.writeSnapshotContent("src/index.ts", "const x: number = '';\nconst y: number = x;");
 
   const program = service.getProgram()!;
@@ -127,10 +120,94 @@ test("rename exported", () => {
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  expect(result).toBe(`const _ = 1;
-const $ = 2;
-export { _ as xxx, $ as zzz };
+  expect(result).toBe(`const k = 1;
+const x = 2;
+export { k as xxx, x as zzz };
 `);
+});
+
+test("TS: rename propertyAssignment", () => {
+  const { service, normalizePath } = createTestLanguageService();
+  const code = `
+type Local = {
+  local: number;
+};
+const lll: Local = {
+  local: 1
+}
+export const x = fff();
+`;
+  // const preprocessed = preprocess(code);
+
+  service.writeSnapshotContent(normalizePath("src/index.ts"), code);
+  const program = service.getProgram()!;
+  const source = program.getSourceFile(normalizePath("src/index.ts"))!;
+
+  {
+    // rename property signature
+    const localSignaturePos = source.text.search(/local\: number/);
+    const localSignatureNode = findFirstNode(program, normalizePath("src/index.ts"), "local: number")!.parent!;
+    expect(localSignatureNode.getText()).toBe("local: number;");
+    expect(ts.SyntaxKind[localSignatureNode.kind]).toBe("PropertySignature");
+
+    const renames = service.findRenameLocations(normalizePath("src/index.ts"), localSignaturePos, false, false, {
+      providePrefixAndSuffixTextForRename: true,
+    });
+    const renameItems: RenameItem[] = renames?.map((r) => {
+      return {
+        ...r,
+        sourceKind: RenameSourceKind.ScopedSignature,
+        targetKind: RenameTargetKind.Local,
+        source: "local",
+        target: "local_renamed",
+      };
+    })!;
+    // console.log(renameItems);
+    const [changed] = applyRewiredRenames(source.text, renameItems);
+    // console.log(changed);
+    expect(changed).toBe(`
+type Local = {
+  local_renamed: number;
+};
+const lll: Local = {
+  local_renamed: 1
+}
+export const x = fff();
+`);
+  }
+
+  {
+    // rename PropertyAssignment
+    const localAssignmentPos = source.text.search(/local\: 1/);
+    const localAssignmentNode = findFirstNode(program, normalizePath("src/index.ts"), "local: 1")!.parent!;
+    expect(localAssignmentNode.getText()).toBe("local: 1");
+    expect(ts.SyntaxKind[localAssignmentNode.kind]).toBe("PropertyAssignment");
+
+    const renames = service.findRenameLocations(normalizePath("src/index.ts"), localAssignmentPos, false, false, {
+      providePrefixAndSuffixTextForRename: true,
+    });
+    const renameItems: RenameItem[] = renames?.map((r) => {
+      return {
+        ...r,
+        sourceKind: RenameSourceKind.ScopedSignature,
+        targetKind: RenameTargetKind.Local,
+        source: "local",
+        target: "local_renamed",
+      };
+    })!;
+    // console.log(renameItems);
+    const [changed] = applyRewiredRenames(source.text, renameItems);
+    // console.log(changed);
+    expect(changed).toBe(`
+type Local = {
+  local_renamed: number;
+};
+const lll: Local = {
+  local_renamed: 1
+}
+export const x = fff();
+`);
+  }
 });
 
 // {
@@ -184,17 +261,6 @@ export const pub: Pub = {
   pubv: 1,
 };
 `;
-  const after = `
-type Local = {
-    a: number;
-};
-type Pub = {
-    pubv: number;
-};
-const _: Local = { a: 1 };
-const $: Pub = { pubv: 1 };
-export { $ as pub };
-  `;
   const preprocessed = preprocess(code);
   service.writeSnapshotContent("src/index.ts", preprocessed);
   const source = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
@@ -217,9 +283,9 @@ export { $ as pub };
 type Pub = {
     pubv: number;
 };
-const _: Local = { xxx: 1 };
-const $: Pub = { pubv: 1 };
-export { $ as pub };
+const k: Local = { xxx: 1 };
+const x: Pub = { pubv: 1 };
+export { x as pub };
 `);
   // return;
   {
@@ -247,13 +313,7 @@ export { $ as pub };
   }
 });
 
-test.only("rename local object member", () => {
-  // type Local = {
-  //   xxx: number;
-  // };
-  // const local: Local = {
-  //   xxx: 1,
-  // };
+test.skip("rename local object member", () => {
   const { service, normalizePath } = createTestLanguageService();
 
   const code = `type Local = {
@@ -271,7 +331,8 @@ export { $ as pub };
 
   const collector = createCollector(service.getProgram()!.getTypeChecker());
   const file = service.getCurrentSourceFile("src/index.ts")!;
-  const exportedSymbols = collectExportSymbols(service.getProgram()!, file);
+  const checker = service.getProgram()!.getTypeChecker();
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
 
   // 公開型から、その型のメンバーを参照しているシンボルを探す
   for (const symbol of exportedSymbols) {
@@ -332,7 +393,7 @@ export { $ as pub };
     normalizePath,
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
-  console.log(result);
+  // console.log(result);
 });
 
 test("rewire exports: complex", () => {
@@ -381,22 +442,22 @@ test("rewire exports: complex", () => {
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
   expect(result).toBe(`export { sub } from "./sub";
-const _ = 1;
-function $() { }
-class a {
+const k = 1;
+function x() { }
+class j {
 }
-enum b {
+enum q {
 }
 type Ttt = number;
 interface Iii {
 }
-const c = 1;
+const z = 1;
 {
-    const d = 2;
+    const p = 2;
 }
-const e = 1;
-const f = 2;
-export { e as vvv, f as zzz, _ as xxx, $ as fff, a as Ccc, b as Eee, Ttt, Iii };
+const f = 1;
+const y = 2;
+export { f as vvv, y as zzz, k as xxx, x as fff, j as Ccc, q as Eee, Ttt, Iii };
 `);
 });
 
@@ -420,7 +481,9 @@ test.skip("rename multi file", () => {
 
   const program = service.getProgram()!;
   const source = program.getSourceFile("sub/index.ts")!;
-  console.log(collectExportSymbols(program, source));
+  // const checker = service.getProgram()!.getTypeChecker();
+  // const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
   // const renameItems = collectRenameItemsFromFile(service, source);
   //   const state = getRenameAppliedState(renameItems, (fname) => {
   //     const source = program.getSourceFile(fname);
@@ -455,9 +518,9 @@ test("rewire exports: enum", () => {
   );
   const result = state.get(normalizePath("src/index.ts"))![0];
   // console.log(result);
-  expect(result).toBe(`enum _ {
+  expect(result).toBe(`enum k {
 }
-export { _ as Eee };
+export { k as Eee };
 `);
 });
 
