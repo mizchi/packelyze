@@ -9,7 +9,7 @@ export type AnalyzedScope = {
 /** get all scoped locals */
 export function analyzeScope(checker: ts.TypeChecker, file: ts.SourceFile): AnalyzedScope {
   const globals = getGlobalsFromFile(checker, file);
-  return analyzeBlock(file);
+  return visitBlock(file);
 
   function getGlobalsFromFile(checker: ts.TypeChecker, file: ts.SourceFile): Set<ts.Symbol> {
     const globals = new Set<ts.Symbol>();
@@ -24,11 +24,11 @@ export function analyzeScope(checker: ts.TypeChecker, file: ts.SourceFile): Anal
     return globals;
   }
 
-  function analyzeBlock(block: ts.Block | ts.SourceFile) {
+  function visitBlock(block: ts.Block | ts.SourceFile) {
     const locals = getLocalsInScope(checker, globals, block);
     const children = new Set<AnalyzedScope>();
     for (const child of getDirectChildren(block)) {
-      const analyzed = analyzeBlock(child);
+      const analyzed = visitBlock(child);
       children.add(analyzed);
     }
     return {
@@ -52,6 +52,9 @@ export function analyzeScope(checker: ts.TypeChecker, file: ts.SourceFile): Anal
   }
 }
 
+/**
+ * @description get locals
+ */
 export function getLocals(checker: ts.TypeChecker, node: ts.Node): Set<ts.Symbol> {
   if (ts.isSourceFile(node)) {
     const locals: Set<ts.Symbol> = new Set();
@@ -74,7 +77,8 @@ export function getLocals(checker: ts.TypeChecker, node: ts.Node): Set<ts.Symbol
   throw new Error(`not implemented ${ts.SyntaxKind[node.kind]}`);
 }
 
-// type ScopeContext = ts.Block | ts.SourceFile | ts.Class
+// TODO: Class
+/** get closest scope */
 export function getClosestBlock(node: ts.Node): ts.Block | ts.SourceFile {
   if (ts.isSourceFile(node)) return node as ts.Block | ts.SourceFile;
 
@@ -108,7 +112,6 @@ export function getLocalsInScope(checker: ts.TypeChecker, globals: Set<ts.Symbol
     for (const global of globals) {
       locals.delete(global);
     }
-
     const parent = getClosestBlock(node);
     const parentLocals = getLocals(checker, parent);
     // delete from parent
@@ -174,6 +177,11 @@ export function getLocalBindings(node: ts.Node) {
         visitBinding(node.name);
       }
     }
+
+    // if (ts.isPropertyAssignment(node)) {
+    //   decls.push(node);
+    //   visitBinding(node.name);
+    // }
 
     if (ts.isPropertyDeclaration(node)) {
       decls.push(node);
@@ -409,6 +417,22 @@ export function getUnscopedAccessesFromExpression(
       return false;
     }
     return parentScope.includes(s);
+  });
+  return new Set(parentAccess);
+}
+
+export function getAccessesFromExpression(checker: ts.TypeChecker, target: ts.Expression): Set<ts.Symbol> {
+  const file = target.getSourceFile()!;
+  const block = getClosestBlock(target);
+  const primaries = findPrimaryNodes(block, target);
+  const symbols = [...primaries].map((x) => checker.getSymbolAtLocation(x)!);
+
+  const allowedAccesses = getAllowedPureAccesses(checker, file);
+  const parentAccess = symbols.filter((s) => {
+    if (allowedAccesses.includes(s)) {
+      return false;
+    }
+    return true;
   });
   return new Set(parentAccess);
 }

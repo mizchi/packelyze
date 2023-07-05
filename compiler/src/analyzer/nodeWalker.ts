@@ -44,6 +44,8 @@ export function collectDeclarations(visited: VisitedCache, debug: boolean = fals
       // visitType(type, depth + 1);
     }
 
+    // skip prorperty assignment
+
     if (ts.isParameter(node)) {
       if (node.type) {
         visitNode(node.type, depth + 1);

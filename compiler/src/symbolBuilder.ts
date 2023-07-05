@@ -1,5 +1,6 @@
-// TODO: sort this by usage rate https://tex2e.github.io/blog/crypto/letter-frequency
-const FIRST_CHARS = [..."_$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
+// sort alphabet by usage rate https://tex2e.github.io/blog/crypto/letter-frequency
+// const FIRST_CHARS = [..."_$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
+const FIRST_CHARS = [..."kxjqzpfywgbvdlucmtaonirshe_$KXJQZPFYWGBVDLUCMTAONIRSHE"] as const;
 
 const CHARS = [...FIRST_CHARS, ..."0123456789"] as const;
 

@@ -1,3 +1,4 @@
+import "../__vitestUtils";
 import ts from "typescript";
 import { test, expect } from "vitest";
 import {
@@ -372,12 +373,12 @@ test("isNodeInferredByRhs", () => {
 
   const aRenameables = findRenamebaleObjectMember(project, aaaIdent, createCollector());
   // console.log(aRenameables.map(r => r.text));
-  expect([...aRenameables].map((r) => r.text)).toEqual(["num", "foo", "nested", "v"]);
+  expect([...aRenameables].map((r) => r.text)).toEqualSet(["num", "foo", "nested", "v"]);
 
   const bRenameables = findRenamebaleObjectMember(project, bbbIdent, createCollector()) as ts.Identifier[];
 
   // console.log(bRenameables.map(r => r.text));
-  expect([...bRenameables].map((r) => r.text)).toEqual(["v", "w", "x", "y"]);
+  expect([...bRenameables].map((r) => r.text)).toEqualSet(["v", "w", "x", "y"]);
 });
 
 test.skip("isNodeInferredByRhs with rename", () => {

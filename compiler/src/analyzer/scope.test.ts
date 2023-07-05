@@ -1,4 +1,6 @@
+import "../__vitestUtils";
 import { expect, test } from "vitest";
+
 import { createOneshotTestProgram, createTestLanguageService } from "../testHarness";
 import {
   analyzeScope,
@@ -12,8 +14,9 @@ import {
   getAllowedPureAccesses as getAllowedPureAccesses,
   getUnscopedAccesses,
   isScopedAccessOnly,
+  getAccessesFromExpression,
 } from "./scope";
-import { getNodeAtPosition } from "../nodeUtils";
+import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
 
 test("find all declarations", () => {
@@ -101,11 +104,15 @@ test("scoped variables", () => {
   const checker = program.getTypeChecker();
   const result = analyzeScope(checker, file);
 
-  expect([...result.locals].map((t) => t.name)).toEqual(["f", "x", "y"]);
-  // expect([...result.children[0].locals].map(t => t.name)).toEqual(["internalFunc", "f_internal", "arguments"]);
-  expect([...result.children[0].locals].map((t) => t.name)).toEqual(["arg", "internalFunc", "f_internal", "arguments"]);
-
-  expect([...result.children[0].children[0].locals].map((t) => t.name)).toEqual(["f2", "iif"]);
+  expect([...result.locals].map((t) => t.name)).toEqualSet(["f", "x", "y"]);
+  // expect([...result.children[0].locals].map(t => t.name)).toEqualSet(["internalFunc", "f_internal", "arguments"]);
+  expect([...result.children[0].locals].map((t) => t.name)).toEqualSet([
+    "arg",
+    "internalFunc",
+    "f_internal",
+    "arguments",
+  ]);
+  expect([...result.children[0].children[0].locals].map((t) => t.name)).toEqualSet(["f2", "iif"]);
 });
 
 test("scoped variables: block", () => {
@@ -129,11 +136,11 @@ test("scoped variables: block", () => {
   const checker = program.getTypeChecker();
 
   const result2 = analyzeScope(checker, file);
-  expect([...result2.locals].map((x) => x.name)).toEqual(["x", "y"]);
-  expect([...result2.children[0].locals].map((x) => x.name)).toEqual(["blocked"]);
-  expect([...result2.children[0].children[0].locals].map((x) => x.name)).toEqual(["v1"]);
-  expect([...result2.children[0].children[1].locals].map((x) => x.name)).toEqual(["v2"]);
-  expect([...result2.children[1].locals].map((x) => x.name)).toEqual(["exprBlock"]);
+  expect([...result2.locals].map((x) => x.name)).toEqualSet(["x", "y"]);
+  expect([...result2.children[0].locals].map((x) => x.name)).toEqualSet(["blocked"]);
+  expect([...result2.children[0].children[0].locals].map((x) => x.name)).toEqualSet(["v1"]);
+  expect([...result2.children[0].children[1].locals].map((x) => x.name)).toEqualSet(["v2"]);
+  expect([...result2.children[1].locals].map((x) => x.name)).toEqualSet(["exprBlock"]);
 });
 
 test("scoped variables: block", () => {
@@ -179,10 +186,10 @@ test("scoped variables: block", () => {
   expect(parentLocalNames.has("v0")).toBe(true);
   expect(parentLocalNames.has("v1")).toBe(true);
   expect(parentLocalNames.has("v2")).toBe(false);
-  expect([...locals].map((s) => s.name)).toEqual(["v2"]);
+  expect([...locals].map((s) => s.name)).toEqualSet(["v2"]);
 
   const ascendantLocals = findAcendantLocals(checker, node as ts.Block);
-  expect([...ascendantLocals].map((s) => s.name)).toEqual(["v3", "v4", "v5", "v6", "v8", "v7"]);
+  expect([...ascendantLocals].map((s) => s.name)).toEqualSet(["v3", "v4", "v5", "v6", "v8", "v7"]);
 });
 
 test("scoped variables: shadowed", () => {
@@ -197,8 +204,8 @@ test("scoped variables: shadowed", () => {
 
   const checker = program.getTypeChecker();
   const result = analyzeScope(checker, file);
-  expect([...result.locals].map((x) => x.name)).toEqual(["x", "v"]);
-  // expect([...result.children[0].locals].map((x) => x.name)).toEqual(["v", "w"]);
+  expect([...result.locals].map((x) => x.name)).toEqualSet(["x", "v"]);
+  // expect([...result.children[0].locals].map((x) => x.name)).toEqualSet(["v", "w"]);
 });
 
 test("scoped variables: accessing outer refs", () => {
@@ -235,8 +242,8 @@ test("scoped variables: accessing outer refs", () => {
     expect(symbol.name).toBe("impure");
     const funcBody = (symbol.valueDeclaration as ts.FunctionDeclaration).body!;
     const primaries = findPrimaryAccesses(funcBody);
-    console.log([...primaries].map((x) => x.text));
-    expect([...primaries].map((x) => x.text)).toEqual([
+    // console.log([...primaries].map((x) => x.text));
+    expect([...primaries].map((x) => x.text)).toEqualSet([
       "local",
       "xv",
       "xv",
@@ -247,7 +254,7 @@ test("scoped variables: accessing outer refs", () => {
       "top",
     ]);
     const accesses = getUnscopedAccesses(checker, funcBody);
-    expect([...accesses].map((x) => x.name)).toEqual(["console", "MyGlobal", "top"]);
+    expect([...accesses].map((x) => x.name)).toEqualSet(["console", "MyGlobal", "top"]);
   }
   {
     // check pure func
@@ -255,6 +262,40 @@ test("scoped variables: accessing outer refs", () => {
     const block = (pureSymbol.valueDeclaration as ts.FunctionDeclaration).body!;
     expect(getUnscopedAccesses(checker, block).size).toBe(0);
   }
+});
+
+test("getUnscopedAccesses", () => {
+  // const
+  const { program, file, checker } = createOneshotTestProgram(`
+  const outer = 1;
+  export function f() {
+    return outer;
+  }
+  export const v = f() > outer;
+  `);
+
+  const exports = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  const pureSymbol = exports.find((x) => x.name === "f")!;
+  const block = (pureSymbol.valueDeclaration as ts.FunctionDeclaration).body!;
+  // expect(getUnscopedAccesses(checker, block).size).toBe(1);
+  const primaries = findPrimaryAccesses(block);
+  // console.log([...primaries].map((x) => x.text));
+  expect([...primaries].map((x) => x.text)).toEqualSet(["outer"]);
+
+  {
+    // find expression
+    const symbol = exports.find((x) => x.name === "v")!;
+    const block = findClosestBlock(symbol.valueDeclaration as ts.VariableDeclaration);
+    const primaries = findPrimaryAccesses(block, (symbol.valueDeclaration as ts.VariableDeclaration).initializer!);
+    expect([...primaries].map((x) => x.text)).toEqualSet(["f", "outer"]);
+
+    const accesses = getAccessesFromExpression(
+      checker,
+      (symbol.valueDeclaration as ts.VariableDeclaration).initializer!,
+    );
+    expect([...accesses].map((x) => x.name)).toEqualSet(["f", "outer"]);
+  }
+  // const checker = program.getTypeChecker();
 });
 
 test("getExpilictGlobals", () => {

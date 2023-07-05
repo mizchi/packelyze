@@ -255,3 +255,127 @@ export const findFirstNode = (program: ts.Program, fileName: string, matcher: st
     return node;
   }
 };
+
+const circularSymbol = Symbol("circular");
+export type ReadbleNode = {
+  kind: ts.SyntaxKind[keyof ts.SyntaxKind][];
+  text: string;
+  flags?: ts.NodeFlags[keyof ts.NodeFlags][];
+} & {
+  [key: string]: ReadbleNodeOrSymbol;
+};
+
+type ReadbleNodeOrSymbol = ReadbleNode | typeof circularSymbol;
+
+export function toReadableNode(node: ts.Node, includeParentDepth: number = 0): ReadbleNode {
+  const visitedNodes = new Set<ts.Node>();
+  const ret = toReadableNode(node, includeParentDepth);
+  visitedNodes.clear();
+  return ret as ReadbleNode;
+
+  function isNode(node: any): node is ts.Node {
+    return node && node.kind && ts.SyntaxKind[node.kind] != null;
+  }
+  function toReadableNode(node: ts.Node, includeParentDepth: number): ReadbleNodeOrSymbol {
+    if (visitedNodes.has(node)) {
+      return circularSymbol;
+    }
+    visitedNodes.add(node);
+    const obj: any = {
+      // ...node,
+      kind: ts.SyntaxKind[node.kind],
+      text: formatText(node.getText()),
+    };
+
+    // const childNodes:
+    for (const [key, val] of Object.entries(node)) {
+      if (key === "parent" && includeParentDepth <= 0) continue;
+      if (key === "flags") {
+        const flags = toReadableFlags(node.flags);
+        if (flags.length > 0) {
+          obj.flags = flags;
+        }
+      }
+      if (Array.isArray(val)) {
+        obj[key] = val.map((v) => (isNode(v) ? toReadableNode(v, includeParentDepth - 1) : v));
+      } else {
+        if (isNode(val)) {
+          obj[key] = toReadableNode(val, includeParentDepth - 1);
+        }
+      }
+    }
+    return obj;
+  }
+
+  function toReadableFlags(flags: ts.NodeFlags) {
+    const readableFlags: string[] = [];
+    for (const [key, val] of Object.entries(ts.NodeFlags)) {
+      if (typeof val === "number" && flags & val) {
+        readableFlags.push(key);
+      }
+    }
+    return readableFlags;
+  }
+  function formatText(s: string) {
+    return (
+      s
+        // .replace(/[\;\{\:,]/g, (s) => `${s} `)
+        // .replace(/\{/g, " { ")
+        .replace(/\=\>/g, " => ")
+        .replace(/[\n\s]+/g, " ")
+        .replace(/;\s?$/g, "")
+    );
+  }
+}
+
+export type ReadableSymbol = {
+  name: string;
+  valueDeclaration?: ReadbleNode;
+  declarations?: ReadbleNode[];
+  isSingleSource: boolean;
+  typeOnly: boolean;
+  flags?: Array<ts.SymbolFlags[keyof ts.SymbolFlags]>;
+};
+
+export function toReadableSymbol(
+  symbol: ts.Symbol,
+  useFlags: boolean = false,
+  includeParent: boolean = false,
+): ReadableSymbol {
+  const isSingleSource =
+    symbol.declarations && symbol.declarations.length === 1 && symbol.declarations[0] === symbol.valueDeclaration;
+  const typeOnly =
+    !symbol.valueDeclaration && symbol.declarations && symbol.declarations.every((decl) => ts.isTypeNode(decl));
+  const ret: ReadableSymbol = {
+    name: symbol.name,
+    isSingleSource: !!isSingleSource,
+    typeOnly: !!typeOnly,
+    valueDeclaration: symbol.valueDeclaration && toReadableNode(symbol.valueDeclaration, includeParent),
+    declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
+  };
+
+  if (useFlags) {
+    ret.flags = toReadabelSymbolFlags(symbol.flags);
+  }
+
+  return ret;
+
+  function toReadabelSymbolFlags(flags: ts.SymbolFlags) {
+    const ret: string[] = [];
+    for (const [key, val] of Object.entries(ts.SymbolFlags)) {
+      if (typeof val === "number" && flags & val) {
+        ret.push(key);
+      }
+    }
+    return ret as any;
+  }
+}
+
+export function toReadableType(type: ts.Type) {
+  const checker = (type as any).checker as ts.TypeChecker;
+  return {
+    typeName: checker.typeToString(type),
+    symbol: type.symbol && toReadableSymbol(type.symbol),
+    aliasSymbol: type.aliasSymbol && toReadableSymbol(type.aliasSymbol),
+  };
+}

@@ -4,7 +4,7 @@ import { createTestLanguageService } from "./testHarness";
 import { IncrementalLanguageService } from "./services";
 import ts, { ClassDeclaration, FunctionDeclaration, FunctionExpression, VariableStatement, factory } from "typescript";
 import { cloneNode } from "ts-clone-node";
-import { getUnscopedAccesses } from "./analyzer/scope";
+import { getAccessesFromExpression, getUnscopedAccesses } from "./analyzer/scope";
 import { findClosestBlock } from "./nodeUtils";
 
 test("bundle", () => {
@@ -74,7 +74,7 @@ export const x = f();
   // console.log(bundled);
 });
 
-test.skip("reference graph", () => {
+test("reference graph", () => {
   const { service, normalizePath } = createTestLanguageService();
   const codeSub = `
   const subLocal = 1;
@@ -140,6 +140,7 @@ const flattenGraph = (graph: Map<ts.Symbol, Set<ts.Symbol>>) => {
 function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
   const checker = program.getTypeChecker();
   const graph = new Map<TS.Symbol, Set<TS.Symbol>>();
+  const visitedSymbols = new Set<TS.Symbol>();
 
   const addDep = (from: TS.Symbol, to: TS.Symbol) => {
     if (!graph.has(from)) {
@@ -165,7 +166,23 @@ function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
       symbol.valueDeclaration && ts.SyntaxKind[symbol.valueDeclaration.kind],
       "=>",
       symbol.valueDeclaration?.getText(),
+      "[decls]",
+      symbol.declarations?.map((x) => x.getText()),
     );
+    if (visitedSymbols.has(symbol)) {
+      return;
+    }
+    visitedSymbols.add(symbol);
+
+    for (const decl of symbol.declarations ?? []) {
+      if (ts.isSourceFile(decl)) {
+        const exports = checker.getExportsOfModule(symbol);
+        for (const sym of exports) {
+          addDep(symbol, sym);
+          visit(sym);
+        }
+      }
+    }
     if (!symbol.valueDeclaration) return;
     const decl = symbol.valueDeclaration!;
     if (ts.isFunctionDeclaration(decl)) {
@@ -175,23 +192,20 @@ function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
         visit(access);
       }
     }
-
     if (ts.isVariableDeclaration(decl)) {
       if (decl.initializer) {
-        const block = findClosestBlock(decl);
-        const accesses = getUnscopedAccesses(checker, block!, decl.initializer);
-
-        // console.log("block", block);
-        // throw "stop";
-        // const accesses = getUnscopedAccesses(checker, block, decl.initializer);
-        console.log(
-          "accesses",
-          [...accesses].map((x) => x.name),
-        );
-        // for (const access of accesses) {
-        //   addDep(symbol, access);
-        //   visit(access);
-        // }
+        const accesses = getAccessesFromExpression(checker, decl.initializer);
+        for (const access of accesses) {
+          // const exported = checker.getExportSpecifierLocalTargetSymbol(access as any);
+          // console.log(
+          //   "access",
+          //   access.name,
+          //   access.valueDeclaration?.getSourceFile().fileName,
+          //   access.declarations?.map((x) => x.getText()),
+          // );
+          addDep(symbol, access);
+          visit(access);
+        }
       }
     }
   }

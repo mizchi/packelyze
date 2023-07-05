@@ -1,12 +1,9 @@
+import "./__vitestUtils";
 import { expect, test } from "vitest";
 import ts from "typescript";
 import path from "node:path";
 
-import {
-  createIncrementalLanguageServiceHost,
-  createIncrementalLanguageService,
-  IncrementalSnapshot,
-} from "./services";
+import { createIncrementalLanguageServiceHost, createIncrementalLanguageService } from "./services";
 
 test("IncrementalLanguageService", () => {
   const projectPath = path.join(__dirname, "../examples");
@@ -72,7 +69,7 @@ test("IncrementalLanguageService", () => {
     const dirname = service.normalizePath("src/nested");
     expect(host.directoryExists!(dirname)).toBe(true);
 
-    expect(host.readDirectory!(dirname)).toEqual(["new.ts", "new2.ts"]);
+    expect(host.readDirectory!(dirname)).toEqualSet(["new.ts", "new2.ts"]);
 
     const s5 = service.readSnapshot(nestedNewFilePath)!;
     expect(s5.getText(0, s5.getLength())).toBe("const w: number = '';");
