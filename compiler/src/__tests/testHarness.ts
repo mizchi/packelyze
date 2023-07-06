@@ -11,7 +11,7 @@ let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
 
 export function initTestLanguageServiceWithFiles(
   files: Record<string, string>,
-  projectPath: string = path.join(__dirname, "../examples"),
+  projectPath: string = path.join(__dirname, "../__fixtures__/minimum"),
   revertRootFiles = true,
 ) {
   const testLsp = createTestLanguageService(projectPath, revertRootFiles);
@@ -23,7 +23,7 @@ export function initTestLanguageServiceWithFiles(
 }
 
 export function createTestLanguageService(
-  projectPath: string = path.join(__dirname, "../examples"),
+  projectPath: string = path.join(__dirname, "../__fixtures__/minimum"),
   revertRootFiles = true,
 ) {
   // console.time("createTestLanguageService");

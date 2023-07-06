@@ -18,6 +18,7 @@ import {
 } from "./scope";
 import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
+import path from "node:path";
 
 test("find all declarations", () => {
   const { file } = createOneshotTestProgram(`
@@ -299,7 +300,10 @@ test("getUnscopedAccesses", () => {
 });
 
 test("getExpilictGlobals", () => {
-  const { service, normalizePath, projectPath } = createTestLanguageService();
+  const { service, normalizePath, projectPath } = createTestLanguageService(
+    // FIXME: to use node env, we need to set project path
+    path.join(__dirname, "../.."),
+  );
   const envDts = `
   declare const MyGlobal: {
     vvv: number;
@@ -331,7 +335,6 @@ test("getExpilictGlobals", () => {
   expect(names.has("process")).toBe(true);
   expect(names.has("eval")).toBe(true);
 
-  expect(names.has("console")).toBe(true);
   // lib
   expect(names.has("console")).toBe(true);
   expect(names.has("TextEncoder")).toBe(true);
