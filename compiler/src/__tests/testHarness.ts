@@ -54,7 +54,6 @@ export function createTestLanguageService(
   // const registory = lastRegistry ?? createDocumentRegistry();
   const registory = ts.createDocumentRegistry();
   const host = createIncrementalLanguageServiceHost(projectPath, options.fileNames, options.options, lastHost);
-  // const snapshotManager = serviceHost.getSnapshotManager(registory);
   const service = createIncrementalLanguageService(host, registory);
   lastRegistry = registory;
   lastHost = host;
