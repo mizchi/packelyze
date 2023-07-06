@@ -74,12 +74,12 @@ expect.extend({
         // if (isNot) {
         const plus = [...expectedSet].filter((item) => !receivedSet.has(item)).map((x) => `"${x}"`);
         const minus = [...receivedSet].filter((item) => !expectedSet.has(item)).map((x) => `"${x}"`);
-        let text = `Set Diff:`;
+        let text = `Set differences:`;
         if (plus.length > 0) {
-          text += ` + ${plus.join(", ")}`;
+          text += `\n${plus.map((t) => `\n+ ${t}`).join("")}`;
         }
         if (minus.length > 0) {
-          text += ` - ${minus.join(", ")}`;
+          text += `\n${minus.map((t) => `\n- ${t}`).join("")}`;
         }
         return text;
         // }

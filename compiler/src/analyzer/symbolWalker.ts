@@ -2,8 +2,9 @@
 
 import ts from "typescript";
 import { getOwnValues } from "../utils";
+// import { toReadableSymbol } from "../nodeUtils";
 
-export type VisitedCache = {
+export type SymbolWalkerVisited = {
   visitedTypes: readonly ts.Type[];
   visitedSymbols: readonly ts.Symbol[];
 };
@@ -16,7 +17,7 @@ export interface SymbolWalker {
   /** Note: Return values are not ordered. */
   walkSymbol(root: ts.Symbol): void;
   // additional
-  getVisited(): VisitedCache;
+  getVisited(): SymbolWalkerVisited;
   clear(): void;
 }
 
@@ -48,6 +49,7 @@ interface SymbolWithId extends ts.Symbol {
 
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
+// added: skip private/hard-private declaration in class
 export function createGetSymbolWalker(checker: ts.TypeChecker) {
   return getSymbolWalker;
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
@@ -191,13 +193,18 @@ export function createGetSymbolWalker(checker: ts.TypeChecker) {
       for (const signature of callSignatures) {
         visitSignature(signature);
       }
-      // TODO: checke constructSignatures included by getSigaturesOfType
       const constructSignatures = checker.getSignaturesOfType(type, ts.SignatureKind.Construct);
       for (const signature of constructSignatures) {
         visitSignature(signature);
       }
       for (const p of type.getProperties()) {
-        visitSymbol(p);
+        // console.log("[skip:prop]", p.name, toReadableSymbol(p));
+        if (isPrivateSignatureSymbol(p)) {
+          // skip private declaration in class
+          // console.log("[skip:prop]", p.name, toReadableSymbol(p));
+        } else {
+          visitSymbol(p);
+        }
       }
     }
 
@@ -282,4 +289,21 @@ function forEach<T, U>(
     }
   }
   return undefined;
+}
+
+// added to skip private declaration in class
+function isPrivateSignatureSymbol(symbol: ts.Symbol) {
+  if (
+    symbol.valueDeclaration &&
+    (ts.isPropertyDeclaration(symbol.valueDeclaration) || ts.isMethodDeclaration(symbol.valueDeclaration))
+  ) {
+    // hard private #foo
+    if (ts.isPrivateIdentifier(symbol.valueDeclaration.name)) {
+      return true;
+    }
+    // private xxx;
+    const hasPrivateKeyword = symbol.valueDeclaration.modifiers?.some((m) => m.kind === ts.SyntaxKind.PrivateKeyword);
+    return hasPrivateKeyword ?? false;
+  }
+  return false;
 }

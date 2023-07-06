@@ -328,3 +328,77 @@ test("mangle with externals", () => {
 
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
+
+test("mangle with externals", () => {
+  const files = {
+    "src/index.ts": `
+    type MyType = {
+      pubVal: {
+        pub: number;
+      };
+      privVal: {
+        pv: number;
+      };
+    };
+    export class C {
+      private v: MyType;
+      static sv: number = 1;
+      #hardPriv: number = 2;
+      private static svp: number = 2;
+      static sfoo() {
+        return this.spfoo();
+      }
+      private static spfoo() {
+        return this.svp;
+      }
+      constructor(v: number) {
+        this.#hardPriv;
+        this.v = { pubVal: { pub: v }, privVal: { pv: v + this.#hardPriv } };
+      }
+      public foo() {
+        return this.v.pubVal;
+      }
+      private priv() {
+        return this.v.privVal;
+      }
+    }      
+  `,
+  };
+
+  const expected = {
+    "src/index.ts": `
+    type MyType = {
+      k: {
+        pub: number;
+      };
+      x: {
+        j: number;
+      };
+    };
+    export class C {
+      private q: MyType;
+      static sv: number = 1;
+      #z: number = 2;
+      private static p: number = 2;
+      static sfoo() {
+        return this.f();
+      }
+      private static f() {
+        return this.p;
+      }
+      constructor(v: number) {
+        this.#z;
+        this.q = { k: { pub: v }, x: { j: v + this.#z } };
+      }
+      public foo() {
+        return this.q.k;
+      }
+      private y() {
+        return this.q.x;
+      }
+    }
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});

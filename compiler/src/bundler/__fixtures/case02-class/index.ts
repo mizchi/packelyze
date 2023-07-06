@@ -1,30 +1,30 @@
-export class MyClass {
-  private privateField = 1;
-  protected protectedField = 2;
-  public publicField = 3;
-
-  private privateMethod() {
-    return this.privateField;
+type MyType = {
+  pubVal: {
+    pub: number;
+  };
+  privVal: {
+    pv: number;
+  };
+};
+export class C {
+  private v: MyType;
+  static sv: number = 1;
+  #hardPriv: number = 2;
+  private static svp: number = 2;
+  static sfoo() {
+    return this.spfoo();
   }
-  protected protectedMethod() {
-    return this.protectedField;
+  private static spfoo() {
+    return this.svp;
   }
-  public publicMethod() {
-    return this.publicField;
+  constructor(v: number) {
+    this.#hardPriv;
+    this.v = { pubVal: { pub: v }, privVal: { pv: v + this.#hardPriv } };
+  }
+  foo() {
+    return this.v.pubVal;
+  }
+  private priv() {
+    return this.v.privVal;
   }
 }
-
-// type Local = {
-//   local: number;
-// };
-// type Pub = {
-//   pub: number;
-// };
-
-// function fff(): Pub {
-//   const fLocal: Local = { local: 1 };
-//   return {
-//     pub: fLocal.local,
-//   };
-// }
-// export const x = fff();

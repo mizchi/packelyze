@@ -2,7 +2,7 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 import ts from "typescript";
-import { collectDeclarations } from "./nodeWalker";
+import { findDeclarationsFromSymbolWalkerVisited } from "./nodeWalker";
 
 test("nodeWalker", () => {
   const { checker, file } = createOneshotTestProgram(`
@@ -25,7 +25,7 @@ test("nodeWalker", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const collected = collectDeclarations(visited);
+  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + node.getText();

@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { getLocalBindings } from "../analyzer/scope";
-import { collectDeclarations } from "../analyzer/nodeWalker";
+import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, collectRenameItems } from "./renamer";
@@ -12,7 +12,7 @@ export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.Sour
     symbolWalker.walkSymbol(exported);
   }
   const visited = symbolWalker.getVisited();
-  return collectDeclarations(visited);
+  return findDeclarationsFromSymbolWalkerVisited(visited);
 }
 
 export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
@@ -59,11 +59,12 @@ export function getRenameActionsFromMangleNode(
   node: ts.Node,
 ): RenameAction {
   const validate = createNameValidator(checker, node);
-  const newName = symbolBuilder.create(validate);
-  if (!ts.isIdentifier(node)) {
-    throw new Error("unexpected node type" + node.kind);
+  if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
+    throw new Error("unexpected node type " + node.kind);
   }
   const originalName = node.text;
+  // create new symbol builder?
+  const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
   return {
     fileName: node.getSourceFile().fileName,
     original: originalName,

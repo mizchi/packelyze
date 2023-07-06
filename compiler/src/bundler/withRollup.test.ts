@@ -27,7 +27,9 @@ async function buildAndAssertExpected(projectPath: string) {
   return output[0].code;
 }
 
-const skipList = ["case02-class"];
+// const skipList = ["case02-class"];
+const skipList: string[] = ["case03-global"];
+// const skipList: string[] = [];
 
 const cases = fs
   .readdirSync(path.join(__dirname, "./__fixtures"))

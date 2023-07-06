@@ -153,7 +153,7 @@ export function getLocalsInScope(checker: ts.TypeChecker, globals: Set<ts.Symbol
 export function getLocalBindings(node: ts.Node) {
   const decls: ts.Declaration[] = [];
   const typeDecls: ts.Declaration[] = [];
-  const idents: ts.Identifier[] = [];
+  const idents: (ts.Identifier | ts.PrivateIdentifier)[] = [];
 
   ts.forEachChild(node, visit);
   return idents;
@@ -240,11 +240,12 @@ export function getLocalBindings(node: ts.Node) {
       | ts.BindingPattern
       | ts.BindingElement
       | ts.Identifier
+      | ts.PrivateIdentifier
       | ts.ArrayBindingElement
       | ts.ObjectBindingPattern
       | ts.PropertyName,
   ) {
-    if (ts.isIdentifier(node)) {
+    if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
       idents.push(node);
     }
     // TODO: consider computed property

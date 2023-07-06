@@ -1,8 +1,9 @@
+import "../__tests/globals";
 import { test, expect } from "vitest";
 import { createOneshotTestProgram } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 
-test("originalSymbolWalker", () => {
+test("symbolWalker", () => {
   const { checker, file } = createOneshotTestProgram(`
   type MyType = { p: number };
   export const v: number = 1;
@@ -50,7 +51,7 @@ test("originalSymbolWalker", () => {
   );
 });
 
-test("originalSymbolWalker # partial", () => {
+test("symbolWalker # partial", () => {
   const { checker, file } = createOneshotTestProgram(`
   type Partial = {
     fragment: {
@@ -88,7 +89,7 @@ test("originalSymbolWalker # partial", () => {
   );
 });
 
-test("originalSymbolWalker # function internal", () => {
+test("symbolWalker # function internal", () => {
   const { checker, file } = createOneshotTestProgram(`
   function f() {
     type Internal = {
@@ -125,7 +126,7 @@ test("originalSymbolWalker # function internal", () => {
   );
 });
 
-test("originalSymbolWalker # function internal partial", () => {
+test("symbolWalker # function internal partial", () => {
   const { checker, file } = createOneshotTestProgram(`
   function f() {
     type Internal = {
@@ -160,6 +161,87 @@ test("originalSymbolWalker # function internal partial", () => {
       // types
       "number",
       "{ v: number; }",
+    ]),
+  );
+});
+
+test("symbolWalker # class", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  type MyType = {
+    pubVal: {
+      pub: number;
+    };
+    privVal: {
+      pv: number;
+    };
+  };
+  export class C {
+    private v: MyType;
+    static sv: number = 1;
+    #hardPriv: number = 2;
+    private static svp: number = 2;
+    static sfoo() {
+      return this.spfoo();
+    }
+    private static spfoo() {
+      return this.svp;
+    }
+    constructor(v: number) {
+      this.#hardPriv;
+      this.v = { pubVal: { pub: v }, privVal: { pv: v + this.#hardPriv } };
+    }
+    foo() {
+      return this.v.pubVal;
+    }
+    private priv() {
+      return this.v.privVal;
+    }
+  }  
+  `);
+  const getSymbolWalker = createGetSymbolWalker(checker);
+  const symbolWalker = getSymbolWalker();
+
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const exported of exportedSymbols) {
+    symbolWalker.walkSymbol(exported);
+  }
+
+  const visited = symbolWalker.getVisited();
+  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
+  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+
+  // console.log(symbolSet);
+  // console.log(typeSet);
+
+  expect(symbolSet).toEqualSet(
+    new Set([
+      // symbols
+      "C",
+      "v",
+      "sv",
+      // "svp",
+      "sfoo",
+      // "pubVal",
+      // "privVal",
+      "foo",
+      // "priv",
+      "pub",
+      "prototype",
+    ]),
+  );
+  expect(typeSet).toEqualSet(
+    new Set([
+      // types
+      "number",
+      "typeof C",
+      "C",
+      "this",
+      // "MyType",
+      "{ pub: number; }",
+      // "{ priv: number; }",
+      "() => number",
+      "() => { pub: number; }",
+      // "() => { priv: number; }",
     ]),
   );
 });
