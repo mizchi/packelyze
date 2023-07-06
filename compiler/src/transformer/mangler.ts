@@ -1,9 +1,15 @@
 import ts from "typescript";
-import { getLocalBindings } from "../analyzer/scope";
 import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, collectRenameItems } from "./renamer";
+
+export type MangleRenameAction = {
+  fileName: string;
+  original: string;
+  to: string;
+  start: number;
+};
 
 export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.SourceFile) {
   const symbolWalker = createGetSymbolWalker(checker)();
@@ -46,18 +52,11 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
   return manglables;
 }
 
-export type RenameAction = {
-  fileName: string;
-  original: string;
-  to: string;
-  start: number;
-};
-
 export function getRenameActionsFromMangleNode(
   checker: ts.TypeChecker,
   symbolBuilder: SymbolBuilder,
   node: ts.Node,
-): RenameAction {
+): MangleRenameAction {
   const validate = createNameValidator(checker, node);
   if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
     throw new Error("unexpected node type " + node.kind);
@@ -99,4 +98,142 @@ export function createGetMangleRenameItems(
       return collectRenameItems(findRenameLocations, file, action.start, action.original, action.to) ?? [];
     });
   };
+}
+
+// get local rename candidates
+export function getLocalBindings(node: ts.Node) {
+  // const decls: ts.Declaration[] = [];
+  // const typeDecls: ts.Declaration[] = [];
+  const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
+
+  ts.forEachChild(node, visit);
+  return identifiers;
+
+  function visit(node: ts.Node) {
+    if (ts.isVariableStatement(node)) {
+      // stop if declare cont v: ...;
+      if (hasDeclareKeyword(node)) return;
+    }
+    if (ts.isVariableDeclaration(node)) {
+      // decls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isTypeAliasDeclaration(node)) {
+      // typeDecls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isInterfaceDeclaration(node)) {
+      // typeDecls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isClassDeclaration(node)) {
+      if (hasDeclareKeyword(node)) return;
+      // decls.push(node);
+      if (node.name) {
+        visitBinding(node.name);
+      }
+    }
+
+    // if (ts.isPropertyAssignment(node)) {
+    //   decls.push(node);
+    //   visitBinding(node.name);
+    // }
+
+    if (ts.isPropertyDeclaration(node)) {
+      // decls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isMethodDeclaration(node)) {
+      // decls.push(node);
+      visitBinding(node.name);
+    }
+
+    if (ts.isPropertySignature(node)) {
+      // typeDecls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isMethodSignature(node)) {
+      // typeDecls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isGetAccessorDeclaration(node)) {
+      // decls.push(node);
+      visitBinding(node.name);
+    }
+    if (ts.isSetAccessorDeclaration(node)) {
+      // decls.push(node);
+      visitBinding(node.name);
+    }
+
+    if (ts.isFunctionDeclaration(node)) {
+      if (hasDeclareKeyword(node)) return;
+      // decls.push(node);
+      if (node.name) {
+        visitBinding(node.name);
+      }
+    }
+    if (ts.isFunctionExpression(node)) {
+      if (node.name) {
+        visitBinding(node.name);
+      }
+    }
+
+    if (ts.isEnumDeclaration(node)) {
+      if (hasDeclareKeyword(node)) return;
+
+      // decls.push(node);
+      if (node.name) {
+        visitBinding(node.name);
+      }
+    }
+    if (ts.isModuleDeclaration(node)) {
+      if (hasDeclareKeyword(node)) return;
+
+      // decls.push(node);
+      if (node.name) {
+        visitBinding(node.name);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  function visitBinding(
+    node:
+      | ts.BindingPattern
+      | ts.BindingElement
+      | ts.Identifier
+      | ts.PrivateIdentifier
+      | ts.ArrayBindingElement
+      | ts.ObjectBindingPattern
+      | ts.PropertyName,
+  ) {
+    if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
+      identifiers.push(node);
+    }
+    // TODO: consider computed property
+    if (ts.isComputedPropertyName(node)) {
+      // visitBinding(node.expression);
+    }
+    if (ts.isBindingElement(node)) {
+      visitBinding(node.name);
+      if (node.propertyName) {
+        visitBinding(node.propertyName);
+      }
+    }
+    if (ts.isObjectBindingPattern(node)) {
+      for (const element of node.elements) {
+        visitBinding(element);
+      }
+    }
+    if (ts.isArrayBindingPattern(node)) {
+      for (const element of node.elements) {
+        visitBinding(element);
+      }
+    }
+  }
+}
+
+function hasDeclareKeyword(
+  node: ts.VariableStatement | ts.FunctionDeclaration | ts.ClassDeclaration | ts.ModuleDeclaration | ts.EnumDeclaration,
+): boolean {
+  return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword) ?? false;
 }

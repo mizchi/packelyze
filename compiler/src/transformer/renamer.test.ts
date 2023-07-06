@@ -1,7 +1,7 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, applyRewiredRenames, collectRenameItems, getRenamedChanges } from "./renamer";
+import { RenameItem, applyRenameItems, collectRenameItems, getRenamedChanges } from "./renamer";
 import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { findFirstNode } from "../nodeUtils";
 
@@ -116,7 +116,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyRewiredRenames(source.text, renameItems);
+    const [changed] = applyRenameItems(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -147,7 +147,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyRewiredRenames(source.text, renameItems);
+    const [changed] = applyRenameItems(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -196,7 +196,7 @@ export const x = {vvv};
         to: toName,
       };
     })!;
-    const [changed] = applyRewiredRenames(source.text, renameItems);
+    const [changed] = applyRenameItems(source.text, renameItems);
     expect(changed).toEqualFormatted(`
 const vvv_renamed: number = 1;
 export const x = {vvv: vvv_renamed};

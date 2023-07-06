@@ -8,7 +8,6 @@ import {
   findPrimaryNodes as findPrimaryAccesses,
   getClosestBlock,
   getExplicitGlobals,
-  getLocalBindings,
   getLocals,
   getLocalsInScope,
   getAllowedPureAccesses as getAllowedPureAccesses,
@@ -19,74 +18,6 @@ import {
 import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
 import path from "node:path";
-
-test("find all declarations", () => {
-  const { file } = createOneshotTestProgram(`
-  interface X {
-    x: number;
-  }
-  type Y = {
-    y: number;
-  }
-  class Z {
-    z: number;
-    cf() {}
-  }
-  const x = 1;
-  let y = 2, z = 3;
-  const [a, b, c: d] = [1, 2, 3];
-  const { i, j: k } = { i: 1, j: 2 };
-  function f(param: number) {
-    return param;
-  }
-  function Component({ p: q = 1 }, { p: number } ) {
-  }
-  type Nested = {
-    nested: {
-      x: number;
-      deep: {
-        y: number;
-        deepf(): void;
-      }
-    }
-  }
-  module M {}
-  `);
-  // const checker = program.getTypeChecker();
-
-  const idents = getLocalBindings(file);
-
-  const expected = new Set([
-    "X",
-    "Y",
-    "Z",
-    "x",
-    "y",
-    "z",
-    "a",
-    "b",
-    "c",
-    "d",
-    "f",
-    "param",
-    "Nested",
-    "nested",
-    "deep",
-    "cf",
-    "deepf",
-    "i",
-    "j",
-    "k",
-    "M",
-    "Component",
-    "p",
-    "q",
-  ]);
-  // expect(expected).includes
-  for (const ident of idents) {
-    expect(expected).includes(ident.getText());
-  }
-});
 
 test("scoped variables", () => {
   const { program, file } = createOneshotTestProgram(`

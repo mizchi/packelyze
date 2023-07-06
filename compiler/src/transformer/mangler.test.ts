@@ -1,5 +1,5 @@
 import "../__tests/globals";
-import { initTestLanguageServiceWithFiles } from "../__tests/testHarness";
+import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { RenameItem, collectRenameItems, getRenamedChanges } from "./renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { expect, test } from "vitest";
@@ -7,6 +7,7 @@ import {
   createGetMangleRenameItems,
   findExportedNodesFromRoot,
   findMangleNodes,
+  getLocalBindings,
   getRenameActionsFromMangleNode,
 } from "./mangler";
 
@@ -41,6 +42,74 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     expect(change.content).toEqualFormatted(expectedContent);
   }
 }
+
+test("find all declarations", () => {
+  const { file } = createOneshotTestProgram(`
+  interface X {
+    x: number;
+  }
+  type Y = {
+    y: number;
+  }
+  class Z {
+    z: number;
+    cf() {}
+  }
+  const x = 1;
+  let y = 2, z = 3;
+  const [a, b, c: d] = [1, 2, 3];
+  const { i, j: k } = { i: 1, j: 2 };
+  function f(param: number) {
+    return param;
+  }
+  function Component({ p: q = 1 }, { p: number } ) {
+  }
+  type Nested = {
+    nested: {
+      x: number;
+      deep: {
+        y: number;
+        deepf(): void;
+      }
+    }
+  }
+  module M {}
+  `);
+  // const checker = program.getTypeChecker();
+
+  const idents = getLocalBindings(file);
+
+  const expected = new Set([
+    "X",
+    "Y",
+    "Z",
+    "x",
+    "y",
+    "z",
+    "a",
+    "b",
+    "c",
+    "d",
+    "f",
+    "param",
+    "Nested",
+    "nested",
+    "deep",
+    "cf",
+    "deepf",
+    "i",
+    "j",
+    "k",
+    "M",
+    "Component",
+    "p",
+    "q",
+  ]);
+  // expect(expected).includes
+  for (const ident of idents) {
+    expect(expected).includes(ident.getText());
+  }
+});
 
 test("mangle", () => {
   const input = {
@@ -397,6 +466,57 @@ test("mangle with externals", () => {
         return this.q.x;
       }
     }
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+test("ignore local declare", () => {
+  const files = {
+    "src/index.ts": `
+    declare const vvv: number;
+    declare const aaa: {
+      bbb: number;
+    };
+    declare function fff(): number;
+    declare class Ccc {}
+    declare enum Eee {
+      A,
+      B,
+    }
+    declare module Mmm {
+      export type Foo = {
+        foo: number;
+      }
+      export const mmm = 1;
+    }
+
+    const zzz = 1;
+    export const yyy = vvv + zzz;
+  `,
+  };
+
+  const expected = {
+    "src/index.ts": `
+    declare const vvv: number;
+    declare const aaa: {
+      bbb: number;
+    };
+    declare function fff(): number;
+    declare class Ccc {}
+    declare enum Eee {
+      A,
+      B,
+    }
+    declare module Mmm {
+      export type Foo = {
+        foo: number;
+      }
+      export const mmm = 1;
+    }
+    const k = 1;
+    export const yyy = vvv + k;
     `,
   };
 

@@ -1,18 +1,18 @@
 import ts from "typescript";
-import { TraverseableNode } from "../nodeUtils";
+
+export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
 
 export type RenameItem = ts.RenameLocation & {
   source: string;
   to: string;
 };
 
-export type ScopedSymbol = {
-  symbol: ts.Symbol;
-  parentBlock: TraverseableNode;
-  isExportRelated?: boolean;
+export type ChangedItem = {
+  fileName: string;
+  content: string;
+  start?: number;
+  end?: number;
 };
-
-export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
 
 /** wrap service.findRenameLocations */
 export function collectRenameItems(
@@ -37,12 +37,6 @@ export function collectRenameItems(
   return renames;
 }
 
-export type ChangedItem = {
-  fileName: string;
-  content: string;
-  start?: number;
-  end?: number;
-};
 export function getRenamedChanges(
   renames: RenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
@@ -65,7 +59,7 @@ export function getRenamedChanges(
   for (const [fileName, renames] of rewiredRenames.entries()) {
     const targetFile = fileName;
     const current = readCurrentFile(targetFile)!;
-    const [renamed, changedStart, changedEnd] = applyRewiredRenames(current, renames);
+    const [renamed, changedStart, changedEnd] = applyRenameItems(current, renames);
     contents.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
     // changes.set(targetFile, [renamed, changedStart, changedEnd]);
     // applied.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
@@ -73,7 +67,7 @@ export function getRenamedChanges(
   return contents;
 }
 
-export function applyRewiredRenames(
+export function applyRenameItems(
   code: string,
   renames: RenameItem[],
   debug = false,
