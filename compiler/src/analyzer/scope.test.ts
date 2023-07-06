@@ -20,7 +20,7 @@ import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";
 import ts from "typescript";
 
 test("find all declarations", () => {
-  const { program, file } = createOneshotTestProgram(`
+  const { file } = createOneshotTestProgram(`
   interface X {
     x: number;
   }

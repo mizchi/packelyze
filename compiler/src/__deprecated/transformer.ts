@@ -1,6 +1,28 @@
 import { cloneNode } from "ts-clone-node";
 import ts from "typescript";
-import { AnyExportableDeclaration, isExportableDeclaration } from "../nodeUtils";
+// import { AnyExportableDeclaration, isExportableDeclaration } from "../nodeUtils";
+export type AnyExportableDeclaration =
+  | ts.VariableStatement
+  // | VariableDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.ClassDeclaration
+  | ts.FunctionDeclaration
+  | ts.EnumDeclaration
+  | ts.ModuleDeclaration;
+
+export function isExportableDeclaration(node: ts.Node): node is AnyExportableDeclaration {
+  return (
+    ts.isVariableStatement(node) ||
+    // ts.isVariableDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isFunctionDeclaration(node) ||
+    ts.isEnumDeclaration(node) ||
+    ts.isModuleDeclaration(node)
+  );
+}
 
 const hasExportKeyword = (node: AnyExportableDeclaration) =>
   node.modifiers?.find((mod) => mod.kind === ts.SyntaxKind.ExportKeyword);

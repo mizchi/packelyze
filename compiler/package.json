@@ -8,7 +8,7 @@
     "prepublishOnly": "pnpm build",
     "typecheck": "tsc -p . --noEmit",
     "build": "tsc -p .",
-    "test": "vitest --run src"
+    "test": "vitest src --run"
   },
   "exports": {
     ".": {
@@ -23,10 +23,7 @@
     "url": "https://github.com/mizchi/packelyze.git",
     "directory": "compiler"
   },
-  "files": [
-    "lib",
-    "src"
-  ],
+  "files": ["lib", "src"],
   "dependencies": {
     "colorette": "^2.0.20",
     "ts-clone-node": "^2.0.4",
