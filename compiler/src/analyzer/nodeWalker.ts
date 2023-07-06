@@ -76,11 +76,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         visitNode(param, depth + 1);
       }
     }
-    // if (ts.isMethodSignature(node)) {
-    //   for (const param of node.parameters) {
-    //     visitNode(param, depth + 1);
-    //   }
-    // }
 
     if (ts.isGetAccessor(node)) {
       for (const param of node.parameters) {

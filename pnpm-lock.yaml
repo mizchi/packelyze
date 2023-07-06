@@ -113,6 +113,9 @@ importers:
         specifier: 5.1.3
         version: 5.1.3
     devDependencies:
+      '@rollup/plugin-terser':
+        specifier: ^0.4.2
+        version: 0.4.2(rollup@3.21.7)
       '@types/prettier':
         specifier: ^2.7.3
         version: 2.7.3
@@ -122,6 +125,9 @@ importers:
       rollup:
         specifier: ^3.21.7
         version: 3.21.7
+      rollup-plugin-ts:
+        specifier: ^3.2.0
+        version: 3.2.0(rollup@3.21.7)(typescript@5.1.3)
       ts-morph:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1555,7 +1561,6 @@ packages:
     dependencies:
       helpertypes: 0.0.19
       typescript: 5.1.3
-    dev: false
 
   /concordance@5.0.4:
     resolution: {integrity: sha512-OAcsnTEYu1ARJqWVGwf4zh4JDfHZEaSNlNccFmt8YjB2l/n19/PF2viLINHc57vO4FKIAFl2FWASIGZZWZ2Kxw==}
@@ -3085,6 +3090,49 @@ packages:
       typescript: 4.9.5
     dev: true
 
+  /rollup-plugin-ts@3.2.0(rollup@3.21.7)(typescript@5.1.3):
+    resolution: {integrity: sha512-KkTLVifkUexEiAXS9VtSjDrjKr0TyusmNJpb2ZTAzI9VuPumSu4AktIaVNnwv70iUEitHwZtET7OAM+5n1u1tg==}
+    engines: {node: '>=14.9.0', npm: '>=7.0.0', pnpm: '>=3.2.0', yarn: '>=1.13'}
+    peerDependencies:
+      '@babel/core': '>=6.x || >=7.x'
+      '@babel/plugin-transform-runtime': '>=6.x || >=7.x'
+      '@babel/preset-env': '>=6.x || >=7.x'
+      '@babel/preset-typescript': '>=6.x || >=7.x'
+      '@babel/runtime': '>=6.x || >=7.x'
+      '@swc/core': '>=1.x'
+      '@swc/helpers': '>=0.2'
+      rollup: '>=1.x || >=2.x'
+      typescript: '>=3.2.x || >= 4.x'
+    peerDependenciesMeta:
+      '@babel/core':
+        optional: true
+      '@babel/plugin-transform-runtime':
+        optional: true
+      '@babel/preset-env':
+        optional: true
+      '@babel/preset-typescript':
+        optional: true
+      '@babel/runtime':
+        optional: true
+      '@swc/core':
+        optional: true
+      '@swc/helpers':
+        optional: true
+    dependencies:
+      '@rollup/pluginutils': 5.0.2(rollup@3.21.7)
+      '@wessberg/stringutil': 1.0.19
+      ansi-colors: 4.1.3
+      browserslist: 4.21.5
+      browserslist-generator: 2.0.3
+      compatfactory: 2.0.9(typescript@5.1.3)
+      crosspath: 2.0.0
+      magic-string: 0.27.0
+      rollup: 3.21.7
+      ts-clone-node: 2.0.4(typescript@5.1.3)
+      tslib: 2.5.0
+      typescript: 5.1.3
+    dev: true
+
   /rollup@3.21.7:
     resolution: {integrity: sha512-KXPaEuR8FfUoK2uHwNjxTmJ18ApyvD6zJpYv9FOJSqLStmt6xOY84l1IjK2dSolQmoXknrhEFRaPRgOPdqCT5w==}
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
@@ -3465,7 +3513,6 @@ packages:
     dependencies:
       compatfactory: 2.0.9(typescript@5.1.3)
       typescript: 5.1.3
-    dev: false
 
   /ts-morph@19.0.0:
     resolution: {integrity: sha512-D6qcpiJdn46tUqV45vr5UGM2dnIEuTGNxVhg0sk5NX11orcouwj6i1bMqZIz2mZTZB1Hcgy7C3oEVhAT+f6mbQ==}
@@ -3515,7 +3562,6 @@ packages:
     resolution: {integrity: sha512-XH627E9vkeqhlZFQuL+UsyAXEnibT0kWR2FWONlr4sTjvxyJYnyefgrkyECLzM5NenmKzRAy2rR/OlYLA1HkZw==}
     engines: {node: '>=14.17'}
     hasBin: true
-    dev: false
 
   /ua-parser-js@1.0.35:
     resolution: {integrity: sha512-fKnGuqmTBnIE+/KXSzCn4db8RTigUzw1AN0DmdU6hJovUTbYJKyqj+8Mt1c4VfRDnOVJnENmfYkIPZ946UrSAA==}

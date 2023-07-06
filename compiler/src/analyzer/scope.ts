@@ -1,5 +1,4 @@
 import ts from "typescript";
-import { toReadableNode } from "../nodeUtils";
 
 export type AnalyzedScope = {
   block: ts.Block | ts.SourceFile;

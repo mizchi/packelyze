@@ -522,3 +522,25 @@ test("ignore local declare", () => {
 
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
+
+test.skip("mangle with infer", () => {
+  const files = {
+    "src/index.ts": `
+    const vvv = {
+      aaa: 1,
+    };
+    export const yyy = vvv.aaa;
+  `,
+  };
+
+  const expected = {
+    "src/index.ts": `
+    const k = {
+      x: 1,
+    };
+    export const yyy = k.x;
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});

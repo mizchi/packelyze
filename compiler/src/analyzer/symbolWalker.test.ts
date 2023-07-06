@@ -2,6 +2,9 @@ import "../__tests/globals";
 import { test, expect } from "vitest";
 import { createOneshotTestProgram } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
+import { toReadableSymbol, toReadableType } from "../nodeUtils";
+import ts from "typescript";
+import { isSymbolInferredFromValueDeclaration } from "./infer";
 
 test("symbolWalker", () => {
   const { checker, file } = createOneshotTestProgram(`
@@ -244,4 +247,72 @@ test("symbolWalker # class", () => {
       // "() => { priv: number; }",
     ]),
   );
+});
+
+const vvv = {
+  aaa: 1,
+};
+export const yyy = vvv;
+export const zzz: { z: number } = { z: 1 };
+
+test.only("symbolWalker # infer", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  const vvv = {
+    aaa: 1,
+  };
+  export const yyy = vvv;
+
+  type Z = {
+    z: number;
+  }
+  export const zzz: Z = { z: 1 };
+  `);
+  const getSymbolWalker = createGetSymbolWalker(checker);
+  const symbolWalker = getSymbolWalker();
+
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const exported of exportedSymbols) {
+    symbolWalker.walkSymbol(exported);
+  }
+
+  const visited = symbolWalker.getVisited();
+  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
+  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+
+  expect(symbolSet).toEqualSet(
+    new Set([
+      // symbols
+      "yyy",
+      "zzz",
+      "z",
+      "__object",
+      "aaa",
+    ]),
+  );
+  expect(typeSet).toEqualSet(
+    new Set([
+      // types
+      "any",
+      "{ aaa: number; }",
+      "number",
+      "Z",
+    ]),
+  );
+
+  {
+    const ySymbol = exportedSymbols[0];
+    expect(isSymbolInferredFromValueDeclaration(checker, ySymbol)).toBe(true);
+    // const yType = checker.getTypeOfSymbol(ySymbol);
+    // console.log("symbol(yyy)", toReadableSymbol(ySymbol));
+    // console.log("type(yyy)", checker.typeToString(yType), toReadableType(yType));
+    // console.log("isTypeInferredFromValueDeclaration(yyy)", isSymbolInferredFromValueDeclaration(checker, ySymbol));
+  }
+  {
+    const zSymbol = exportedSymbols[1];
+    expect(isSymbolInferredFromValueDeclaration(checker, zSymbol)).toBe(false);
+    // const zType = checker.getTypeOfSymbol(zSymbol);
+    // console.log("symbol(zzz)", toReadableSymbol(zSymbol));
+    // console.log("type(zzz)", toReadableType(zType));
+    // console.log("isTypeInferredFromValueDeclaration(yyy)", isSymbolInferredFromValueDeclaration(checker, zSymbol));
+  }
 });

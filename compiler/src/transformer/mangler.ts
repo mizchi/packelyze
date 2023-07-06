@@ -3,6 +3,7 @@ import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker"
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, collectRenameItems } from "./renamer";
+import { toReadableNode } from "../nodeUtils";
 
 export type MangleRenameAction = {
   fileName: string;
@@ -135,7 +136,8 @@ export function getLocalBindings(node: ts.Node) {
     }
 
     // if (ts.isPropertyAssignment(node)) {
-    //   decls.push(node);
+    //   console.log("property assignment", toReadableNode(node));
+    //   // decls.push(node);
     //   visitBinding(node.name);
     // }
 
