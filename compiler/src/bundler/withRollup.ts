@@ -29,7 +29,12 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     "index.ts",
   );
 
-  const fileNames = service.getProgram()!.getRootFileNames();
+  // omit .d.ts for rename target
+  const fileNames = service
+    .getProgram()!
+    .getRootFileNames()
+    .filter((fname) => !fname.endsWith(".d.ts"));
+  // console.log("fnames", fileNames);
   const renameItems = fileNames.flatMap(getRenameItemsForFile);
   const changes = getRenamedChanges(renameItems, service.readSnapshotContent, normalizePath);
   for (const change of changes) {
