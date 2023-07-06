@@ -21,23 +21,23 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
   const manglables = new Set<ts.Node>();
   const fileExportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
   for (const identifier of bindingIdentifiers) {
+    // skip: type <Foo> = { ... }
     if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-      // skip: type <Foo> = { ... }
       continue;
     }
+    // skip: interface <Foo>{ ... }
     if (ts.isInterfaceDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-      // skip: interface <Foo>{ ... }
       continue;
     }
-    // if (exportedNodes.has(identifier.parent) || exportedNodes.has(identifier)) {
 
+    // node is related to export
     if (exportedNodes.has(identifier.parent)) {
-      // console.log("[skip exported]", identifier.getText());
       continue;
     }
+
+    // node is exported
     const symbol = checker.getSymbolAtLocation(identifier)!;
     if (fileExportedSymbols.includes(symbol)) {
-      // console.log("[skip exported]", identifier.getText());
       continue;
     }
 
