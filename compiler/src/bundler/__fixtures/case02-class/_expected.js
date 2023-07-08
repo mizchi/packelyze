@@ -20,4 +20,17 @@ class C {
     return this.q.x;
   }
 }
-export { C };
+class w {
+  c2() {
+    return this.g();
+  }
+  g() {
+    return 2;
+  }
+}
+class C3 extends w {
+  c3() {
+    return this.c2();
+  }
+}
+export { C, C3 };

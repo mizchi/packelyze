@@ -28,7 +28,7 @@ async function buildAndAssertExpected(projectPath: string) {
 }
 
 // const skipList = ["case02-class"];
-// const skipList: string[] = ["case03-global"];
+// const skipList: string[] = ["case-01", "case03-global", "case04-internal", "case05-effects"];
 const skipList: string[] = [];
 
 const cases = fs

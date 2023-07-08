@@ -10,6 +10,7 @@ type VisitableNode =
   | ts.ParameterDeclaration
   | ts.PropertyDeclaration
   | ts.MethodDeclaration
+  | ts.ClassDeclaration
   | ts.TypeNode
   | ts.GetAccessorDeclaration
   | ts.SetAccessorDeclaration;
@@ -20,6 +21,7 @@ function isVisitableNode(node: ts.Node): node is VisitableNode {
     ts.isTypeAliasDeclaration(node) ||
     ts.isInterfaceDeclaration(node) ||
     ts.isTypeLiteralNode(node) ||
+    ts.isClassDeclaration(node) ||
     ts.isPropertySignature(node) ||
     ts.isMethodSignature(node) ||
     ts.isMethodDeclaration(node) ||
@@ -57,16 +59,30 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
     }
     if (ts.isInterfaceDeclaration(node)) {
       // TODO
-      // for (const heritageClause of node.heritageClauses ?? []) {
-      //   for (const type of heritageClause.types) {
-      //     visitNode(type, depth + 1);
-      //   }
-      // }
+      for (const heritageClause of node.heritageClauses ?? []) {
+        for (const type of heritageClause.types) {
+          visitNode(type, depth + 1);
+        }
+      }
       for (const typeParam of node.typeParameters ?? []) {
         visitNode(typeParam, depth + 1);
       }
       for (const member of node.members) {
         visitNode(member, depth + 1);
+      }
+    }
+
+    if (ts.isClassDeclaration(node)) {
+      // for (const typeParam of node.typeParameters ?? []) {
+      //   visitNode(typeParam, depth + 1);
+      // }
+      // for (const member of node.members) {
+      //   visitNode(member, depth + 1);
+      // }
+      for (const heritageClause of node.heritageClauses ?? []) {
+        for (const type of heritageClause.types) {
+          visitNode(type, depth + 1);
+        }
       }
     }
 

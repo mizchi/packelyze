@@ -28,3 +28,18 @@ export class C {
     return this.v.privVal;
   }
 }
+
+class C2 {
+  c2() {
+    return this.c2_internal();
+  }
+  private c2_internal() {
+    return 2;
+  }
+}
+
+export class C3 extends C2 {
+  c3() {
+    return this.c2();
+  }
+}
