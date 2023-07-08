@@ -5,6 +5,8 @@ type VisitableNode =
   | ts.TypeLiteralNode
   | ts.PropertySignature
   | ts.MethodSignature
+  | ts.TypeAliasDeclaration
+  | ts.InterfaceDeclaration
   | ts.ParameterDeclaration
   | ts.PropertyDeclaration
   | ts.MethodDeclaration
@@ -15,6 +17,8 @@ type VisitableNode =
 function isVisitableNode(node: ts.Node): node is VisitableNode {
   return (
     ts.isTypeNode(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
     ts.isTypeLiteralNode(node) ||
     ts.isPropertySignature(node) ||
     ts.isMethodSignature(node) ||
@@ -42,13 +46,35 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
     if (!isVisitableNode(node)) return;
     if (visitedNodes.has(node)) return;
     visitedNodes.add(node);
-    // if (ts.isTypeNode(node)) {
-    //   // const type = checker.getTypeFromTypeNode(node);
-    //   // visitType(type, depth + 1);
-    // }
 
-    // skip prorperty assignment. it will be renamed by property signature
+    if (ts.isTypeAliasDeclaration(node)) {
+      for (const typeParam of node.typeParameters ?? []) {
+        visitNode(typeParam, depth + 1);
+      }
+      if (node.type) {
+        visitNode(node.type, depth + 1);
+      }
+    }
+    if (ts.isInterfaceDeclaration(node)) {
+      // TODO
+      // for (const heritageClause of node.heritageClauses ?? []) {
+      //   for (const type of heritageClause.types) {
+      //     visitNode(type, depth + 1);
+      //   }
+      // }
+      for (const typeParam of node.typeParameters ?? []) {
+        visitNode(typeParam, depth + 1);
+      }
+      for (const member of node.members) {
+        visitNode(member, depth + 1);
+      }
+    }
 
+    if (ts.isTypeLiteralNode(node)) {
+      for (const member of node.members) {
+        visitNode(member, depth + 1);
+      }
+    }
     if (ts.isParameter(node)) {
       if (node.type) {
         visitNode(node.type, depth + 1);
@@ -76,7 +102,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         visitNode(param, depth + 1);
       }
     }
-
     if (ts.isGetAccessor(node)) {
       for (const param of node.parameters) {
         visitNode(param, depth + 1);
@@ -86,6 +111,14 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       for (const param of node.parameters) {
         visitNode(param, depth + 1);
       }
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const prop of node.properties) {
+        visitNode(prop, depth + 1);
+      }
+    }
+    if (ts.isPropertyAssignment(node)) {
+      visitNode(node.name, depth + 1);
     }
   }
 }
