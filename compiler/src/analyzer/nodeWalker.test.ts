@@ -62,7 +62,6 @@ test("nodeWalker #2 class", () => {
   }
   const visited = walker.getVisited();
   const decls = findDeclarationsFromSymbolWalkerVisited(visited);
-
   expect(
     [...decls].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + format(node.getText());

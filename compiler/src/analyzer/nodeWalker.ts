@@ -61,7 +61,7 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       // TODO
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          visitNode(type, depth + 1);
+          visitNode(type.expression, depth + 1);
         }
       }
       for (const typeParam of node.typeParameters ?? []) {
@@ -81,7 +81,7 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       // }
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          visitNode(type, depth + 1);
+          visitNode(type.expression, depth + 1);
         }
       }
     }
