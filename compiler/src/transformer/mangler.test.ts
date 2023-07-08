@@ -581,21 +581,10 @@ test("keep types", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-// export type BodyType = {
-//   xxx: number;
-// };
-// declare function fetch(url: string, options: { method: string, body: string }): Promise<any>;
-// declare function stringify<T>(v: T): string;
-// export function run(input: number) {
-//   const body: BodyType = { xxx: input };
-//   fetch("/xxx", { method: "POST", body: stringify(body) });
-// }
-
 test("keep sideEffect types", () => {
-  // TODO: omit export
   const files = {
     "src/index.ts": `
-    export type BodyType = {
+    type BodyType = {
       xxx: number;
     };
     export function run(i: number) {
@@ -606,7 +595,7 @@ test("keep sideEffect types", () => {
   };
   const expected = {
     "src/index.ts": `
-    export type BodyType = {
+    type BodyType = {
       xxx: number;
     };
     export function run(i: number) {
@@ -619,7 +608,7 @@ test("keep sideEffect types", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test.skip("mangle with infer", () => {
+test.skip("mangle (or assert) with infer", () => {
   const files = {
     "src/index.ts": `
     const vvv = {

@@ -20,8 +20,8 @@ export function findExportedNodesFromRoot(checker: ts.TypeChecker, symbolWalker:
   for (const exported of exportedSymbols) {
     symbolWalker.walkSymbol(exported);
   }
-  const visited = symbolWalker.getVisited();
-  return findDeclarationsFromSymbolWalkerVisited(visited);
+  // const visited = symbolWalker.getVisited();
+  // return findDeclarationsFromSymbolWalkerVisited(visited);
 }
 
 export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
@@ -124,18 +124,30 @@ export function createGetMangleRenameItems(
 ): (fileName: string) => MangleRenameAction[] {
   const root = getSourceFile(entry)!;
   const symbolWalker = createGetSymbolWalker(checker)();
-  const exportedNodes = findExportedNodesFromRoot(checker, symbolWalker, root);
+  findExportedNodesFromRoot(checker, symbolWalker, root);
   const symbolBuilder = createSymbolBuilder();
   return (target: string) => {
     symbolBuilder.reset();
     const file = getSourceFile(target)!;
 
+    // const symbolWalker = createGetSymbolWalker(checker)();
     // const childSymbolWalker = symbolWalker.createChildSymbolWalker();
-    // const effectNodes = findSideEffectSymbols(checker, file);
-
+    const effectNodes = findSideEffectSymbols(checker, file);
+    for (const node of effectNodes) {
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      const type = checker.getTypeAtLocation(node);
+      // const type = checker.getTypeOfSymbolAtLocation(symbol, node);
+      symbolWalker.walkType(type);
+    }
     // const newExportedNodes = new Set<ts.Node>(
     //   [...exportedNodes, ...effectNodes]
     // );
+    const visited = symbolWalker.getVisited();
+    const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
+
     const nodes = findMangleNodes(checker, file, exportedNodes);
     return [...nodes].flatMap((node) => {
       return getRenameActionFromMangleNode(checker, symbolBuilder, node);
