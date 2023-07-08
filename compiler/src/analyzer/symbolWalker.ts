@@ -5,8 +5,8 @@ import { getOwnValues } from "../utils";
 // import { toReadableSymbol } from "../nodeUtils";
 
 export type SymbolWalkerVisited = {
-  visitedTypes: readonly ts.Type[];
-  visitedSymbols: readonly ts.Symbol[];
+  visitedTypes: ts.Type[];
+  visitedSymbols: ts.Symbol[];
 };
 
 // ---- TypeScript internal types ----
@@ -19,6 +19,7 @@ export interface SymbolWalker {
   // additional
   getVisited(): SymbolWalkerVisited;
   clear(): void;
+  createChildSymbolWalker(): SymbolWalker;
 }
 
 // An instantiated anonymous type has a target and a mapper
@@ -50,11 +51,11 @@ interface SymbolWithId extends ts.Symbol {
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
 // added: skip private/hard-private declaration in class
-export function createGetSymbolWalker(checker: ts.TypeChecker) {
+export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolWalkerVisited) {
   return getSymbolWalker;
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
-    const visitedTypes: ts.Type[] = []; // Sparse array from id to type
-    const visitedSymbols: ts.Symbol[] = []; // Sparse array from id to symbol
+    const visitedTypes: ts.Type[] = visited?.visitedTypes ? [...visited.visitedTypes] : []; // Sparse array from id to type
+    const visitedSymbols: ts.Symbol[] = visited?.visitedSymbols ? [...visited.visitedSymbols] : []; // Sparse array from id to symbol
     // cached symbol id incrementer
     let symbolId = 0;
 
@@ -71,6 +72,13 @@ export function createGetSymbolWalker(checker: ts.TypeChecker) {
       },
       walkSymbol: (symbol) => {
         visitSymbol(symbol);
+      },
+      createChildSymbolWalker: () => {
+        const visited = { visitedTypes: [...visitedTypes], visitedSymbols: [...visitedSymbols] };
+        return createGetSymbolWalker(checker, visited)(accept);
+
+        // const childVisitedTypes: ts.Type[] = [...visitedTypes];
+        // const childVisitedSymbols: ts.Symbol[] = [...visitedSymbols];
       },
     };
 

@@ -1,7 +1,7 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, applyRenameItems, collectRenameItems, getRenamedChanges } from "./renamer";
+import { RenameItem, applyRenameItems, findRenameItems, getRenamedChanges } from "./renamer";
 import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { findFirstNode } from "../nodeUtils";
 
@@ -16,18 +16,18 @@ test("batch renaming", () => {
   const xSymbol = localVariables.find((s) => s.name === "x")!;
 
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const xRenameLocs = collectRenameItems(
+  const xRenameLocs = findRenameItems(
     service.findRenameLocations,
-    sourceFile,
+    sourceFile.fileName,
     xSymbol.valueDeclaration!.getStart(),
     xSymbol.name,
     "x_changed",
   );
 
   const ySymbol = localVariables.find((s) => s.name === "y")!;
-  const yRenameLocs = collectRenameItems(
+  const yRenameLocs = findRenameItems(
     service.findRenameLocations,
-    sourceFile,
+    sourceFile.fileName,
     ySymbol.valueDeclaration!.getStart(),
     ySymbol.name,
     "y_changed",
@@ -70,7 +70,7 @@ test("shorthand", () => {
   const hit = newSource.text.search(regex);
   const sourceFile = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const renames = collectRenameItems(service.findRenameLocations, sourceFile, hit, "y", "y_renamed");
+  const renames = findRenameItems(service.findRenameLocations, sourceFile.fileName, hit, "y", "y_renamed");
 
   const changedFiles = getRenamedChanges(renames!, service.readSnapshotContent, normalizePath);
   for (const change of changedFiles) {

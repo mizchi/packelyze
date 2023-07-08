@@ -15,10 +15,10 @@ export type ChangedItem = {
 };
 
 /** wrap service.findRenameLocations */
-export function collectRenameItems(
+export function findRenameItems(
   // service: ts.LanguageService,
   findRenameLocations: FindRenameLocations,
-  file: ts.SourceFile,
+  fileName: string,
   pos: number,
   original: string,
   to: string,
@@ -27,7 +27,7 @@ export function collectRenameItems(
     allowRenameOfImportPath: true,
   },
 ): RenameItem[] | undefined {
-  const renames = findRenameLocations(file.fileName, pos, false, false, prefs) as RenameItem[] | undefined;
+  const renames = findRenameLocations(fileName, pos, false, false, prefs) as RenameItem[] | undefined;
   if (!renames) return;
   // check is export related
   for (const rename of renames) {

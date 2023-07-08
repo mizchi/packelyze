@@ -2,7 +2,7 @@
   "compilerOptions": {
     "stripInternal": true,
     "target": "es2022",
-    "lib": ["ES2015"],
+    "lib": ["ES2015", "DOM"],
     "types": [],
     "module": "ESNext",
     "rootDir": "./src",

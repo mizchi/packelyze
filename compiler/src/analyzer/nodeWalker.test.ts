@@ -31,13 +31,32 @@ test("nodeWalker", () => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + node.getText();
     }),
   ).toEqual([
+    `(TypeAliasDeclaration)export type MyType = {
+    ref: LocalRef,
+    f1(): void;
+    f2(): { fx: 1 }
+  };`,
+    `(TypeLiteral){
+    ref: LocalRef,
+    f1(): void;
+    f2(): { fx: 1 }
+  }`,
     "(PropertySignature)ref: LocalRef,",
     "(TypeReference)LocalRef",
-    "(PropertySignature)local: number;",
-    "(NumberKeyword)number",
     "(MethodSignature)f1(): void;",
     "(MethodSignature)f2(): { fx: 1 }",
+    "(PropertySignature)local: number;",
+    "(NumberKeyword)number",
     "(PropertySignature)fx: 1",
     "(LiteralType)1",
   ]);
+  //   "(PropertySignature)ref: LocalRef,",
+  //   "(TypeReference)LocalRef",
+  //   "(PropertySignature)local: number;",
+  //   "(NumberKeyword)number",
+  //   "(MethodSignature)f1(): void;",
+  //   "(MethodSignature)f2(): { fx: 1 }",
+  //   "(PropertySignature)fx: 1",
+  //   "(LiteralType)1",
+  // ]);
 });

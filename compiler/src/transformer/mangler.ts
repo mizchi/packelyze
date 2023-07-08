@@ -1,19 +1,21 @@
 import ts from "typescript";
 import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker";
-import { createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { SymbolWalker, createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
-import { FindRenameLocations, collectRenameItems } from "./renamer";
-import { toReadableNode } from "../nodeUtils";
+import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
+import { toReadableNode, toReadableSymbol } from "../nodeUtils";
+import { findSideEffectSymbols } from "../analyzer/effects";
 
 export type MangleRenameAction = {
   fileName: string;
   original: string;
   to: string;
   start: number;
+  isAssignment: boolean;
 };
 
-export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.SourceFile) {
-  const symbolWalker = createGetSymbolWalker(checker)();
+export function findExportedNodesFromRoot(checker: ts.TypeChecker, symbolWalker: SymbolWalker, root: ts.SourceFile) {
+  // const symbolWalker = createGetSymbolWalker(checker)();
   const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
   for (const exported of exportedSymbols) {
     symbolWalker.walkSymbol(exported);
@@ -23,10 +25,16 @@ export function findExportedNodesFromRoot(checker: ts.TypeChecker, root: ts.Sour
 }
 
 export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
-  const bindingIdentifiers = getLocalBindings(file);
+  const bindingIdentifiers = getLocalBindings(checker, file);
 
   const manglables = new Set<ts.Node>();
   const fileExportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+
+  // console.log(
+  //   "findMangleNodes:exports",
+  //   [...fileExportedSymbols].map((s) => toReadableSymbol(s)),
+  //   fileExportedSymbols[0].declarations?.[0] && toReadableNode(fileExportedSymbols[0].declarations?.[0]!),
+  // );
   for (const identifier of bindingIdentifiers) {
     // skip: type <Foo> = { ... }
     if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
@@ -53,7 +61,31 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
   return manglables;
 }
 
-export function getRenameActionsFromMangleNode(
+export function expandRenameActionsToSafeRenameItems(
+  findRenameLocations: FindRenameLocations,
+  actions: MangleRenameAction[],
+) {
+  const preActions = actions.filter((x) => !x.isAssignment);
+
+  const postActions = actions.filter((x) => x.isAssignment);
+
+  const preItems: RenameItem[] = preActions.flatMap((action) => {
+    const renames = findRenameItems(findRenameLocations, action.fileName, action.start, action.original, action.to);
+    return renames ?? [];
+  });
+  const preTouches = new Set(preItems.map((x) => x.textSpan.start));
+  const postItems: RenameItem[] = postActions.flatMap((action) => {
+    // already renamed by other action (e.g. PropertySignature)
+    if (preTouches.has(action.start)) {
+      return [];
+    }
+    const renames = findRenameItems(findRenameLocations, action.fileName, action.start, action.original, action.to);
+    return renames ?? [];
+  });
+  return [...preItems, ...postItems];
+}
+
+export function getRenameActionFromMangleNode(
   checker: ts.TypeChecker,
   symbolBuilder: SymbolBuilder,
   node: ts.Node,
@@ -65,11 +97,14 @@ export function getRenameActionsFromMangleNode(
   const originalName = node.text;
   // create new symbol builder?
   const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
+
+  const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
   return {
     fileName: node.getSourceFile().fileName,
     original: originalName,
     to: newName,
     start: node.getStart(),
+    isAssignment: isPropertyAssignment,
   };
 }
 
@@ -83,26 +118,34 @@ export function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
 
 export function createGetMangleRenameItems(
   checker: ts.TypeChecker,
-  findRenameLocations: FindRenameLocations,
+  // findRenameLocations: FindRenameLocations,
   getSourceFile: (fileName: string) => ts.SourceFile | undefined,
   entry: string,
-) {
+): (fileName: string) => MangleRenameAction[] {
   const root = getSourceFile(entry)!;
-  const exportedNodes = findExportedNodesFromRoot(checker, root);
+  const symbolWalker = createGetSymbolWalker(checker)();
+  const exportedNodes = findExportedNodesFromRoot(checker, symbolWalker, root);
   const symbolBuilder = createSymbolBuilder();
   return (target: string) => {
     symbolBuilder.reset();
     const file = getSourceFile(target)!;
+
+    // const childSymbolWalker = symbolWalker.createChildSymbolWalker();
+    // const effectNodes = findSideEffectSymbols(checker, file);
+
+    // const newExportedNodes = new Set<ts.Node>(
+    //   [...exportedNodes, ...effectNodes]
+    // );
     const nodes = findMangleNodes(checker, file, exportedNodes);
     return [...nodes].flatMap((node) => {
-      const action = getRenameActionsFromMangleNode(checker, symbolBuilder, node);
-      return collectRenameItems(findRenameLocations, file, action.start, action.original, action.to) ?? [];
+      return getRenameActionFromMangleNode(checker, symbolBuilder, node);
+      // return collectRenameItems(findRenameLocations, file, action.start, action.original, action.to) ?? [];
     });
   };
 }
 
 // get local rename candidates
-export function getLocalBindings(node: ts.Node) {
+export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
   // const decls: ts.Declaration[] = [];
   // const typeDecls: ts.Declaration[] = [];
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
@@ -136,7 +179,7 @@ export function getLocalBindings(node: ts.Node) {
     }
 
     // if (ts.isPropertyAssignment(node)) {
-    //   console.log("property assignment", toReadableNode(node));
+    //   // console.log("property assignment", toReadableNode(node));
     //   // decls.push(node);
     //   visitBinding(node.name);
     // }

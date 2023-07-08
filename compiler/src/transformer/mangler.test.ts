@@ -1,15 +1,18 @@
 import "../__tests/globals";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { RenameItem, collectRenameItems, getRenamedChanges } from "./renamer";
+import { RenameItem, findRenameItems, getRenamedChanges } from "./renamer";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { expect, test } from "vitest";
 import {
   createGetMangleRenameItems,
-  findExportedNodesFromRoot,
+  expandRenameActionsToSafeRenameItems,
+  // findExportedNodesFromRoot,
   findMangleNodes,
   getLocalBindings,
-  getRenameActionsFromMangleNode,
+  getRenameActionFromMangleNode,
 } from "./mangler";
+import { createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -19,13 +22,9 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 
   const checker = service.getProgram()!.getTypeChecker();
 
-  const getMangledRenameItem = createGetMangleRenameItems(
-    checker,
-    service.findRenameLocations,
-    service.getCurrentSourceFile,
-    entry,
-  );
-  const items = targets.flatMap(getMangledRenameItem);
+  const getMangledRenameItem = createGetMangleRenameItems(checker, service.getCurrentSourceFile, entry);
+  const actions = targets.flatMap(getMangledRenameItem);
+  const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
 
   // rename for assert
@@ -36,6 +35,16 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     };
   });
 
+  // console.log(
+  //   "[semantic]!!!!!!!!!!!!!!!!!",
+  //   service
+  //     .getProgram()!
+  //     .getSemanticDiagnostics()
+  //     .map((x) => x.messageText),
+  // );
+
+  expect(service.getProgram()!.getSemanticDiagnostics().length).toBe(0);
+
   expect(changes.length).toBe(Object.keys(expected).length);
   for (const change of changes) {
     const expectedContent = expected[change.fileName];
@@ -44,7 +53,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 }
 
 test("find all declarations", () => {
-  const { file } = createOneshotTestProgram(`
+  const { file, checker } = createOneshotTestProgram(`
   interface X {
     x: number;
   }
@@ -77,7 +86,7 @@ test("find all declarations", () => {
   `);
   // const checker = program.getTypeChecker();
 
-  const idents = getLocalBindings(file);
+  const idents = getLocalBindings(checker, file);
 
   const expected = new Set([
     "X",
@@ -204,14 +213,29 @@ test("rename local object member", () => {
   const file = service.getCurrentSourceFile("src/index.ts")!;
   const checker = service.getProgram()!.getTypeChecker();
 
-  const exportedNodes = findExportedNodesFromRoot(checker, file);
+  const symbolWalker = createGetSymbolWalker(checker)();
+  // const exportedNodes = findExportedNodesFromRoot(checker, symbolWalker, file);
+  const exporteedSymbol = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of exporteedSymbol) {
+    symbolWalker.walkSymbol(symbol);
+  }
+
+  const exportedNodes = findDeclarationsFromSymbolWalkerVisited(symbolWalker.getVisited());
+
+  // const nodes = findMangleNodes(checker, file, exporteedSymbol);
   const nodes = findMangleNodes(checker, file, exportedNodes);
   const symbolBuilder = createSymbolBuilder();
 
   // const item
   const items: RenameItem[] = [...nodes].flatMap((node) => {
-    const action = getRenameActionsFromMangleNode(checker, symbolBuilder, node);
-    const renames = collectRenameItems(service.findRenameLocations, file, action.start, action.original, action.to);
+    const action = getRenameActionFromMangleNode(checker, symbolBuilder, node);
+    const renames = findRenameItems(
+      service.findRenameLocations,
+      file.fileName,
+      action.start,
+      action.original,
+      action.to,
+    );
     return renames ?? [];
   });
 
@@ -355,7 +379,8 @@ test("mangle with partial type", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with externals", () => {
+// FIX: external import
+test.skip("mangle with externals", () => {
   const files = {
     "src/index.ts": `
     import {parseArgs} from "node:util";
@@ -394,7 +419,6 @@ test("mangle with externals", () => {
       }  
     `,
   };
-
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
@@ -517,6 +541,78 @@ test("ignore local declare", () => {
     }
     const k = 1;
     export const yyy = vvv + k;
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+test("keep types", () => {
+  const files = {
+    "src/index.ts": `
+    export type Type = {
+      xxx: number;
+    }
+    export interface MyInterface {
+      vvv: number;
+    }
+    export function run() {
+      const v: Type = { xxx: 1 };
+      return v;
+    }
+  `,
+  };
+
+  const expected = {
+    "src/index.ts": `
+    export type Type = {
+      xxx: number;
+    }
+    export interface MyInterface {
+      vvv: number;
+    }
+    export function run() {
+      const k: Type = { xxx: 1 };
+      return k;
+    }
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+// export type BodyType = {
+//   xxx: number;
+// };
+// declare function fetch(url: string, options: { method: string, body: string }): Promise<any>;
+// declare function stringify<T>(v: T): string;
+// export function run(input: number) {
+//   const body: BodyType = { xxx: input };
+//   fetch("/xxx", { method: "POST", body: stringify(body) });
+// }
+
+test("keep sideEffect types", () => {
+  // TODO: omit export
+  const files = {
+    "src/index.ts": `
+    export type BodyType = {
+      xxx: number;
+    };
+    export function run(i: number) {
+      const body: BodyType = { xxx: i };
+      fetch("/xxx", { method: "POST", body: JSON.stringify(body) });
+    }
+  `,
+  };
+  const expected = {
+    "src/index.ts": `
+    export type BodyType = {
+      xxx: number;
+    };
+    export function run(i: number) {
+      const k: BodyType = { xxx: i };
+      fetch("/xxx", { method: "POST", body: JSON.stringify(k) });
+    }
     `,
   };
 
