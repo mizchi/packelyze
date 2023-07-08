@@ -28,19 +28,11 @@ test("nodeWalker", () => {
   const collected = findDeclarationsFromSymbolWalkerVisited(visited);
   expect(
     [...collected].map((node) => {
-      return "(" + ts.SyntaxKind[node.kind] + ")" + node.getText();
+      return "(" + ts.SyntaxKind[node.kind] + ")" + format(node.getText());
     }),
   ).toEqual([
-    `(TypeAliasDeclaration)export type MyType = {
-    ref: LocalRef,
-    f1(): void;
-    f2(): { fx: 1 }
-  };`,
-    `(TypeLiteral){
-    ref: LocalRef,
-    f1(): void;
-    f2(): { fx: 1 }
-  }`,
+    `(TypeAliasDeclaration)export type MyType = { ref: LocalRef, f1(): void; f2(): { fx: 1 } };`,
+    `(TypeLiteral){ ref: LocalRef, f1(): void; f2(): { fx: 1 } }`,
     "(PropertySignature)ref: LocalRef,",
     "(TypeReference)LocalRef",
     "(MethodSignature)f1(): void;",
@@ -50,13 +42,39 @@ test("nodeWalker", () => {
     "(PropertySignature)fx: 1",
     "(LiteralType)1",
   ]);
-  //   "(PropertySignature)ref: LocalRef,",
-  //   "(TypeReference)LocalRef",
-  //   "(PropertySignature)local: number;",
-  //   "(NumberKeyword)number",
-  //   "(MethodSignature)f1(): void;",
-  //   "(MethodSignature)f2(): { fx: 1 }",
-  //   "(PropertySignature)fx: 1",
-  //   "(LiteralType)1",
-  // ]);
 });
+
+test("nodeWalker #2 class", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  interface I {
+    f1(): number;
+  }
+  export class X implements I {
+    f1() {
+      return 1;
+    }
+  }
+`);
+  const walker = createGetSymbolWalker(checker)();
+  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of symbols) {
+    walker.walkSymbol(symbol);
+  }
+  const visited = walker.getVisited();
+  const decls = findDeclarationsFromSymbolWalkerVisited(visited);
+
+  expect(
+    [...decls].map((node) => {
+      return "(" + ts.SyntaxKind[node.kind] + ")" + format(node.getText());
+    }),
+  ).toEqual([
+    "(ClassDeclaration)export class X implements I { f1() { return 1; } }",
+    "(MethodDeclaration)f1() { return 1; }",
+    "(InterfaceDeclaration)interface I { f1(): number; }",
+    "(MethodSignature)f1(): number;",
+  ]);
+});
+
+function format(code: string) {
+  return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
+}
