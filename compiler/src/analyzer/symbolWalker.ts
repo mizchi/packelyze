@@ -188,6 +188,21 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
       const baseTypes = checker.getBaseTypes(interfaceT);
       forEach(baseTypes, visitType);
       visitType(interfaceT.thisType);
+
+      // added: for class/interface implements
+      if (interfaceT.symbol) {
+        for (const decl of interfaceT.symbol.declarations ?? []) {
+          if (decl && (ts.isClassDeclaration(decl) || ts.isInterfaceDeclaration(decl))) {
+            for (const heritageClause of decl.heritageClauses ?? []) {
+              for (const type of heritageClause.types) {
+                const symbol = checker.getSymbolAtLocation(type.expression);
+                visitSymbol(symbol);
+              }
+            }
+          }
+        }
+      }
+      // added: end
     }
 
     function visitObjectType(type: ts.ObjectType): void {
