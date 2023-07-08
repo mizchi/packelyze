@@ -255,7 +255,7 @@ const vvv = {
 export const yyy = vvv;
 export const zzz: { z: number } = { z: 1 };
 
-test.only("symbolWalker # infer", () => {
+test("symbolWalker # infer", () => {
   const { checker, file } = createOneshotTestProgram(`
   const vvv = {
     aaa: 1,
