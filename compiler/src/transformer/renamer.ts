@@ -4,7 +4,6 @@ import { BatchRenameLocation, FileChangeResult } from "./types";
 
 /** wrap service.findRenameLocations */
 export function findRenameItems(
-  // service: ts.LanguageService,
   findRenameLocations: FindRenameLocations,
   fileName: string,
   pos: number,
@@ -45,13 +44,13 @@ export function getRenamedFileChanges(
   for (const [fileName, renames] of rewiredRenames.entries()) {
     const targetFile = fileName;
     const current = readCurrentFile(targetFile)!;
-    const [renamed, changedStart, changedEnd] = applyBatchRenameItems(current, renames);
+    const [renamed, changedStart, changedEnd] = applyBatchRenameLocations(current, renames);
     results.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
   }
   return results;
 }
 
-export function applyBatchRenameItems(
+export function applyBatchRenameLocations(
   code: string,
   renames: BatchRenameLocation[],
   debug = false,

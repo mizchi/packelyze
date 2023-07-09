@@ -1,10 +1,15 @@
 import ts from "typescript";
 
+/**
+ * to batch rename, we need to know the original text and the new text.
+ */
 export type BatchRenameLocation = ts.RenameLocation & {
   original: string;
   to: string;
 };
-
+/**
+ * to update partial nodes, keep start and end
+ */
 export type FileChangeResult = {
   fileName: string;
   content: string;
@@ -17,6 +22,7 @@ export type MangleAction = {
   original: string;
   to: string;
   start: number;
+  // TODO: now assigment is ignored
   isAssignment: boolean;
 };
 

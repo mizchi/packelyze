@@ -1,8 +1,8 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { applyBatchRenameItems, findRenameItems, getRenamedFileChanges } from "./renamer";
-import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
+import { applyBatchRenameLocations, findRenameItems, getRenamedFileChanges } from "./renamer";
+import { createTestLanguageService } from "../__tests/testHarness";
 import { findFirstNode } from "../typescript/utils";
 import { BatchRenameLocation } from "./types";
 
@@ -61,7 +61,7 @@ test("batch renaming", () => {
   `);
 });
 
-test("shorthand", () => {
+test("TS: rename shorthand", () => {
   const { service, normalizePath } = createTestLanguageService();
 
   service.writeSnapshotContent("src/index.ts", "function foo(): { y: 1 } { const y = 1; return { y } }");
@@ -117,7 +117,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyBatchRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameLocations(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -148,7 +148,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyBatchRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameLocations(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -197,7 +197,7 @@ export const x = {vvv};
         to: toName,
       };
     })!;
-    const [changed] = applyBatchRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameLocations(source.text, renameItems);
     expect(changed).toEqualFormatted(`
 const vvv_renamed: number = 1;
 export const x = {vvv: vvv_renamed};

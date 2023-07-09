@@ -12,6 +12,10 @@ import {
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 
+function formatCode(code: string) {
+  return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
+}
+
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
   const { service, normalizePath, projectPath } = initTestLanguageServiceWithFiles(files);
@@ -128,7 +132,77 @@ test("find all declarations", () => {
   }
 });
 
-test("mangle", () => {
+test("findDeclarationsFromSymbolWalkerVisited", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  type Hidden = {
+    __hidden: number;
+  }
+  type LocalRef = {
+    local: number;
+  }
+  export type MyType = {
+    ref: LocalRef,
+    f1(): void;
+    f2(): { fx: 1 }
+  };
+  export const myValue: MyType = { ref: { local: 1 }, f1() {}, f2() { return { fx: 1 } } };
+`);
+  const walker = createGetSymbolWalker(checker)();
+  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of symbols) {
+    walker.walkSymbol(symbol);
+  }
+  const visited = walker.getVisited();
+  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
+  expect(
+    [...collected].map((node) => {
+      return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
+    }),
+  ).toEqual([
+    `(TypeAliasDeclaration)export type MyType = { ref: LocalRef, f1(): void; f2(): { fx: 1 } };`,
+    `(TypeLiteral){ ref: LocalRef, f1(): void; f2(): { fx: 1 } }`,
+    "(PropertySignature)ref: LocalRef,",
+    "(TypeReference)LocalRef",
+    "(MethodSignature)f1(): void;",
+    "(MethodSignature)f2(): { fx: 1 }",
+    "(PropertySignature)local: number;",
+    "(NumberKeyword)number",
+    "(PropertySignature)fx: 1",
+    "(LiteralType)1",
+  ]);
+});
+
+test("nodeWalker #2 class", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  interface I {
+    f1(): number;
+  }
+  export class X implements I {
+    f1() {
+      return 1;
+    }
+  }
+`);
+  const walker = createGetSymbolWalker(checker)();
+  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of symbols) {
+    walker.walkSymbol(symbol);
+  }
+  const visited = walker.getVisited();
+  const decls = findDeclarationsFromSymbolWalkerVisited(visited);
+  expect(
+    [...decls].map((node) => {
+      return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
+    }),
+  ).toEqual([
+    "(ClassDeclaration)export class X implements I { f1() { return 1; } }",
+    "(MethodDeclaration)f1() { return 1; }",
+    "(InterfaceDeclaration)interface I { f1(): number; }",
+    "(MethodSignature)f1(): number;",
+  ]);
+});
+
+test("mangle: non-exported nodes", () => {
   const input = {
     "src/index.ts": `
       type Local = {
@@ -204,7 +278,7 @@ test("mangle: multi files", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("rename local object member", () => {
+test("mangle: local object member", () => {
   const files = {
     "src/index.ts": `
       type Local = {
@@ -235,7 +309,7 @@ test("rename local object member", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with complex", () => {
+test("mangle: with complex", () => {
   const files = {
     "src/index.ts": `
       export { sub } from "./sub";
@@ -285,7 +359,7 @@ test("mangle with complex", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with scope internal", () => {
+test("mangle: with scope internal", () => {
   const files = {
     "src/index.ts": `
   export function getInternal<T1 extends object>(arg: T1) {
@@ -314,7 +388,7 @@ test("mangle with scope internal", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with partial type", () => {
+test("mangle: with partial type", () => {
   const files = {
     "src/index.ts": `type Exp = {
     public: {
@@ -396,7 +470,7 @@ test.skip("mangle with externals", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with externals", () => {
+test("mangle: with externals", () => {
   const files = {
     "src/index.ts": `
     type MyType = {
@@ -470,7 +544,7 @@ test("mangle with externals", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("ignore local declare", () => {
+test("mangle: ignore local declare", () => {
   const files = {
     "src/index.ts": `
     declare const vvv: number;
@@ -521,7 +595,7 @@ test("ignore local declare", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("keep types", () => {
+test("mangle: keep exported types", () => {
   const files = {
     "src/index.ts": `
     export type Type = {
@@ -555,7 +629,7 @@ test("keep types", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("keep sideEffect types", () => {
+test("mangle: keep effect nodes", () => {
   const files = {
     "src/index.ts": `
     type BodyType = {
@@ -581,80 +655,6 @@ test("keep sideEffect types", () => {
 
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
-
-test("findDeclarationsFromSymbolWalkerVisited", () => {
-  const { checker, file } = createOneshotTestProgram(`
-  type Hidden = {
-    __hidden: number;
-  }
-  type LocalRef = {
-    local: number;
-  }
-  export type MyType = {
-    ref: LocalRef,
-    f1(): void;
-    f2(): { fx: 1 }
-  };
-  export const myValue: MyType = { ref: { local: 1 }, f1() {}, f2() { return { fx: 1 } } };
-`);
-  const walker = createGetSymbolWalker(checker)();
-  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  for (const symbol of symbols) {
-    walker.walkSymbol(symbol);
-  }
-  const visited = walker.getVisited();
-  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
-  expect(
-    [...collected].map((node) => {
-      return "(" + ts.SyntaxKind[node.kind] + ")" + format(node.getText());
-    }),
-  ).toEqual([
-    `(TypeAliasDeclaration)export type MyType = { ref: LocalRef, f1(): void; f2(): { fx: 1 } };`,
-    `(TypeLiteral){ ref: LocalRef, f1(): void; f2(): { fx: 1 } }`,
-    "(PropertySignature)ref: LocalRef,",
-    "(TypeReference)LocalRef",
-    "(MethodSignature)f1(): void;",
-    "(MethodSignature)f2(): { fx: 1 }",
-    "(PropertySignature)local: number;",
-    "(NumberKeyword)number",
-    "(PropertySignature)fx: 1",
-    "(LiteralType)1",
-  ]);
-});
-
-test("nodeWalker #2 class", () => {
-  const { checker, file } = createOneshotTestProgram(`
-  interface I {
-    f1(): number;
-  }
-  export class X implements I {
-    f1() {
-      return 1;
-    }
-  }
-`);
-  const walker = createGetSymbolWalker(checker)();
-  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  for (const symbol of symbols) {
-    walker.walkSymbol(symbol);
-  }
-  const visited = walker.getVisited();
-  const decls = findDeclarationsFromSymbolWalkerVisited(visited);
-  expect(
-    [...decls].map((node) => {
-      return "(" + ts.SyntaxKind[node.kind] + ")" + format(node.getText());
-    }),
-  ).toEqual([
-    "(ClassDeclaration)export class X implements I { f1() { return 1; } }",
-    "(MethodDeclaration)f1() { return 1; }",
-    "(InterfaceDeclaration)interface I { f1(): number; }",
-    "(MethodSignature)f1(): number;",
-  ]);
-});
-
-function format(code: string) {
-  return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
-}
 
 test.skip("mangle (or assert) with infer", () => {
   const files = {
