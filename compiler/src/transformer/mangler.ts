@@ -2,7 +2,7 @@
 import ts from "typescript";
 import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
-import { RenameItem, findRenameItems } from "./renamer";
+import { BatchRenameItem, findRenameItems } from "./renamer";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors } from "../typescript/utils";
 import { FindRenameLocations } from "../typescript/types";
@@ -108,12 +108,12 @@ export function expandRenameActionsToSafeRenameItems(
   const preActions = actions.filter((x) => !x.isAssignment);
   const postActions = actions.filter((x) => x.isAssignment);
 
-  const preItems: RenameItem[] = preActions.flatMap((action) => {
+  const preItems: BatchRenameItem[] = preActions.flatMap((action) => {
     const renames = findRenameItems(findRenameLocations, action.fileName, action.start, action.original, action.to);
     return renames ?? [];
   });
   const preTouches = new Set(preItems.map((x) => x.textSpan.start));
-  const postItems: RenameItem[] = postActions.flatMap((action) => {
+  const postItems: BatchRenameItem[] = postActions.flatMap((action) => {
     // already renamed by other action (e.g. PropertySignature)
     if (preTouches.has(action.start)) {
       return [];
@@ -174,9 +174,7 @@ export function getMangleNodesForFile(
 }
 
 // get local rename candidates
-export function getLocalBindings(node: ts.Node) {
-  // const decls: ts.Declaration[] = [];
-  // const typeDecls: ts.Declaration[] = [];
+export function getLocalBindings(node: ts.SourceFile) {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
 
   ts.forEachChild(node, visit);

@@ -1,12 +1,12 @@
 import ts from "typescript";
 import { FindRenameLocations } from "../typescript/types";
 
-export type RenameItem = ts.RenameLocation & {
+export type BatchRenameItem = ts.RenameLocation & {
   original: string;
   to: string;
 };
 
-type FileChangedItem = {
+type FileChangeResult = {
   fileName: string;
   content: string;
   start?: number;
@@ -25,8 +25,8 @@ export function findRenameItems(
     providePrefixAndSuffixTextForRename: true,
     allowRenameOfImportPath: true,
   },
-): RenameItem[] | undefined {
-  const renames = findRenameLocations(fileName, pos, false, false, prefs) as RenameItem[] | undefined;
+): BatchRenameItem[] | undefined {
+  const renames = findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameItem[] | undefined;
   if (!renames) return;
   // check is export related
   for (const rename of renames) {
@@ -36,39 +36,35 @@ export function findRenameItems(
   return renames;
 }
 
-export function getRenamedChanges(
-  renames: RenameItem[],
+export function getRenamedFileChanges(
+  renames: BatchRenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
-): FileChangedItem[] {
+): FileChangeResult[] {
   // rewire renames by each files
   const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
-  const rewiredRenames: Map<string, RenameItem[]> = new Map();
+  const rewiredRenames: Map<string, BatchRenameItem[]> = new Map();
   for (const targetFile of targetFiles) {
-    const sortedRenames: RenameItem[] = renames
+    const sortedRenames: BatchRenameItem[] = renames
       .filter((r) => normalizePath(r.fileName) === targetFile)
       .sort((a, b) => a.textSpan.start - b.textSpan.start);
     rewiredRenames.set(targetFile, sortedRenames);
   }
 
   // get unique files
-  const contents: FileChangedItem[] = [];
-  // const changes = new Map<string, [changed: string, start: number, end: number]>();
-  // const applied: RenameApplied[] = [];
+  const results: FileChangeResult[] = [];
   for (const [fileName, renames] of rewiredRenames.entries()) {
     const targetFile = fileName;
     const current = readCurrentFile(targetFile)!;
-    const [renamed, changedStart, changedEnd] = applyRenameItems(current, renames);
-    contents.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
-    // changes.set(targetFile, [renamed, changedStart, changedEnd]);
-    // applied.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
+    const [renamed, changedStart, changedEnd] = applyBatchRenameItems(current, renames);
+    results.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
   }
-  return contents;
+  return results;
 }
 
-export function applyRenameItems(
+export function applyBatchRenameItems(
   code: string,
-  renames: RenameItem[],
+  renames: BatchRenameItem[],
   debug = false,
 ): [renamed: string, changedStart: number, changedEnd: number] {
   const debugLog = debug ? console.log : () => {};

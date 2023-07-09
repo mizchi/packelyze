@@ -1,7 +1,7 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { RenameItem, applyRenameItems, findRenameItems, getRenamedChanges } from "./renamer";
+import { BatchRenameItem, applyBatchRenameItems, findRenameItems, getRenamedFileChanges } from "./renamer";
 import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { findFirstNode } from "../typescript/utils";
 
@@ -33,7 +33,7 @@ test("batch renaming", () => {
     "y_changed",
   );
 
-  const changedFiles = getRenamedChanges(
+  const changedFiles = getRenamedFileChanges(
     [
       ...xRenameLocs!.map((loc) => ({
         ...loc,
@@ -72,7 +72,7 @@ test("shorthand", () => {
 
   const renames = findRenameItems(service.findRenameLocations, sourceFile.fileName, hit, "y", "y_renamed");
 
-  const changedFiles = getRenamedChanges(renames!, service.readSnapshotContent, normalizePath);
+  const changedFiles = getRenamedFileChanges(renames!, service.readSnapshotContent, normalizePath);
   for (const change of changedFiles) {
     service.writeSnapshotContent(change.fileName, change.content);
   }
@@ -108,15 +108,15 @@ export const x = fff();
     const renames = service.findRenameLocations(normalizePath("src/index.ts"), localSignaturePos, false, false, {
       providePrefixAndSuffixTextForRename: true,
     });
-    const renameItems: RenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameItem[] = renames?.map((r) => {
       return {
         ...r,
-        source: "local",
+        original: "local",
         to: "local_renamed",
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameItems(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -139,15 +139,15 @@ export const x = fff();
     const renames = service.findRenameLocations(normalizePath("src/index.ts"), localAssignmentPos, false, false, {
       providePrefixAndSuffixTextForRename: true,
     });
-    const renameItems: RenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameItem[] = renames?.map((r) => {
       return {
         ...r,
-        source: "local",
+        original: "local",
         to: "local_renamed",
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameItems(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -182,7 +182,7 @@ export const x = {vvv};
       providePrefixAndSuffixTextForRename: true,
     });
 
-    const renameItems: RenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameItem[] = renames?.map((r) => {
       let toName = "vvv_renamed";
       if (r.prefixText) {
         toName = `${r.prefixText}${toName}`;
@@ -192,11 +192,11 @@ export const x = {vvv};
       }
       return {
         ...r,
-        source: searchText,
+        original: searchText,
         to: toName,
       };
     })!;
-    const [changed] = applyRenameItems(source.text, renameItems);
+    const [changed] = applyBatchRenameItems(source.text, renameItems);
     expect(changed).toEqualFormatted(`
 const vvv_renamed: number = 1;
 export const x = {vvv: vvv_renamed};
@@ -248,17 +248,17 @@ test("TS: rename multi file", () => {
       providePrefixAndSuffixTextForRename: true,
     },
   );
-  const renameItems: RenameItem[] = renames?.map((r) => {
+  const renameItems: BatchRenameItem[] = renames?.map((r) => {
     return {
       ...r,
-      source: "sub",
+      original: "sub",
       to: "sub_renamed",
     };
   })!;
 
   if (!renameItems) throw new Error("unexpected");
 
-  const state = getRenamedChanges(
+  const state = getRenamedFileChanges(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);

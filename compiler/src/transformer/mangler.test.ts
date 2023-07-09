@@ -1,6 +1,6 @@
 import "../__tests/globals";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { getRenamedChanges } from "./renamer";
+import { getRenamedFileChanges } from "./renamer";
 import { expect, test } from "vitest";
 import {
   expandRenameActionsToSafeRenameItems,
@@ -32,7 +32,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     return getMangleActionsForFile(checker, visited, file);
   });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
-  const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
+  const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
 
   // rename for assert
   const changes = rawChanges.map((x) => {

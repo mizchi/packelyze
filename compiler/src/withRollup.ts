@@ -1,4 +1,4 @@
-import { getRenamedChanges } from "./transformer/renamer";
+import { getRenamedFileChanges } from "./transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
@@ -34,7 +34,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     return getMangleActionsForFile(checker, visited, file);
   });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
-  const changes = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
+  const changes = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
   for (const change of changes) {
     service.writeSnapshotContent(change.fileName, change.content);
   }
