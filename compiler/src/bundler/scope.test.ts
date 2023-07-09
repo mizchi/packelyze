@@ -10,9 +10,7 @@ import {
   getExplicitGlobals,
   getLocals,
   getLocalsInScope,
-  getAllowedPureAccesses as getAllowedPureAccesses,
   getUnscopedAccesses,
-  isScopedAccessOnly,
   getAccessesFromExpression,
 } from "./scope";
 import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";

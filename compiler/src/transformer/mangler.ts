@@ -1,9 +1,10 @@
 // import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
-import { type SymbolWalkerVisited, createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { type SymbolWalkerVisited, createGetSymbolWalker } from "../symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
-import { findSideEffectNodes } from "./effects";
+import { getEffectDetectorEnter } from "./effects";
+import { composeVisitors } from "../nodeUtils";
 
 export type MangleAction = {
   fileName: string;
@@ -33,15 +34,6 @@ export function walkProjectForMangle(checker: ts.TypeChecker, root: ts.SourceFil
   for (const file of files) {
     walkFile(file);
   }
-  const effectNodes = findSideEffectNodes(checker, root);
-  for (const node of effectNodes) {
-    const symbol = checker.getSymbolAtLocation(node);
-    if (symbol) {
-      symbolWalker.walkSymbol(symbol);
-    }
-    const type = checker.getTypeAtLocation(node);
-    symbolWalker.walkType(type);
-  }
   return symbolWalker.getVisited();
 
   function walkExportedRelatedNodesFromRoot(root: ts.SourceFile) {
@@ -52,13 +44,18 @@ export function walkProjectForMangle(checker: ts.TypeChecker, root: ts.SourceFil
   }
   
   function walkFile(file: ts.SourceFile) {
-    // const file = service.getCurrentSourceFile(fname)!;
-    const effectNodes = findSideEffectNodes(checker, file);
+    const effectNodes: Set<ts.Node> = new Set();
+    const composed = composeVisitors(
+      // collect effect nodes
+      getEffectDetectorEnter(checker, (node) => {
+        effectNodes.add(node);
+      })
+    );
+    composed(file);
+
     for (const node of effectNodes) {
       const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) {
-        symbolWalker.walkSymbol(symbol);
-      }
+      if (symbol) symbolWalker.walkSymbol(symbol);
       const type = checker.getTypeAtLocation(node);
       symbolWalker.walkType(type);
     }
@@ -108,7 +105,6 @@ export function expandRenameActionsToSafeRenameItems(
   actions: MangleAction[],
 ) {
   const preActions = actions.filter((x) => !x.isAssignment);
-
   const postActions = actions.filter((x) => x.isAssignment);
 
   const preItems: RenameItem[] = preActions.flatMap((action) => {
@@ -126,7 +122,6 @@ export function expandRenameActionsToSafeRenameItems(
   });
   return [...preItems, ...postItems];
 }
-
 
 export function getMangleActionForNode(
   checker: ts.TypeChecker,

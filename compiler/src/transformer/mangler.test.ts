@@ -10,7 +10,7 @@ import {
   walkProjectForMangle,
   getMangleActionsForFile,
 } from "./mangler";
-import { createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { createGetSymbolWalker } from "../symbolWalker";
 import ts from "typescript";
 
 // assert expected mangle results
@@ -31,9 +31,6 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     const file = service.getCurrentSourceFile(target)!;
     return getMangleActionsForFile(checker, visited, file);
   });
-  // const actions =  [...nodes].flatMap((node) => {
-  //   return getMangleActionForNode(checker, symbolBuilder, node);
-  // });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
 

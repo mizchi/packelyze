@@ -1,10 +1,10 @@
-import "../__tests/globals";
+import "./__tests/globals";
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from "../__tests/testHarness";
+import { createOneshotTestProgram } from "./__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
-import { toReadableSymbol, toReadableType } from "../nodeUtils";
+import { toReadableSymbol, toReadableType } from "./nodeUtils";
 import ts from "typescript";
-import { isSymbolInferredFromValueDeclaration } from "./infer";
+import { isSymbolInferredFromValueDeclaration } from "./typeUtils";
 
 test("symbolWalker", () => {
   const { checker, file } = createOneshotTestProgram(`

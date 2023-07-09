@@ -1,8 +1,8 @@
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { createGetSymbolWalker } from "../symbolWalker";
 import ts from "typescript";
-import { findSideEffectNodes } from "./effects";
+import { findEffectNodes } from "./effects";
 import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";
 
 test("effect", () => {
@@ -21,7 +21,7 @@ test("effect", () => {
 `);
 
   const walker = createGetSymbolWalker(checker)();
-  const nodes = findSideEffectNodes(checker, file);
+  const nodes = findEffectNodes(checker, file);
   for (const node of nodes) {
     const symbol = checker.getSymbolAtLocation(node);
     if (symbol) {
@@ -67,7 +67,7 @@ test("effect", () => {
   const file = service.getProgram()!.getSourceFile("src/index.ts")!;
 
   const walker = createGetSymbolWalker(checker)();
-  const nodes = findSideEffectNodes(checker, file);
+  const nodes = findEffectNodes(checker, file);
   for (const node of nodes) {
     const symbol = checker.getSymbolAtLocation(node);
     if (symbol) {

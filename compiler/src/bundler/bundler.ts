@@ -1,8 +1,8 @@
-import { TS } from "../types";
+// import { TS } from "../types";
 import { IncrementalLanguageService } from "../services";
 import ts, { ClassDeclaration, FunctionDeclaration, FunctionExpression, VariableStatement, factory } from "typescript";
 import { cloneNode } from "ts-clone-node";
-import { getAccessesFromExpression, getUnscopedAccesses } from "../analyzer/scope";
+import { getAccessesFromExpression, getUnscopedAccesses } from "./scope";
 
 export function bundle(service: IncrementalLanguageService, entryFileName: string) {
   const program = service.getProgram()!;
@@ -24,12 +24,12 @@ export const flattenGraph = (graph: Map<ts.Symbol, Set<ts.Symbol>>) => {
   return result;
 };
 
-export function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
+export function createModuleGraph(program: ts.Program, root: ts.SourceFile) {
   const checker = program.getTypeChecker();
-  const graph = new Map<TS.Symbol, Set<TS.Symbol>>();
-  const visitedSymbols = new Set<TS.Symbol>();
+  const graph = new Map<ts.Symbol, Set<ts.Symbol>>();
+  const visitedSymbols = new Set<ts.Symbol>();
 
-  const addDep = (from: TS.Symbol, to: TS.Symbol) => {
+  const addDep = (from: ts.Symbol, to: ts.Symbol) => {
     if (!graph.has(from)) {
       graph.set(from, new Set());
     }
@@ -91,13 +91,13 @@ export function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
   }
 }
 
-const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.TransformerFactory<any> =
+const createBundleTransformerFactory: (checker: ts.TypeChecker) => ts.TransformerFactory<any> =
   (checker) => (context) => {
     // const logger = createLogger("[transformer]");
-    const hoistedDeclarations: TS.Statement[] = [];
+    const hoistedDeclarations: ts.Statement[] = [];
     return (file) => {
-      const toplevelHoisted: TS.Statement[] = [];
-      const visit: TS.Visitor = (node) => {
+      const toplevelHoisted: ts.Statement[] = [];
+      const visit: ts.Visitor = (node) => {
         // delete imports
         if (ts.isImportDeclaration(node)) {
           const hoisted = transformImportDeclarationToVariableDeclaration(node, checker);
@@ -115,9 +115,9 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
 
     // TODO: Recursive
     function transformImportDeclarationToVariableDeclaration(
-      node: TS.ImportDeclaration,
-      checker: TS.TypeChecker,
-    ): TS.Statement[] {
+      node: ts.ImportDeclaration,
+      checker: ts.TypeChecker,
+    ): ts.Statement[] {
       if (
         node.importClause &&
         ts.isImportClause(node.importClause) &&
@@ -134,7 +134,7 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
         const targetModule = checker.getSymbolAtLocation(node.moduleSpecifier);
         const outerSymbol = findDeclarationByName(
           checker,
-          targetModule?.valueDeclaration! as TS.SourceFile,
+          targetModule?.valueDeclaration! as ts.SourceFile,
           (specifier.propertyName ?? specifier.name).text,
         );
         if (!outerSymbol) {
@@ -151,12 +151,12 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
             hook: (_node) => {
               return {
                 modifiers: (modifiers) => {
-                  return modifiers && ensureNoExportModifier(modifiers as TS.Modifier[]);
+                  return modifiers && ensureNoExportModifier(modifiers as ts.Modifier[]);
                 },
               };
             },
           });
-          hoistedDeclarations.push(cloned as TS.Node as TS.VariableStatement);
+          hoistedDeclarations.push(cloned as ts.Node as ts.VariableStatement);
           return;
           // continue;
         }
@@ -167,8 +167,8 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
         ) {
           const func = outerSymbol.valueDeclaration as FunctionDeclaration | FunctionExpression;
 
-          const touchingSymbols: TS.Symbol[] = [];
-          const visit = (node: TS.Node): void => {
+          const touchingSymbols: ts.Symbol[] = [];
+          const visit = (node: ts.Node): void => {
             if (ts.isIdentifier(node)) {
               // skip self name
               if (node === func.name) {
@@ -251,20 +251,20 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
     }
 
     function cloneImportedFunction(
-      node: TS.FunctionDeclaration | TS.FunctionExpression,
+      node: ts.FunctionDeclaration | ts.FunctionExpression,
       originalName: string,
       nameAs?: string,
-    ): Array<TS.VariableStatement | TS.FunctionDeclaration> {
+    ): Array<ts.VariableStatement | ts.FunctionDeclaration> {
       if (node.body == null) {
         return [];
       }
-      const hoistedDeclarations: Array<TS.VariableStatement | TS.FunctionDeclaration> = [];
+      const hoistedDeclarations: Array<ts.VariableStatement | ts.FunctionDeclaration> = [];
       if (nameAs == null) {
         const cloned = cloneNode(node as FunctionDeclaration, {
           hook: (_node) => {
             return {
               modifiers: (modifiers) => {
-                return modifiers && ensureNoExportModifier(modifiers as TS.Modifier[]);
+                return modifiers && ensureNoExportModifier(modifiers as ts.Modifier[]);
               },
             };
           },
@@ -277,7 +277,7 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
         return hoistedDeclarations;
       }
       const clonedAsExpression = ts.factory.createFunctionExpression(
-        node.modifiers && (ensureNoExportModifier(node.modifiers) as TS.Modifier[]),
+        node.modifiers && (ensureNoExportModifier(node.modifiers) as ts.Modifier[]),
         node.asteriskToken,
         ts.factory.createIdentifier(originalName),
         node.typeParameters,
@@ -304,16 +304,16 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
     }
 
     function cloneImportedClass(
-      node: TS.ClassDeclaration | TS.ClassExpression,
+      node: ts.ClassDeclaration | ts.ClassExpression,
       originalName: string,
       nameAs?: string,
-    ): TS.VariableStatement | TS.ClassDeclaration | undefined {
+    ): ts.VariableStatement | ts.ClassDeclaration | undefined {
       if (nameAs == null) {
         const cloned = cloneNode(node as ClassDeclaration, {
           hook: (_node) => {
             return {
               modifiers: (modifiers) => {
-                return modifiers && ensureNoExportModifier(modifiers as TS.Modifier[]);
+                return modifiers && ensureNoExportModifier(modifiers as ts.Modifier[]);
               },
             };
           },
@@ -321,7 +321,7 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
         return cloned;
       }
       const clonedAsExpression = ts.factory.createClassExpression(
-        node.modifiers && (ensureNoExportModifier(node.modifiers) as TS.Modifier[]),
+        node.modifiers && (ensureNoExportModifier(node.modifiers) as ts.Modifier[]),
         node.name,
         node.typeParameters,
         node.heritageClauses,
@@ -346,13 +346,13 @@ const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.Transforme
     }
   };
 
-const ensureNoExportModifier = <M extends TS.ModifierLike>(modifiers: M[] | TS.NodeArray<M>): M[] => {
+const ensureNoExportModifier = <M extends ts.ModifierLike>(modifiers: M[] | ts.NodeArray<M>): M[] => {
   return modifiers.filter((modifier) => {
     return modifier.kind !== ts.SyntaxKind.ExportKeyword;
   });
 };
 
-function findDeclarationByName(checker: TS.TypeChecker, outer: ts.SourceFile, name: string): TS.Symbol | undefined {
+function findDeclarationByName(checker: ts.TypeChecker, outer: ts.SourceFile, name: string): ts.Symbol | undefined {
   // const exportedSymbols = collectExportSymbols(checker, outer);
   // const checker = program.getTypeChecker();
   const symbol = checker.getSymbolAtLocation(outer);
