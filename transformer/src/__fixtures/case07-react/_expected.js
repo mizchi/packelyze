@@ -5,16 +5,16 @@ function MyComponent(props) {
       jsx("h1", { children: "MyComponent" }),
       jsx("div", { children: props.foo }),
       jsx("div", { children: props.children }),
-      jsx(k, { value: props.foo }),
+      jsx(Ck, { value: props.foo }),
     ],
   });
 }
 
-function k(x) {
+function Ck(props) {
   return jsxs("div", {
     children: [
       jsx("h1", { children: "SubComponent" }),
-      jsx("div", { children: x.j }),
+      jsx("div", { children: props.value }),
     ],
   });
 }

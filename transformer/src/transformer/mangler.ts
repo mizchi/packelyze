@@ -140,7 +140,13 @@ export function getMangleActionsForFile(
     }
     const originalName = node.text;
     // create new symbol builder?
-    const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
+
+    // FIXME: should consume converted name for usedNames check
+    const isFunctionNode = ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent);
+    const newName =
+      isFunctionNode && startsWithUpperCase(originalName)
+        ? "C" + symbolBuilder.create(validate)
+        : (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
 
     const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
     return {
@@ -150,6 +156,9 @@ export function getMangleActionsForFile(
       start: node.getStart(),
       isAssignment: isPropertyAssignment,
     };
+    function startsWithUpperCase(str: string) {
+      return str[0] === str[0].toUpperCase();
+    }
     function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
       // TODO: check is valid query
       const locals = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariable);

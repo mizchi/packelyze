@@ -1,10 +1,11 @@
 import "../__tests/globals";
 import { test, expect } from "vitest";
-import { createOneshotTestProgram } from "../__tests/testHarness";
+import { createOneshotTestProgram, createTestLanguageService } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 import { toReadableSymbol, toReadableType } from "./utils";
 import ts from "typescript";
 import { isSymbolInferredFromValueDeclaration } from "./utils";
+import path from "path";
 
 test("symbolWalker", () => {
   const { checker, file } = createOneshotTestProgram(`
@@ -249,11 +250,54 @@ test("symbolWalker # class", () => {
   );
 });
 
-const vvv = {
-  aaa: 1,
-};
-export const yyy = vvv;
-export const zzz: { z: number } = { z: 1 };
+test.skip("symbolWalker # tsx", () => {
+  const projectPath = path.resolve(__dirname, "../__fixtures/minimum-react");
+  const { service } = createTestLanguageService(projectPath);
+  service.writeSnapshotContent(
+    "src/index.tsx",
+    `
+  export function MyComponent() {
+    return <div>hello</div>;
+  }
+  `,
+  );
+
+  const checker = service.getProgram()!.getTypeChecker();
+  const file = service.getProgram()!.getSourceFile("src/index.tsx")!;
+
+  const getSymbolWalker = createGetSymbolWalker(checker);
+  const symbolWalker = getSymbolWalker();
+
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const exported of exportedSymbols) {
+    symbolWalker.walkSymbol(exported);
+  }
+
+  const visited = symbolWalker.getVisited();
+  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
+  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+
+  const diagnostics = service.getSemanticDiagnostics("src/index.tsx");
+
+  console.log(diagnostics);
+  expect(diagnostics.length).toBe(0);
+
+  console.log(symbolSet);
+  // console.log(typeSet);
+  // expect(symbolSet).toEqual(
+  //   new Set([
+  //     // symbols
+  //     "v",
+  //   ]),
+  // );
+  // expect(typeSet).toEqual(
+  //   new Set([
+  //     // types
+  //     "number",
+  //     "Internal",
+  //   ]),
+  // );
+});
 
 test("symbolWalker # infer", () => {
   const { checker, file } = createOneshotTestProgram(`

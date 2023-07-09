@@ -27,9 +27,9 @@ async function buildAndAssertExpected(projectPath: string) {
   return output[0].code;
 }
 
-// const skipList: string[] = [];
+const skipList: string[] = [];
 // WIP
-const skipList: string[] = ["case07-react"];
+// const skipList: string[] = ["case07-react"];
 const onlyList: string[] = [];
 
 const cases = fs
