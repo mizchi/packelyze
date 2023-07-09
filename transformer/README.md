@@ -9,6 +9,7 @@ Experimental typescript minifier
   - [ ] ranged snapshot create/updater
   - [ ] with project reference(s)
 - Mangle
+  - [ ] Mangle with generics and interfaces
   - [ ] Mangle with `@internal` leading-trivia comments
   - [ ] Skip mangle with `/* packelyze-ignore */` leading-trivia comments
   - [ ] dynamic import and worker (multiple rootFiles)

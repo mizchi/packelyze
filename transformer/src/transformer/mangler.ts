@@ -106,7 +106,6 @@ export function getMangleActionsForFile(
     // console.log(
     //   "[findMangleNodesForFile]]",
     //   [...fileExportedSymbols].map((s) => toReadableSymbol(s)),
-    //   fileExportedSymbols[0].declarations?.[0] && toReadableNode(fileExportedSymbols[0].declarations?.[0]!),
     // );
     for (const identifier of bindingIdentifiers) {
       // skip: type <Foo> = { ... }
