@@ -2,8 +2,20 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { findEffectNodes } from "./effects";
+// import { findEffectNodes } from "./effects";
 import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";
+import { getEffectDetectorEnter } from "./effects";
+import { composeVisitors } from "../typescript/utils";
+
+export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
+  const nodes = new Set<ts.Node>();
+  const enter = getEffectDetectorEnter(checker, (node) => {
+    nodes.add(node);
+  });
+  const composed = composeVisitors(enter);
+  composed(node);
+  return nodes;
+}
 
 test("effect", () => {
   const { checker, file } = createOneshotTestProgram(`

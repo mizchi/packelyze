@@ -2,7 +2,7 @@
 import ts from "typescript";
 import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
-import { findRenameItems } from "./renamer";
+import { findBatchRenameLocations } from "./renamer";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors } from "../typescript/utils";
 import { FindRenameLocations } from "../typescript/types";
@@ -46,25 +46,45 @@ export function walkProjectForMangle(
   }
 }
 
-// TODO: normalize to omit duplicated rename items
+// exclude duplicated rename locations
 export function expandToSafeBatchRenameLocations(findRenameLocations: FindRenameLocations, actions: MangleAction[]) {
+  // propertyAssingment causes duplicated rename with propertySignature
   const preActions = actions.filter((x) => !x.isAssignment);
   const postActions = actions.filter((x) => x.isAssignment);
+  // stop rename for same position
+  const touchingLocations = new Set<string>();
 
-  const preLocations: BatchRenameLocation[] = preActions.flatMap((action) => {
-    const renames = findRenameItems(findRenameLocations, action.fileName, action.start, action.original, action.to);
-    return renames ?? [];
-  });
-  const preTouches = new Set(preLocations.map((x) => x.textSpan.start));
-  const postLocations: BatchRenameLocation[] = postActions.flatMap((action) => {
-    // already renamed by other action (e.g. PropertySignature)
-    if (preTouches.has(action.start)) {
+  return [...preActions.flatMap(actionToRenamesIfSafe), ...postActions.flatMap(actionToRenamesIfSafe)];
+
+  function actionToRenamesIfSafe(action: MangleAction) {
+    const touchKey = actionToKey(action);
+    if (touchingLocations.has(touchKey)) return [];
+    const renames = findBatchRenameLocations(
+      findRenameLocations,
+      action.fileName,
+      action.start,
+      action.original,
+      action.to,
+    );
+    if (!renames) return [];
+
+    // stop by conflict
+    const renameKeys = renames.map(renameLocationToKey);
+    if (renameKeys.some((key) => touchingLocations.has(key))) {
       return [];
     }
-    const renames = findRenameItems(findRenameLocations, action.fileName, action.start, action.original, action.to);
-    return renames ?? [];
-  });
-  return [...preLocations, ...postLocations];
+    for (const renameKey of renameKeys) {
+      touchingLocations.add(renameKey);
+    }
+    return renames;
+  }
+
+  function actionToKey(action: MangleAction) {
+    return `${action.fileName}:${action.start}`;
+  }
+  function renameLocationToKey(rename: BatchRenameLocation) {
+    return `${rename.fileName}:${rename.textSpan.start}`;
+  }
 }
 
 export function getMangleActionsForFile(
@@ -78,7 +98,7 @@ export function getMangleActionsForFile(
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
     const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
-    const bindingIdentifiers = getLocalBindings(file);
+    const bindingIdentifiers = getBindingIdentifiersForFile(file);
 
     const manglables = new Set<ts.Node>();
     const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
@@ -132,20 +152,28 @@ export function getMangleActionsForFile(
       isAssignment: isPropertyAssignment,
     };
     function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
+      // TODO: check is valid query
       const locals = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariable);
       const localNames = new Set(locals.map((x) => x.name));
+      const usedNames = new Set<string>();
       return (newName: string) => {
-        return !localNames.has(newName);
+        const conflicted = localNames.has(newName);
+        const used = usedNames.has(newName);
+        if (!conflicted && !used) {
+          usedNames.add(newName);
+          return true;
+        }
+        return false;
       };
     }
   }
 }
 
 // get local rename candidates
-export function getLocalBindings(node: ts.SourceFile) {
+type BindingIdentifier = ts.Identifier | ts.PrivateIdentifier;
+export function getBindingIdentifiersForFile(file: ts.SourceFile): BindingIdentifier[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
-
-  ts.forEachChild(node, visit);
+  ts.forEachChild(file, visit);
   return identifiers;
 
   function visit(node: ts.Node) {
@@ -304,11 +332,11 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
     }
     if (ts.isInterfaceDeclaration(node)) {
       // TODO
-      for (const heritageClause of node.heritageClauses ?? []) {
-        for (const type of heritageClause.types) {
-          visitNode(type.expression, depth + 1);
-        }
-      }
+      // for (const heritageClause of node.heritageClauses ?? []) {
+      //   for (const type of heritageClause.types) {
+      //     visitNode(type.expression, depth + 1);
+      //   }
+      // }
       for (const typeParam of node.typeParameters ?? []) {
         visitNode(typeParam, depth + 1);
       }

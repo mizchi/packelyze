@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import {
   expandToSafeBatchRenameLocations,
   findDeclarationsFromSymbolWalkerVisited,
-  getLocalBindings,
+  getBindingIdentifiersForFile,
   walkProjectForMangle,
   getMangleActionsForFile,
 } from "./mangler";
@@ -98,7 +98,7 @@ test("find all declarations", () => {
   }
   module M {}
   `);
-  const idents = getLocalBindings(file);
+  const idents = getBindingIdentifiersForFile(file);
 
   const expected = new Set([
     "X",

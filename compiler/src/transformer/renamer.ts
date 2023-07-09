@@ -3,7 +3,7 @@ import { FindRenameLocations } from "../typescript/types";
 import { BatchRenameLocation, FileChangeResult } from "./types";
 
 /** wrap service.findRenameLocations */
-export function findRenameItems(
+export function findBatchRenameLocations(
   findRenameLocations: FindRenameLocations,
   fileName: string,
   pos: number,
@@ -16,12 +16,14 @@ export function findRenameItems(
 ): BatchRenameLocation[] | undefined {
   const renames = findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
   if (!renames) return;
-  // check is export related
-  for (const rename of renames) {
-    rename.original = original;
-    rename.to = `${rename.prefixText ?? ""}${to}${rename.suffixText ?? ""}`;
-  }
-  return renames;
+  return renames.map((r) => {
+    const toWithPrefixAndSuffix = `${r.prefixText ?? ""}${to}${r.suffixText ?? ""}`;
+    return {
+      ...r,
+      original,
+      to: toWithPrefixAndSuffix,
+    };
+  });
 }
 
 export function getRenamedFileChanges(
@@ -30,31 +32,29 @@ export function getRenamedFileChanges(
   normalizePath: (fname: string) => string,
 ): FileChangeResult[] {
   // rewire renames by each files
-  const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
-  const rewiredRenames: Map<string, BatchRenameLocation[]> = new Map();
-  for (const targetFile of targetFiles) {
-    const sortedRenames: BatchRenameLocation[] = renames
-      .filter((r) => normalizePath(r.fileName) === targetFile)
-      .sort((a, b) => a.textSpan.start - b.textSpan.start);
-    rewiredRenames.set(targetFile, sortedRenames);
-  }
-
-  // get unique files
-  const results: FileChangeResult[] = [];
-  for (const [fileName, renames] of rewiredRenames.entries()) {
-    const targetFile = fileName;
+  const fileNames = [...new Set(renames.map((r) => normalizePath(r.fileName)))];
+  return fileNames.map((targetFile) => {
     const current = readCurrentFile(targetFile)!;
-    const [renamed, changedStart, changedEnd] = applyBatchRenameLocations(current, renames);
-    results.push({ fileName: targetFile, content: renamed, start: changedStart, end: changedEnd });
+    const renames = findRenamesForFile(targetFile);
+    const result = applyBatchRenameLocations(current, renames);
+    return {
+      fileName: targetFile,
+      ...result,
+    };
+  });
+
+  function findRenamesForFile(fileName: string) {
+    return renames
+      .filter((r) => normalizePath(r.fileName) === fileName)
+      .sort((a, b) => a.textSpan.start - b.textSpan.start);
   }
-  return results;
 }
 
 export function applyBatchRenameLocations(
   code: string,
   renames: BatchRenameLocation[],
   debug = false,
-): [renamed: string, changedStart: number, changedEnd: number] {
+): Omit<FileChangeResult, "fileName"> {
   const debugLog = debug ? console.log : () => {};
   // const debugLog = console.log;
   let current = code;
@@ -77,5 +77,9 @@ export function applyBatchRenameLocations(
     current = current.slice(0, start + offset) + toName + current.slice(end + offset);
     offset += toName.length - (end - start);
   }
-  return [current, changedStart, changedEnd];
+  return {
+    content: current,
+    start: changedStart,
+    end: changedEnd,
+  };
 }

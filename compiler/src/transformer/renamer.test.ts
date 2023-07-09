@@ -1,7 +1,7 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { applyBatchRenameLocations, findRenameItems, getRenamedFileChanges } from "./renamer";
+import { applyBatchRenameLocations, findBatchRenameLocations, getRenamedFileChanges } from "./renamer";
 import { createTestLanguageService } from "../__tests/testHarness";
 import { findFirstNode } from "../typescript/utils";
 import { BatchRenameLocation } from "./types";
@@ -17,7 +17,7 @@ test("batch renaming", () => {
   const xSymbol = localVariables.find((s) => s.name === "x")!;
 
   const sourceFile = program.getSourceFile(normalizePath("src/index.ts"))!;
-  const xRenameLocs = findRenameItems(
+  const xRenameLocs = findBatchRenameLocations(
     service.findRenameLocations,
     sourceFile.fileName,
     xSymbol.valueDeclaration!.getStart(),
@@ -26,7 +26,7 @@ test("batch renaming", () => {
   );
 
   const ySymbol = localVariables.find((s) => s.name === "y")!;
-  const yRenameLocs = findRenameItems(
+  const yRenameLocs = findBatchRenameLocations(
     service.findRenameLocations,
     sourceFile.fileName,
     ySymbol.valueDeclaration!.getStart(),
@@ -71,7 +71,7 @@ test("TS: rename shorthand", () => {
   const hit = newSource.text.search(regex);
   const sourceFile = service.getProgram()!.getSourceFile(normalizePath("src/index.ts"))!;
 
-  const renames = findRenameItems(service.findRenameLocations, sourceFile.fileName, hit, "y", "y_renamed");
+  const renames = findBatchRenameLocations(service.findRenameLocations, sourceFile.fileName, hit, "y", "y_renamed");
 
   const changedFiles = getRenamedFileChanges(renames!, service.readSnapshotContent, normalizePath);
   for (const change of changedFiles) {
@@ -117,7 +117,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyBatchRenameLocations(source.text, renameItems);
+    const { content: changed } = applyBatchRenameLocations(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -148,7 +148,7 @@ export const x = fff();
       };
     })!;
     // console.log(renameItems);
-    const [changed] = applyBatchRenameLocations(source.text, renameItems);
+    const { content: changed } = applyBatchRenameLocations(source.text, renameItems);
     // console.log(changed);
     expect(changed).toEqualFormatted(`
 type Local = {
@@ -197,7 +197,7 @@ export const x = {vvv};
         to: toName,
       };
     })!;
-    const [changed] = applyBatchRenameLocations(source.text, renameItems);
+    const { content: changed } = applyBatchRenameLocations(source.text, renameItems);
     expect(changed).toEqualFormatted(`
 const vvv_renamed: number = 1;
 export const x = {vvv: vvv_renamed};

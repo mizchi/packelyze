@@ -1,15 +1,4 @@
 import ts from "typescript";
-import { composeVisitors } from "../typescript/utils";
-
-export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
-  const nodes = new Set<ts.Node>();
-  const enter = getEffectDetectorEnter(checker, (node) => {
-    nodes.add(node);
-  });
-  const composed = composeVisitors(enter);
-  composed(node);
-  return nodes;
-}
 
 // for composeVisitors
 export function getEffectDetectorEnter(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
