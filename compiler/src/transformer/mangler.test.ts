@@ -8,7 +8,7 @@ import {
   findDeclarationsFromSymbolWalkerVisited,
   findMangleNodes,
   getLocalBindings,
-  getMangleRenameItems,
+  getMangleNodes,
   getRenameActionFromMangleNode,
   walkRelatedNodesFromRoot,
 } from "./mangler";
@@ -27,8 +27,11 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const symbolBuilder = createSymbolBuilder();
 
   walkRelatedNodesFromRoot(checker, symbolWalker, root);
-  const actions = targets.flatMap((target) => {
-    return getMangleRenameItems(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder,  target);
+  const nodes = targets.flatMap((target) => {
+    return getMangleNodes(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder,  target);
+  });
+  const actions =  [...nodes].flatMap((node) => {
+    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
   });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
@@ -185,7 +188,7 @@ test("mangle: multi files", () => {
   const expected = {
     "src/index.ts": `
       import { sub } from "./sub";
-      const k = 1;
+      const j = 1;
       export const x = sub.k;
     `,
     "src/sub.ts": `

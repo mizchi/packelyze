@@ -123,13 +123,13 @@ export function getRenameActionFromMangleNode(
 //   walkRelatedNodesFromRoot(checker, symbolWalker, root);
 // }
 
-export function getMangleRenameItems(
+export function getMangleNodes(
   checker: ts.TypeChecker,
   getSourceFile: (fileName: string) => ts.SourceFile | undefined,
   symbolWalker: SymbolWalker,
   symbolBuilder: SymbolBuilder,
   target: string,
-): MangleRenameAction[] {
+): ts.Node[] {
   symbolBuilder.reset();
   const file = getSourceFile(target)!;
   const effectNodes = findSideEffectSymbols(checker, file);
@@ -144,11 +144,9 @@ export function getMangleRenameItems(
   const visited = symbolWalker.getVisited();
   const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
 
-  const nodes = findMangleNodes(checker, file, exportedNodes);
-  return [...nodes].flatMap((node) => {
-    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
-  });
+  return [...findMangleNodes(checker, file, exportedNodes)];
 }
+
 
 
 // get local rename candidates

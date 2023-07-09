@@ -4,14 +4,15 @@ function ext(a, b) {
   return join(a, b, k);
 }
 const sub = {
-  k: 1,
+  x: 1,
 };
-function j() {
-  const q = { k: 1 };
+function q() {
+  const z = { j: 1 };
   return {
-    pub: q.k,
+    pub: z.j,
   };
 }
-const x = j();
-const subItem = sub.k;
+const x = q();
+const subItem = sub.x;
+
 export { ext, subItem, x };

@@ -2,7 +2,7 @@ import { getRenamedChanges } from "./../transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
-import { expandRenameActionsToSafeRenameItems, getMangleRenameItems, walkRelatedNodesFromRoot } from "../transformer/mangler";
+import { expandRenameActionsToSafeRenameItems, getMangleNodes, getRenameActionFromMangleNode, walkRelatedNodesFromRoot } from "../transformer/mangler";
 
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../services";
 import { createSymbolBuilder } from "../transformer/symbolBuilder";
@@ -36,8 +36,12 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
   // console.log("fnames", fileNames);
-  const renameItems = fileNames.flatMap((fname) => getMangleRenameItems(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder, fname));
-  const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, renameItems);
+  const nodes = fileNames.flatMap((fname) => getMangleNodes(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder, fname));
+  const actions =  [...nodes].flatMap((node) => {
+    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
+  });
+
+  const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const changes = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
   for (const change of changes) {
     service.writeSnapshotContent(change.fileName, change.content);
