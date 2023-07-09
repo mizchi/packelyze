@@ -9,7 +9,8 @@
     "prepublishOnly": "pnpm build",
     "typecheck": "tsc -p . --noEmit",
     "build": "tsc -p .",
-    "test": "vitest src --run"
+    "test": "vitest src --run",
+    "perf": "PERF=1 vitest --run src/perf.test.ts"
   },
   "exports": {
     ".": {

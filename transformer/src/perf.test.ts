@@ -13,9 +13,9 @@ async function compareBuildSize(projectPath: string) {
   // console.log("opt", opted);
   // console.log("nor", normal);
   console.log({
-    at: projectPath,
-    opted: opted.length,
-    normal: normal.length,
+    target: projectPath,
+    optedSize: opted.length,
+    normalSize: normal.length,
     delta: opted.length - normal.length,
   });
 
@@ -31,7 +31,6 @@ async function compareBuildSize(projectPath: string) {
         terser(),
       ],
     });
-
     const { output } = await bundle.generate({
       format: "esm",
     });
@@ -47,6 +46,7 @@ async function compareBuildSize(projectPath: string) {
       external: ["node:path"],
       plugins: [
         ts({
+          transpileOnly: true,
           // wip
         }),
         terser({}),
@@ -62,7 +62,7 @@ async function compareBuildSize(projectPath: string) {
 
 if (process.env.PERF) {
   // require tslib
-  const skipList: string[] = ["case02-class"];
+  const skipList: string[] = [];
   const cases = fs
     .readdirSync(path.join(__dirname, "./__fixtures"))
     .filter((x) => x.startsWith("case"))
