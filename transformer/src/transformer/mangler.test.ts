@@ -47,15 +47,15 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     };
   });
 
-  // console.log(
-  //   "[semantic-diagnostics]]",
-  //   service
-  //     .getProgram()!
-  //     .getSemanticDiagnostics()
-  //     .map((x) => x.messageText),
-  // );
+  const diagnostics = service.getProgram()!.getSemanticDiagnostics();
+  if (diagnostics.length > 0) {
+    console.log(
+      "[semantic-diagnostics]]",
+      diagnostics.map((x) => x.messageText),
+    );
+  }
 
-  expect(service.getProgram()!.getSemanticDiagnostics().length).toBe(0);
+  expect(diagnostics.length).toBe(0);
 
   expect(changes.length).toBe(Object.keys(expected).length);
   for (const change of changes) {
@@ -667,6 +667,66 @@ test("mangle: keep effect nodes", () => {
       fetch("/xxx", { method: "POST", body: JSON.stringify(k) });
     }
     `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+test.skip("mangle: react components", () => {
+  const files = {
+    "src/index.ts": `export { MyComponent } from "./components";`,
+    "src/components.tsx": `
+    export function MyComponent(props: {
+      foo: number,
+      children: React.ReactNode;
+    }) {
+      return <div>
+        <h1>MyComponent</h1>
+        <div>{props.foo}</div>
+        <div>{props.children}</div>
+      </div>;
+    }
+    `,
+  };
+  const expected = {
+    "src/index.ts": `
+    `,
+    "src/components.tsx": ``,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+test.skip("mangle: react components with sub component", () => {
+  const files = {
+    "src/index.ts": `export { MyComponent } from "./components";`,
+    "src/components.tsx": `
+    export function MyComponent(props: {
+      foo: number,
+      children: React.ReactNode;
+    }) {
+      return <div>
+        <h1>MyComponent</h1>
+        <div>{props.foo}</div>
+        <div>{props.children}</div>
+        <SubComponent value={props.foo} />
+      </div>;
+    }
+    
+    function SubComponent(props: {
+      value: number;
+    }) {
+      return <div>
+        <h1>SubComponent</h1>
+        <div>{props.value}</div>
+      </div>;
+    }
+    `,
+  };
+  const expected = {
+    "src/index.ts": `
+    `,
+    "src/components.tsx": ``,
   };
 
   assertExpectedMangleResult("src/index.ts", files, expected);
