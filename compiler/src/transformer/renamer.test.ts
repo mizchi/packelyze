@@ -1,9 +1,10 @@
 import "../__tests/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { BatchRenameItem, applyBatchRenameItems, findRenameItems, getRenamedFileChanges } from "./renamer";
+import { applyBatchRenameItems, findRenameItems, getRenamedFileChanges } from "./renamer";
 import { createTestLanguageService, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
 import { findFirstNode } from "../typescript/utils";
+import { BatchRenameLocation } from "./types";
 
 test("batch renaming", () => {
   const { service, normalizePath } = createTestLanguageService();
@@ -108,7 +109,7 @@ export const x = fff();
     const renames = service.findRenameLocations(normalizePath("src/index.ts"), localSignaturePos, false, false, {
       providePrefixAndSuffixTextForRename: true,
     });
-    const renameItems: BatchRenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameLocation[] = renames?.map((r) => {
       return {
         ...r,
         original: "local",
@@ -139,7 +140,7 @@ export const x = fff();
     const renames = service.findRenameLocations(normalizePath("src/index.ts"), localAssignmentPos, false, false, {
       providePrefixAndSuffixTextForRename: true,
     });
-    const renameItems: BatchRenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameLocation[] = renames?.map((r) => {
       return {
         ...r,
         original: "local",
@@ -182,7 +183,7 @@ export const x = {vvv};
       providePrefixAndSuffixTextForRename: true,
     });
 
-    const renameItems: BatchRenameItem[] = renames?.map((r) => {
+    const renameItems: BatchRenameLocation[] = renames?.map((r) => {
       let toName = "vvv_renamed";
       if (r.prefixText) {
         toName = `${r.prefixText}${toName}`;
@@ -248,7 +249,7 @@ test("TS: rename multi file", () => {
       providePrefixAndSuffixTextForRename: true,
     },
   );
-  const renameItems: BatchRenameItem[] = renames?.map((r) => {
+  const renameItems: BatchRenameLocation[] = renames?.map((r) => {
     return {
       ...r,
       original: "sub",

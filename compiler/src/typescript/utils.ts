@@ -183,7 +183,6 @@ export function toReadableType(type: ts.Type) {
   };
 }
 
-
 export function isSymbolInferredFromValueDeclaration(checker: ts.TypeChecker, symbol: ts.Symbol) {
   const type = checker.getTypeOfSymbol(symbol);
   return isTypeInferredFromValueDeclaration(type);

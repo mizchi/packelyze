@@ -2,7 +2,7 @@ import { getRenamedFileChanges } from "./transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
-import { expandRenameActionsToSafeRenameItems, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";
+import { expandToSafeBatchRenameLocations, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 
 export function getPlugin({ projectPath }: { projectPath: string }) {
@@ -24,7 +24,8 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     .getProgram()!
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
-  const visited = walkProjectForMangle(checker,
+  const visited = walkProjectForMangle(
+    checker,
     root,
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
@@ -33,7 +34,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     const file = service.getCurrentSourceFile(fname)!;
     return getMangleActionsForFile(checker, visited, file);
   });
-  const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
+  const items = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
   const changes = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
   for (const change of changes) {
     service.writeSnapshotContent(change.fileName, change.content);

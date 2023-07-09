@@ -49,4 +49,3 @@ class C6 extends b {
   }
 }
 export { C, C3, C4, C6 };
-

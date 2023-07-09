@@ -1,17 +1,6 @@
 import ts from "typescript";
 import { FindRenameLocations } from "../typescript/types";
-
-export type BatchRenameItem = ts.RenameLocation & {
-  original: string;
-  to: string;
-};
-
-type FileChangeResult = {
-  fileName: string;
-  content: string;
-  start?: number;
-  end?: number;
-};
+import { BatchRenameLocation, FileChangeResult } from "./types";
 
 /** wrap service.findRenameLocations */
 export function findRenameItems(
@@ -25,8 +14,8 @@ export function findRenameItems(
     providePrefixAndSuffixTextForRename: true,
     allowRenameOfImportPath: true,
   },
-): BatchRenameItem[] | undefined {
-  const renames = findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameItem[] | undefined;
+): BatchRenameLocation[] | undefined {
+  const renames = findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
   if (!renames) return;
   // check is export related
   for (const rename of renames) {
@@ -37,15 +26,15 @@ export function findRenameItems(
 }
 
 export function getRenamedFileChanges(
-  renames: BatchRenameItem[],
+  renames: BatchRenameLocation[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
 ): FileChangeResult[] {
   // rewire renames by each files
   const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
-  const rewiredRenames: Map<string, BatchRenameItem[]> = new Map();
+  const rewiredRenames: Map<string, BatchRenameLocation[]> = new Map();
   for (const targetFile of targetFiles) {
-    const sortedRenames: BatchRenameItem[] = renames
+    const sortedRenames: BatchRenameLocation[] = renames
       .filter((r) => normalizePath(r.fileName) === targetFile)
       .sort((a, b) => a.textSpan.start - b.textSpan.start);
     rewiredRenames.set(targetFile, sortedRenames);
@@ -64,7 +53,7 @@ export function getRenamedFileChanges(
 
 export function applyBatchRenameItems(
   code: string,
-  renames: BatchRenameItem[],
+  renames: BatchRenameLocation[],
   debug = false,
 ): [renamed: string, changedStart: number, changedEnd: number] {
   const debugLog = debug ? console.log : () => {};

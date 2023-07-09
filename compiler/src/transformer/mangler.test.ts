@@ -3,9 +3,8 @@ import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../_
 import { getRenamedFileChanges } from "./renamer";
 import { expect, test } from "vitest";
 import {
-  expandRenameActionsToSafeRenameItems,
+  expandToSafeBatchRenameLocations,
   findDeclarationsFromSymbolWalkerVisited,
-  findMangleNodes,
   getLocalBindings,
   walkProjectForMangle,
   getMangleActionsForFile,
@@ -19,10 +18,14 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const targets = Object.keys(files).map(normalizePath);
   entry = normalizePath(entry);
   const root = service.getProgram()!.getSourceFile(entry)!;
-  const fileNames = service.getProgram()!.getRootFileNames().filter((fname) => !fname.endsWith(".d.ts"));
+  const fileNames = service
+    .getProgram()!
+    .getRootFileNames()
+    .filter((fname) => !fname.endsWith(".d.ts"));
 
   const checker = service.getProgram()!.getTypeChecker();
-  const visited = walkProjectForMangle(checker,
+  const visited = walkProjectForMangle(
+    checker,
     root,
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
@@ -31,7 +34,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     const file = service.getCurrentSourceFile(target)!;
     return getMangleActionsForFile(checker, visited, file);
   });
-  const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
+  const items = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
   const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
 
   // rename for assert
@@ -47,7 +50,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   //   service
   //     .getProgram()!
   //     .getSemanticDiagnostics()
-  //     .map((x) => x.messageText), 
+  //     .map((x) => x.messageText),
   // );
 
   expect(service.getProgram()!.getSemanticDiagnostics().length).toBe(0);
@@ -226,12 +229,11 @@ test("rename local object member", () => {
     const x: Local = { k: 1 };
     const j: Pub = { pubv: 1 };
     export { j as pub };  
-    `
+    `,
   };
 
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
-
 
 test("mangle with complex", () => {
   const files = {

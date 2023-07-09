@@ -25,7 +25,7 @@ export function getEffectDetectorEnter(checker: ts.TypeChecker, onEnter: (node: 
         }
       }
     }
-    
+
     if (ts.isCallExpression(node)) {
       const type = checker.getTypeAtLocation(node.expression);
       if (type.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile) {

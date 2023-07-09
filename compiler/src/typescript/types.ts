@@ -2,7 +2,7 @@
 // export type { TS };
 import ts from "typescript";
 
-export interface TSSymbol extends ts.Node {
+export interface TsSymbol extends ts.Node {
   id: number;
 }
 
