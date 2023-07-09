@@ -30,13 +30,14 @@ async function buildAndAssertExpected(projectPath: string) {
 // const skipList = ["case02-class"];
 // const skipList: string[] = ["case-01", "case03-global", "case04-internal", "case05-effects"];
 const skipList: string[] = [];
+// const onlyList: string[] = ["case02-class"];
+const onlyList: string[] = [];
 
 const cases = fs
   .readdirSync(path.join(__dirname, "./__fixtures"))
   .filter((x) => x.startsWith("case"))
-  .filter((caseName) => {
-    return !skipList.includes(caseName);
-  });
+  .filter((caseName) => onlyList.length === 0 || onlyList.includes(caseName))
+  .filter((caseName) => !skipList.includes(caseName));
 
 for (const caseName of cases) {
   test(`rollup plugin #${caseName}`, async () => {

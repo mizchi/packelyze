@@ -1,9 +1,9 @@
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { createGetSymbolWalker } from "./symbolWalker";
+import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import ts from "typescript";
-import { findDeclarationsFromSymbolWalkerVisited } from "./nodeWalker";
 import { findSideEffectSymbols } from "./effects";
+import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";
 
 test("effect", () => {
   const { checker, file } = createOneshotTestProgram(`

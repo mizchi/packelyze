@@ -43,3 +43,25 @@ export class C3 extends C2 {
     return this.c2();
   }
 }
+
+interface I {
+  foo(): number;
+}
+export class C4 implements I {
+  foo() {
+    return 1;
+  }
+}
+
+abstract class C5 {
+  abstract foo(): number;
+  bar() {
+    return this.foo();
+  }
+}
+
+export class C6 extends C5 {
+  foo() {
+    return 1;
+  }
+}

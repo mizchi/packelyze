@@ -9,29 +9,23 @@ Experimental Optimizer.
 
 ## TODO
 
-- [ ] Symbol to Function Signature
-
 - Language Service
   - [x] write file in memory
-  - [ ] create/delete file in memory 
+  - [x] create/delete file in memory 
   - [ ] ranged snapshot creator
-- Manipulation
+- Mangle
   - [x] Batch rename
-  - [ ] rename symbol creator
-  - [ ] Rename locals
-  - [ ] Rename internal interface
-  - [ ] Skip rename for external modules
+  - [x] rename symbol creator
+  - [x] Rename locals
+  - [x] Rename internal interface
+  - [x] Skip rename for external modules
+  - [x] FIX: class extends
+  - [ ] FIX: abstract class member
+
 - Side-effect
-  - [ ] find global references
-  - [ ] find global mutator
+  - [x] find global references
+  - [x] find global mutator
   - [ ] find arguments mutator
   - [ ] find external 
   - [ ] list impure globals
   - [ ] mark pure function
-- Transfomer
-  - [ ] Rename scoped
-  - [ ] Constants Replacement
-  - [ ] Dead Code Ellimination
-- [ ] Bundler
-  - [ ] rollup initial version
-  - [ ] Self Hosting bundler

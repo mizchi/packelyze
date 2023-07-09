@@ -2,9 +2,11 @@ import { getRenamedChanges } from "./../transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
-import { createGetMangleRenameItems, expandRenameActionsToSafeRenameItems } from "../transformer/mangler";
-import { createIncrementalLanguageServiceHost } from "..";
-import { createIncrementalLanguageService } from "../services";
+import { expandRenameActionsToSafeRenameItems, getMangleRenameItems, walkRelatedNodesFromRoot } from "../transformer/mangler";
+
+import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../services";
+import { createSymbolBuilder } from "../transformer/symbolBuilder";
+import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 
 export function getPlugin({ projectPath }: { projectPath: string }) {
   const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);
@@ -22,7 +24,11 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
   const checker = service.getProgram()!.getTypeChecker();
 
   // const root = service.getProgram()!.getSourceFile("src/index.ts")!;
-  const getRenameItemsForFile = createGetMangleRenameItems(checker, service.getCurrentSourceFile, "index.ts");
+  const symbolBuilder = createSymbolBuilder();
+  const symbolWalker = createGetSymbolWalker(checker)();
+  // createGetMangleRenameItems(checker, service.getCurrentSourceFile, symbolWalker, "index.ts");
+  const root = service.getProgram()!.getSourceFile("index.ts")!;
+  walkRelatedNodesFromRoot(checker, symbolWalker, root);
 
   // omit .d.ts for rename target
   const fileNames = service
@@ -30,7 +36,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
   // console.log("fnames", fileNames);
-  const renameItems = fileNames.flatMap(getRenameItemsForFile);
+  const renameItems = fileNames.flatMap((fname) => getMangleRenameItems(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder, fname));
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, renameItems);
   const changes = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
   for (const change of changes) {

@@ -33,4 +33,20 @@ class C3 extends w {
     return this.c2();
   }
 }
-export { C, C3 };
+class C4 {
+  foo() {
+    return 1;
+  }
+}
+class b {
+  bar() {
+    return this.v();
+  }
+}
+class C6 extends b {
+  v() {
+    return 1;
+  }
+}
+export { C, C3, C4, C6 };
+

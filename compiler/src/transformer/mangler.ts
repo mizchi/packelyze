@@ -1,10 +1,9 @@
 import ts from "typescript";
-import { findDeclarationsFromSymbolWalkerVisited } from "../analyzer/nodeWalker";
-import { SymbolWalker, createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { SymbolWalker, SymbolWalkerVisited, createGetSymbolWalker } from "../analyzer/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
-import { toReadableNode, toReadableSymbol } from "../nodeUtils";
-import { findSideEffectSymbols } from "../analyzer/effects";
+// import { toReadableNode, toReadableSymbol } from "../nodeUtils";
+import { findSideEffectSymbols } from "./effects";
 
 export type MangleRenameAction = {
   fileName: string;
@@ -14,21 +13,18 @@ export type MangleRenameAction = {
   isAssignment: boolean;
 };
 
-export function findExportedNodesFromRoot(checker: ts.TypeChecker, symbolWalker: SymbolWalker, root: ts.SourceFile) {
-  // const symbolWalker = createGetSymbolWalker(checker)();
+export function walkRelatedNodesFromRoot(checker: ts.TypeChecker, symbolWalker: SymbolWalker, root: ts.SourceFile) {
   const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
   for (const exported of exportedSymbols) {
     symbolWalker.walkSymbol(exported);
   }
-  // const visited = symbolWalker.getVisited();
-  // return findDeclarationsFromSymbolWalkerVisited(visited);
 }
 
 export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
   const bindingIdentifiers = getLocalBindings(checker, file);
 
   const manglables = new Set<ts.Node>();
-  const fileExportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
 
   // console.log(
   //   "findMangleNodes:exports",
@@ -52,7 +48,7 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
 
     // node is exported
     const symbol = checker.getSymbolAtLocation(identifier)!;
-    if (fileExportedSymbols.includes(symbol)) {
+    if (exportedSymbols.includes(symbol)) {
       continue;
     }
 
@@ -85,6 +81,7 @@ export function expandRenameActionsToSafeRenameItems(
   return [...preItems, ...postItems];
 }
 
+
 export function getRenameActionFromMangleNode(
   checker: ts.TypeChecker,
   symbolBuilder: SymbolBuilder,
@@ -106,55 +103,53 @@ export function getRenameActionFromMangleNode(
     start: node.getStart(),
     isAssignment: isPropertyAssignment,
   };
+  function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
+    const locals = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariable);
+    const localNames = new Set(locals.map((x) => x.name));
+    return (newName: string) => {
+      return !localNames.has(newName);
+    };
+  }
+    
 }
 
-export function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
-  const locals = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariable);
-  const localNames = new Set(locals.map((x) => x.name));
-  return (newName: string) => {
-    return !localNames.has(newName);
-  };
-}
+// export function createGetMangleRenameItems(
+//   checker: ts.TypeChecker,
+//   getSourceFile: (fileName: string) => ts.SourceFile | undefined,
+//   symbolWalker: SymbolWalker,
+//   entry: string,
+// ): void {
+//   const root = getSourceFile(entry)!;
+//   walkRelatedNodesFromRoot(checker, symbolWalker, root);
+// }
 
-export function createGetMangleRenameItems(
+export function getMangleRenameItems(
   checker: ts.TypeChecker,
-  // findRenameLocations: FindRenameLocations,
   getSourceFile: (fileName: string) => ts.SourceFile | undefined,
-  entry: string,
-): (fileName: string) => MangleRenameAction[] {
-  const root = getSourceFile(entry)!;
-  const symbolWalker = createGetSymbolWalker(checker)();
-  findExportedNodesFromRoot(checker, symbolWalker, root);
-  const symbolBuilder = createSymbolBuilder();
-  return (target: string) => {
-    symbolBuilder.reset();
-    const file = getSourceFile(target)!;
-
-    // const symbolWalker = createGetSymbolWalker(checker)();
-    // const childSymbolWalker = symbolWalker.createChildSymbolWalker();
-    const effectNodes = findSideEffectSymbols(checker, file);
-    for (const node of effectNodes) {
-      const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) {
-        symbolWalker.walkSymbol(symbol);
-      }
-      const type = checker.getTypeAtLocation(node);
-      // const type = checker.getTypeOfSymbolAtLocation(symbol, node);
-      symbolWalker.walkType(type);
+  symbolWalker: SymbolWalker,
+  symbolBuilder: SymbolBuilder,
+  target: string,
+): MangleRenameAction[] {
+  symbolBuilder.reset();
+  const file = getSourceFile(target)!;
+  const effectNodes = findSideEffectSymbols(checker, file);
+  for (const node of effectNodes) {
+    const symbol = checker.getSymbolAtLocation(node);
+    if (symbol) {
+      symbolWalker.walkSymbol(symbol);
     }
-    // const newExportedNodes = new Set<ts.Node>(
-    //   [...exportedNodes, ...effectNodes]
-    // );
-    const visited = symbolWalker.getVisited();
-    const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
+    const type = checker.getTypeAtLocation(node);
+    symbolWalker.walkType(type);
+  }
+  const visited = symbolWalker.getVisited();
+  const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
 
-    const nodes = findMangleNodes(checker, file, exportedNodes);
-    return [...nodes].flatMap((node) => {
-      return getRenameActionFromMangleNode(checker, symbolBuilder, node);
-      // return collectRenameItems(findRenameLocations, file, action.start, action.original, action.to) ?? [];
-    });
-  };
+  const nodes = findMangleNodes(checker, file, exportedNodes);
+  return [...nodes].flatMap((node) => {
+    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
+  });
 }
+
 
 // get local rename candidates
 export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
@@ -293,4 +288,142 @@ function hasDeclareKeyword(
   node: ts.VariableStatement | ts.FunctionDeclaration | ts.ClassDeclaration | ts.ModuleDeclaration | ts.EnumDeclaration,
 ): boolean {
   return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword) ?? false;
+}
+
+type MangleNode =
+  | ts.TypeLiteralNode
+  | ts.PropertySignature
+  | ts.MethodSignature
+  | ts.TypeAliasDeclaration
+  | ts.InterfaceDeclaration
+  | ts.ParameterDeclaration
+  | ts.PropertyDeclaration
+  | ts.MethodDeclaration
+  | ts.ClassDeclaration
+  | ts.TypeNode
+  | ts.GetAccessorDeclaration
+  | ts.SetAccessorDeclaration;
+
+function isMangleNode(node: ts.Node): node is MangleNode {
+  return (
+    ts.isTypeNode(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeLiteralNode(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isPropertySignature(node) ||
+    ts.isMethodSignature(node) ||
+    ts.isMethodDeclaration(node) ||
+    ts.isPropertyDeclaration(node) ||
+    ts.isParameter(node) ||
+    ts.isGetAccessor(node) ||
+    ts.isSetAccessor(node)
+  );
+}
+
+export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVisited, debug: boolean = false) {
+  const log = debug ? console.log : () => {};
+  const visitedNodes = new Set<ts.Node>();
+  for (const symbol of visited.visitedSymbols) {
+    for (const declaration of symbol.getDeclarations() ?? []) {
+      visitNode(declaration, 0);
+    }
+  }
+  return visitedNodes;
+
+  function visitNode(node: ts.Node, depth: number) {
+    log("  ".repeat(depth) + "[Node:" + ts.SyntaxKind[node.kind] + "]", node.getText().slice(0, 10) + "...");
+
+    if (!isMangleNode(node)) return;
+    if (visitedNodes.has(node)) return;
+    visitedNodes.add(node);
+
+    if (ts.isTypeAliasDeclaration(node)) {
+      for (const typeParam of node.typeParameters ?? []) {
+        visitNode(typeParam, depth + 1);
+      }
+      if (node.type) {
+        visitNode(node.type, depth + 1);
+      }
+    }
+    if (ts.isInterfaceDeclaration(node)) {
+      // TODO
+      for (const heritageClause of node.heritageClauses ?? []) {
+        for (const type of heritageClause.types) {
+          visitNode(type.expression, depth + 1);
+        }
+      }
+      for (const typeParam of node.typeParameters ?? []) {
+        visitNode(typeParam, depth + 1);
+      }
+      for (const member of node.members) {
+        visitNode(member, depth + 1);
+      }
+    }
+
+    if (ts.isClassDeclaration(node)) {
+      for (const typeParam of node.typeParameters ?? []) {
+        visitNode(typeParam, depth + 1);
+      }
+      // for (const member of node.members) {
+      //   visitNode(member, depth + 1);
+      // }
+      for (const heritageClause of node.heritageClauses ?? []) {
+        for (const type of heritageClause.types) {
+          visitNode(type.expression, depth + 1);
+        }
+      }
+    }
+
+    if (ts.isTypeLiteralNode(node)) {
+      for (const member of node.members) {
+        visitNode(member, depth + 1);
+      }
+    }
+    if (ts.isParameter(node)) {
+      if (node.type) {
+        visitNode(node.type, depth + 1);
+      }
+    }
+
+    if (ts.isPropertySignature(node)) {
+      if (node.type) {
+        visitNode(node.type, depth + 1);
+      }
+    }
+    if (ts.isMethodSignature(node)) {
+      for (const param of node.parameters) {
+        visitNode(param, depth + 1);
+      }
+    }
+
+    if (ts.isPropertyDeclaration(node)) {
+      if (node.type) {
+        visitNode(node.type, depth + 1);
+      }
+    }
+    if (ts.isMethodDeclaration(node)) {
+      for (const param of node.parameters) {
+        visitNode(param, depth + 1);
+      }
+    }
+    if (ts.isGetAccessor(node)) {
+      for (const param of node.parameters) {
+        visitNode(param, depth + 1);
+      }
+    }
+    if (ts.isSetAccessor(node)) {
+      for (const param of node.parameters) {
+        visitNode(param, depth + 1);
+      }
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const prop of node.properties) {
+        visitNode(prop, depth + 1);
+      }
+    }
+    if (ts.isPropertyAssignment(node)) {
+      visitNode(node.name, depth + 1);
+    }
+  }
 }
