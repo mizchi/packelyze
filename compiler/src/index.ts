@@ -1,2 +1,2 @@
-export { createIncrementalLanguageServiceHost } from "./typescript/services";
-export { getPlugin as packelyzePlugin } from "./withRollup";
+export { createIncrementalLanguageServiceHost, createIncrementalLanguageService } from "./typescript/services";
+export { getPlugin as packelyzeTs } from "./withRollup";

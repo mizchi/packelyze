@@ -24,18 +24,13 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     .getProgram()!
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
-  const visited = walkProjectForMangle(
-    checker,
-    root,
-    fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
-  );
 
-  const actions = fileNames.flatMap((fname) => {
-    const file = service.getCurrentSourceFile(fname)!;
-    return getMangleActionsForFile(checker, visited, file);
-  });
-  const items = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
-  const changes = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
+  const targetsFiles = fileNames.map((fname) => service.getCurrentSourceFile(fname)!);
+
+  const visited = walkProjectForMangle(checker, root, targetsFiles);
+  const actions = targetsFiles.flatMap((file) => getMangleActionsForFile(checker, visited, file));
+  const renames = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
+  const changes = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
   for (const change of changes) {
     service.writeSnapshotContent(change.fileName, change.content);
   }
@@ -83,6 +78,4 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     },
   };
   return plugin;
-  // return { plugin, normalizePath, service };
-  // return { plugin, normalizePath, service };
 }

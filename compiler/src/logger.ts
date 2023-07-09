@@ -10,8 +10,8 @@ export type Logger = {
   off: () => void;
 };
 
-// type DebugLoggerInitializer = string;
-type LogItemTransformer = (item: any, idx?: number, array?: any) => any;
+export type LogItemTransformer = (item: any, idx?: number, array?: any) => any;
+
 export function createLogger(
   initializer: string | number,
   initialDebug: boolean | (() => boolean) = false,
@@ -44,18 +44,15 @@ export function createLogger(
       console.log(
         header,
         ...mapped
-          .map((item, idx) => {
+          .map((item) => {
             // const first = `{${idx}}`;
             if (typeof item === "string") {
               if (item.includes("\n")) {
-                // const leading = idx === 0 ? `${header}:${gray(idx)}` : `\n${header}:${gray(idx)}`
                 return `\n------\n${item}\n------`;
               }
               return item;
             } else {
               return item;
-              // const leading = idx === 0 ? `${header}:${gray(idx)}` : `\n${header}:${gray(idx)}`
-              // return [`\n${leading}`, item];
             }
           })
           .flat(1),
