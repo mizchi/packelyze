@@ -2,11 +2,12 @@ import { getRenamedChanges } from "./../transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
-import { expandRenameActionsToSafeRenameItems, getMangleNodes, getRenameActionFromMangleNode, walkRelatedNodesFromRoot } from "../transformer/mangler";
+import { expandRenameActionsToSafeRenameItems, getMangleNodes, getMangleActionFromNode, walkRelatedNodesFromRoot } from "../transformer/mangler";
 
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../services";
 import { createSymbolBuilder } from "../transformer/symbolBuilder";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { findSideEffectSymbols } from "../transformer/effects";
 
 export function getPlugin({ projectPath }: { projectPath: string }) {
   const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);
@@ -28,18 +29,34 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
   const symbolWalker = createGetSymbolWalker(checker)();
   // createGetMangleRenameItems(checker, service.getCurrentSourceFile, symbolWalker, "index.ts");
   const root = service.getProgram()!.getSourceFile("index.ts")!;
-  walkRelatedNodesFromRoot(checker, symbolWalker, root);
-
-  // omit .d.ts for rename target
-  const fileNames = service
+    // omit .d.ts for rename target
+    const fileNames = service
     .getProgram()!
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
-  // console.log("fnames", fileNames);
-  const nodes = fileNames.flatMap((fname) => getMangleNodes(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder, fname));
-  const actions =  [...nodes].flatMap((node) => {
-    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
+
+  walkRelatedNodesFromRoot(checker, symbolWalker, root);
+  // walk all files
+  for (const fname of fileNames) {
+    const file = service.getCurrentSourceFile(fname)!;
+    const effectNodes = findSideEffectSymbols(checker, file);
+    for (const node of effectNodes) {
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      const type = checker.getTypeAtLocation(node);
+      symbolWalker.walkType(type);
+    }
+  }
+
+  const visited = symbolWalker.getVisited();
+  const nodes = fileNames.flatMap((fname) => {
+    symbolBuilder.reset();
+    const file = service.getCurrentSourceFile(fname)!;
+    return getMangleNodes(checker, visited, file);
   });
+  const actions =  nodes.flatMap((node) => getMangleActionFromNode(checker, symbolBuilder, node));
 
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const changes = getRenamedChanges(items, service.readSnapshotContent, normalizePath);

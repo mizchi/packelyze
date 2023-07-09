@@ -9,11 +9,12 @@ import {
   findMangleNodes,
   getLocalBindings,
   getMangleNodes,
-  getRenameActionFromMangleNode,
+  getMangleActionFromNode,
   walkRelatedNodesFromRoot,
 } from "./mangler";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import ts from "typescript";
+import { findSideEffectSymbols } from "./effects";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -21,17 +22,35 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const targets = Object.keys(files).map(normalizePath);
   entry = normalizePath(entry);
   const root = service.getProgram()!.getSourceFile(entry)!;
+  const fileNames = service.getProgram()!.getRootFileNames();
 
   const checker = service.getProgram()!.getTypeChecker();
   const symbolWalker = createGetSymbolWalker(checker)();
   const symbolBuilder = createSymbolBuilder();
 
   walkRelatedNodesFromRoot(checker, symbolWalker, root);
+  // walk all files
+  for (const fname of fileNames) {
+    const file = service.getCurrentSourceFile(fname)!;
+    const effectNodes = findSideEffectSymbols(checker, file);
+    for (const node of effectNodes) {
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      const type = checker.getTypeAtLocation(node);
+      symbolWalker.walkType(type);
+    }
+  }
+  
+  const visited = symbolWalker.getVisited();
   const nodes = targets.flatMap((target) => {
-    return getMangleNodes(checker, service.getCurrentSourceFile, symbolWalker, symbolBuilder,  target);
+    symbolBuilder.reset();
+    const file = service.getCurrentSourceFile(target)!;
+    return getMangleNodes(checker, visited, file);
   });
   const actions =  [...nodes].flatMap((node) => {
-    return getRenameActionFromMangleNode(checker, symbolBuilder, node);
+    return getMangleActionFromNode(checker, symbolBuilder, node);
   });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
@@ -237,7 +256,7 @@ test("rename local object member", () => {
 
   // const item
   const items: RenameItem[] = [...nodes].flatMap((node) => {
-    const action = getRenameActionFromMangleNode(checker, symbolBuilder, node);
+    const action = getMangleActionFromNode(checker, symbolBuilder, node);
     const renames = findRenameItems(
       service.findRenameLocations,
       file.fileName,

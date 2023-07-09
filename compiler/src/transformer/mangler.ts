@@ -1,11 +1,11 @@
 import ts from "typescript";
-import { SymbolWalker, SymbolWalkerVisited, createGetSymbolWalker } from "../analyzer/symbolWalker";
-import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
+import { SymbolWalker, SymbolWalkerVisited } from "../analyzer/symbolWalker";
+import { SymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
 // import { toReadableNode, toReadableSymbol } from "../nodeUtils";
 import { findSideEffectSymbols } from "./effects";
 
-export type MangleRenameAction = {
+export type MangleAction = {
   fileName: string;
   original: string;
   to: string;
@@ -59,7 +59,7 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
 
 export function expandRenameActionsToSafeRenameItems(
   findRenameLocations: FindRenameLocations,
-  actions: MangleRenameAction[],
+  actions: MangleAction[],
 ) {
   const preActions = actions.filter((x) => !x.isAssignment);
 
@@ -82,11 +82,11 @@ export function expandRenameActionsToSafeRenameItems(
 }
 
 
-export function getRenameActionFromMangleNode(
+export function getMangleActionFromNode(
   checker: ts.TypeChecker,
   symbolBuilder: SymbolBuilder,
   node: ts.Node,
-): MangleRenameAction {
+): MangleAction {
   const validate = createNameValidator(checker, node);
   if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
     throw new Error("unexpected node type " + node.kind);
@@ -110,40 +110,19 @@ export function getRenameActionFromMangleNode(
       return !localNames.has(newName);
     };
   }
-    
 }
-
-// export function createGetMangleRenameItems(
-//   checker: ts.TypeChecker,
-//   getSourceFile: (fileName: string) => ts.SourceFile | undefined,
-//   symbolWalker: SymbolWalker,
-//   entry: string,
-// ): void {
-//   const root = getSourceFile(entry)!;
-//   walkRelatedNodesFromRoot(checker, symbolWalker, root);
-// }
 
 export function getMangleNodes(
   checker: ts.TypeChecker,
-  getSourceFile: (fileName: string) => ts.SourceFile | undefined,
-  symbolWalker: SymbolWalker,
-  symbolBuilder: SymbolBuilder,
-  target: string,
+  // getSourceFile: (fileName: string) => ts.SourceFile | undefined,
+  // symbolWalker: SymbolWalker,
+  // symbolBuilder: SymbolBuilder,
+  visited: SymbolWalkerVisited,
+  file: ts.SourceFile,
 ): ts.Node[] {
-  symbolBuilder.reset();
-  const file = getSourceFile(target)!;
-  const effectNodes = findSideEffectSymbols(checker, file);
-  for (const node of effectNodes) {
-    const symbol = checker.getSymbolAtLocation(node);
-    if (symbol) {
-      symbolWalker.walkSymbol(symbol);
-    }
-    const type = checker.getTypeAtLocation(node);
-    symbolWalker.walkType(type);
-  }
-  const visited = symbolWalker.getVisited();
+  // symbolBuilder.reset();
+  // const file = getSourceFile(target)!;
   const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
-
   return [...findMangleNodes(checker, file, exportedNodes)];
 }
 
