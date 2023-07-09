@@ -177,20 +177,23 @@ export function getBindingIdentifiersForFile(file: ts.SourceFile): BindingIdenti
   return identifiers;
 
   function visit(node: ts.Node) {
+    // console.log("[bindings]", ts.SyntaxKind[node.kind], "\n" + node.getText());
     // declarable nodes
     // stop if declared
     if (ts.isVariableStatement(node)) {
       // stop if declare cont v: ...;
-      if (hasDeclareKeyword(node)) return;
+      if (hasDeclareOrAbstract(node)) return;
     }
 
     if (
       ts.isFunctionDeclaration(node) ||
       ts.isClassDeclaration(node) ||
       ts.isEnumDeclaration(node) ||
-      ts.isModuleDeclaration(node)
+      ts.isModuleDeclaration(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isPropertyDeclaration(node)
     ) {
-      if (hasDeclareKeyword(node)) return;
+      if (hasDeclareOrAbstract(node)) return;
       if (node.name) {
         visitNamedBinding(node.name);
       }
@@ -206,16 +209,7 @@ export function getBindingIdentifiersForFile(file: ts.SourceFile): BindingIdenti
     if (ts.isInterfaceDeclaration(node)) {
       visitNamedBinding(node.name);
     }
-    if (ts.isPropertyDeclaration(node)) {
-      visitNamedBinding(node.name);
-    }
-    if (ts.isMethodDeclaration(node)) {
-      visitNamedBinding(node.name);
-    }
     if (ts.isPropertySignature(node)) {
-      visitNamedBinding(node.name);
-    }
-    if (ts.isMethodSignature(node)) {
       visitNamedBinding(node.name);
     }
     if (ts.isGetAccessorDeclaration(node)) {
@@ -277,15 +271,21 @@ export function getBindingIdentifiersForFile(file: ts.SourceFile): BindingIdenti
       }
     }
   }
-  function hasDeclareKeyword(
+  function hasDeclareOrAbstract(
     node:
       | ts.VariableStatement
       | ts.FunctionDeclaration
       | ts.ClassDeclaration
       | ts.ModuleDeclaration
-      | ts.EnumDeclaration,
+      | ts.EnumDeclaration
+      | ts.MethodDeclaration
+      | ts.PropertyDeclaration,
   ): boolean {
-    return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword) ?? false;
+    return (
+      node.modifiers?.some(
+        (m) => m.kind === ts.SyntaxKind.DeclareKeyword || m.kind === ts.SyntaxKind.AbstractKeyword,
+      ) ?? false
+    );
   }
 }
 

@@ -1,14 +1,14 @@
 function myfn(input) {
-  const z = {
-    q: 1,
+  const q = {
+    j: 1,
   };
-  const p = {
-    k: z.q,
+  const z = {
+    k: q.j,
     x: input.input,
-    j() {
+    p() {
       return this.k + this.x;
     },
   };
-  return z.q + p.j();
+  return q.j + z.p();
 }
-export { myfn };
+export { myfn }

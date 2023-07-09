@@ -19,13 +19,14 @@ function formatCode(code: string) {
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
   const { service, normalizePath, projectPath } = initTestLanguageServiceWithFiles(files);
-  const targets = Object.keys(files).map(normalizePath);
   entry = normalizePath(entry);
   const root = service.getProgram()!.getSourceFile(entry)!;
   const fileNames = service
     .getProgram()!
     .getRootFileNames()
     .filter((fname) => !fname.endsWith(".d.ts"));
+
+  const targetFiles = fileNames.map((fname) => service.getCurrentSourceFile(fname)!);
 
   const checker = service.getProgram()!.getTypeChecker();
   const visited = walkProjectForMangle(
@@ -34,10 +35,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
 
-  const actions = targets.flatMap((target) => {
-    const file = service.getCurrentSourceFile(target)!;
-    return getMangleActionsForFile(checker, visited, file);
-  });
+  const actions = targetFiles.flatMap((target) => getMangleActionsForFile(checker, visited, target));
   const items = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
   const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
 
@@ -470,7 +468,7 @@ test.skip("mangle with externals", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle: with externals", () => {
+test("mangle: with classes", () => {
   const files = {
     "src/index.ts": `
     type MyType = {
@@ -541,6 +539,24 @@ test("mangle: with externals", () => {
     `,
   };
 
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
+test("mangle: with abstract class", () => {
+  const files = {
+    "src/index.ts": `
+    abstract class Base {
+      abstract foo(): number;
+    }
+    export class C extends Base {
+      foo() {
+        return 1;
+      }
+    }
+  `,
+  };
+
+  const expected = {};
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 

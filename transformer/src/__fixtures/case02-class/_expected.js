@@ -38,13 +38,13 @@ class C4 {
     return 1;
   }
 }
-class b {
+class C5 {
   bar() {
-    return this.v();
+    return this.foo();
   }
 }
-class C6 extends b {
-  v() {
+class C6 extends C5 {
+  foo() {
     return 1;
   }
 }
