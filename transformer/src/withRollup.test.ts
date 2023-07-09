@@ -16,7 +16,7 @@ async function buildAndAssertExpected(projectPath: string) {
   const expected = fs.readFileSync(expectedPath, "utf-8");
   const bundle = await rollup({
     input: inputPath,
-    external: ["node:path"],
+    external: ["node:path", "react", "react/jsx-runtime"],
     plugins: [getPlugin({ projectPath })],
   });
 
@@ -27,10 +27,9 @@ async function buildAndAssertExpected(projectPath: string) {
   return output[0].code;
 }
 
-// const skipList = ["case02-class"];
-// const skipList: string[] = ["case-01", "case03-global", "case04-internal", "case05-effects"];
-const skipList: string[] = [];
-// const onlyList: string[] = ["case02-class"];
+// const skipList: string[] = [];
+// WIP
+const skipList: string[] = ["case07-react"];
 const onlyList: string[] = [];
 
 const cases = fs

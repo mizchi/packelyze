@@ -7,7 +7,7 @@
   "types": "./lib/index.d.ts",
   "scripts": {
     "prepublishOnly": "pnpm build",
-    "typecheck": "tsc -p . --noEmit",
+    "typecheck": "pnpm tsc -p . --noEmit --emitDeclarationOnly false",
     "build": "tsc -p .",
     "test": "vitest src --run",
     "perf": "PERF=1 vitest --run src/perf.test.ts"
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.2",
     "@types/prettier": "^2.7.3",
+    "@types/react": "^18.2.6",
     "prettier": "^2.8.8",
     "rollup": "^3.21.7",
     "rollup-plugin-ts": "^3.2.0",

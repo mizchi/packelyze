@@ -35,6 +35,8 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     service.writeSnapshotContent(change.fileName, change.content);
   }
 
+  const searchingExtensions = ["", ".ts", ".tsx", ".js", ".jsx", ".json"];
+
   const plugin: Plugin = {
     name: "test",
     options(options) {
@@ -42,9 +44,11 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     },
     resolveId(id, importer) {
       let resolvedId = importer ? path.resolve(path.dirname(importer), id) : id;
-      resolvedId = resolvedId.endsWith(".ts") ? resolvedId : resolvedId + ".ts";
-      if (resolvedId) {
-        return resolvedId;
+      for (const ext of searchingExtensions) {
+        const exist = host.fileExists(resolvedId + ext);
+        if (exist) {
+          return resolvedId + ext;
+        }
       }
     },
     load(id) {
@@ -57,6 +61,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
     transform(code, id) {
       const nid = normalizePath(id);
       if (host.fileExists(nid)) {
+        const isTsx = nid.endsWith(".tsx");
         // const result = (nid, code);
         const result = ts.transpileModule(code, {
           fileName: nid,
@@ -67,6 +72,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
             esModuleInterop: true,
             allowSyntheticDefaultImports: true,
             strict: true,
+            jsx: isTsx ? ts.JsxEmit.ReactJSX : ts.JsxEmit.None,
             noImplicitAny: true,
           },
         });
