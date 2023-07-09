@@ -1,20 +1,17 @@
 import "../__tests/globals";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { RenameItem, findRenameItems, getRenamedChanges } from "./renamer";
-import { createSymbolBuilder } from "./symbolBuilder";
+import { getRenamedChanges } from "./renamer";
 import { expect, test } from "vitest";
 import {
   expandRenameActionsToSafeRenameItems,
   findDeclarationsFromSymbolWalkerVisited,
   findMangleNodes,
   getLocalBindings,
-  getMangleNodes,
-  getMangleActionFromNode,
-  walkRelatedNodesFromRoot,
+  walkProjectForMangle,
+  getMangleActionsForFile,
 } from "./mangler";
 import { createGetSymbolWalker } from "../analyzer/symbolWalker";
 import ts from "typescript";
-import { findSideEffectSymbols } from "./effects";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -22,36 +19,21 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const targets = Object.keys(files).map(normalizePath);
   entry = normalizePath(entry);
   const root = service.getProgram()!.getSourceFile(entry)!;
-  const fileNames = service.getProgram()!.getRootFileNames();
+  const fileNames = service.getProgram()!.getRootFileNames().filter((fname) => !fname.endsWith(".d.ts"));
 
   const checker = service.getProgram()!.getTypeChecker();
-  const symbolWalker = createGetSymbolWalker(checker)();
-  const symbolBuilder = createSymbolBuilder();
+  const visited = walkProjectForMangle(checker,
+    root,
+    fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
+  );
 
-  walkRelatedNodesFromRoot(checker, symbolWalker, root);
-  // walk all files
-  for (const fname of fileNames) {
-    const file = service.getCurrentSourceFile(fname)!;
-    const effectNodes = findSideEffectSymbols(checker, file);
-    for (const node of effectNodes) {
-      const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) {
-        symbolWalker.walkSymbol(symbol);
-      }
-      const type = checker.getTypeAtLocation(node);
-      symbolWalker.walkType(type);
-    }
-  }
-  
-  const visited = symbolWalker.getVisited();
-  const nodes = targets.flatMap((target) => {
-    symbolBuilder.reset();
+  const actions = targets.flatMap((target) => {
     const file = service.getCurrentSourceFile(target)!;
-    return getMangleNodes(checker, visited, file);
+    return getMangleActionsForFile(checker, visited, file);
   });
-  const actions =  [...nodes].flatMap((node) => {
-    return getMangleActionFromNode(checker, symbolBuilder, node);
-  });
+  // const actions =  [...nodes].flatMap((node) => {
+  //   return getMangleActionForNode(checker, symbolBuilder, node);
+  // });
   const items = expandRenameActionsToSafeRenameItems(service.findRenameLocations, actions);
   const rawChanges = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
 
@@ -81,7 +63,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 }
 
 test("find all declarations", () => {
-  const { file, checker } = createOneshotTestProgram(`
+  const { file } = createOneshotTestProgram(`
   interface X {
     x: number;
   }
@@ -112,9 +94,7 @@ test("find all declarations", () => {
   }
   module M {}
   `);
-  // const checker = program.getTypeChecker();
-
-  const idents = getLocalBindings(checker, file);
+  const idents = getLocalBindings(file);
 
   const expected = new Set([
     "X",
@@ -207,7 +187,7 @@ test("mangle: multi files", () => {
   const expected = {
     "src/index.ts": `
       import { sub } from "./sub";
-      const j = 1;
+      const k = 1;
       export const x = sub.k;
     `,
     "src/sub.ts": `
@@ -225,7 +205,7 @@ test("mangle: multi files", () => {
 });
 
 test("rename local object member", () => {
-  const { service, normalizePath } = initTestLanguageServiceWithFiles({
+  const files = {
     "src/index.ts": `
       type Local = {
         xxx: number;
@@ -237,59 +217,26 @@ test("rename local object member", () => {
       const pub: Pub = { pubv: 1 };
       export { pub };  
     `,
-  });
-  const file = service.getCurrentSourceFile("src/index.ts")!;
-  const checker = service.getProgram()!.getTypeChecker();
-
-  const symbolWalker = createGetSymbolWalker(checker)();
-  // const exportedNodes = findExportedNodesFromRoot(checker, symbolWalker, file);
-  const exporteedSymbol = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  for (const symbol of exporteedSymbol) {
-    symbolWalker.walkSymbol(symbol);
-  }
-
-  const exportedNodes = findDeclarationsFromSymbolWalkerVisited(symbolWalker.getVisited());
-
-  // const nodes = findMangleNodes(checker, file, exporteedSymbol);
-  const nodes = findMangleNodes(checker, file, exportedNodes);
-  const symbolBuilder = createSymbolBuilder();
-
-  // const item
-  const items: RenameItem[] = [...nodes].flatMap((node) => {
-    const action = getMangleActionFromNode(checker, symbolBuilder, node);
-    const renames = findRenameItems(
-      service.findRenameLocations,
-      file.fileName,
-      action.start,
-      action.original,
-      action.to,
-    );
-    return renames ?? [];
-  });
-
-  const newState = getRenamedChanges(items, service.readSnapshotContent, normalizePath);
-  for (const content of newState) {
-    service.writeSnapshotContent(content.fileName, content.content);
-  }
-  const newFile = service.getCurrentSourceFile(normalizePath("src/index.ts"))!;
-  const result = newFile.getText();
-
-  expect(result).toEqualFormatted(`
-  type Local = {
-    k: number;
   };
-  type Pub = {
-    pubv: number;
+  const expected = {
+    "src/index.ts": `
+    type Local = {
+      k: number;
+    };
+    type Pub = {
+      pubv: number;
+    };
+    const x: Local = { k: 1 };
+    const j: Pub = { pubv: 1 };
+    export { j as pub };  
+    `
   };
-  const x: Local = { k: 1 };
-  const j: Pub = { pubv: 1 };
-  export { j as pub };
-  `);
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-test("mangle with complex", () => {
-  // const { service, normalizePath } = createTestLanguageService();
 
+test("mangle with complex", () => {
   const files = {
     "src/index.ts": `
       export { sub } from "./sub";
@@ -636,55 +583,7 @@ test("keep sideEffect types", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
-// interface I {
-//   f1(): number;
-// }
-// export class C implements I {
-//   f1() {
-//     return 1;
-//   }
-// }
-
-// interface I {
-//   f1(): number;
-// }
-// export class C implements I {
-//   f1(): number {
-//     const v = 1;
-//     return v;
-//   }
-// }
-
-// interface I {
-//   f1: () => number;
-// }
-// export class C implements I {
-//   f1() {
-//     // const v = 1;
-//     return 1;
-//   }
-// }
-
-// test.only("keep sideEffect types", () => {
-//   const files = {
-//     "src/index.ts": `
-//     interface I {
-//       v: number;
-//     }
-//     export class MyClass implements I {
-//       v: number = 1;
-//     }
-//   `,
-//   };
-//   const expected = {
-//     "src/index.ts": `
-//     `,
-//   };
-
-//   assertExpectedMangleResult("src/index.ts", files, expected);
-// });
-
-test("nodeWalker", () => {
+test("findDeclarationsFromSymbolWalkerVisited", () => {
   const { checker, file } = createOneshotTestProgram(`
   type Hidden = {
     __hidden: number;

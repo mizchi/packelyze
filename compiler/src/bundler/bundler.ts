@@ -83,13 +83,6 @@ export function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
       if (decl.initializer) {
         const accesses = getAccessesFromExpression(checker, decl.initializer);
         for (const access of accesses) {
-          // const exported = checker.getExportSpecifierLocalTargetSymbol(access as any);
-          // console.log(
-          //   "access",
-          //   access.name,
-          //   access.valueDeclaration?.getSourceFile().fileName,
-          //   access.declarations?.map((x) => x.getText()),
-          // );
           addDep(symbol, access);
           visit(access);
         }
@@ -101,7 +94,6 @@ export function createModuleGraph(program: TS.Program, root: TS.SourceFile) {
 const createBundleTransformerFactory: (checker: TS.TypeChecker) => TS.TransformerFactory<any> =
   (checker) => (context) => {
     // const logger = createLogger("[transformer]");
-    // const visitedModules: Set<TS.ModuleDeclaration> = new Set();
     const hoistedDeclarations: TS.Statement[] = [];
     return (file) => {
       const toplevelHoisted: TS.Statement[] = [];

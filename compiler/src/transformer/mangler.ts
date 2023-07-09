@@ -1,9 +1,9 @@
+// import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
-import { SymbolWalker, SymbolWalkerVisited } from "../analyzer/symbolWalker";
-import { SymbolBuilder } from "./symbolBuilder";
+import { type SymbolWalkerVisited, createGetSymbolWalker } from "../analyzer/symbolWalker";
+import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
-// import { toReadableNode, toReadableSymbol } from "../nodeUtils";
-import { findSideEffectSymbols } from "./effects";
+import { findSideEffectNodes } from "./effects";
 
 export type MangleAction = {
   fileName: string;
@@ -13,15 +13,60 @@ export type MangleAction = {
   isAssignment: boolean;
 };
 
-export function walkRelatedNodesFromRoot(checker: ts.TypeChecker, symbolWalker: SymbolWalker, root: ts.SourceFile) {
-  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
-  for (const exported of exportedSymbols) {
-    symbolWalker.walkSymbol(exported);
+type MangleTargetNode =
+  | ts.TypeLiteralNode
+  | ts.PropertySignature
+  | ts.MethodSignature
+  | ts.TypeAliasDeclaration
+  | ts.InterfaceDeclaration
+  | ts.ParameterDeclaration
+  | ts.PropertyDeclaration
+  | ts.MethodDeclaration
+  | ts.ClassDeclaration
+  | ts.TypeNode
+  | ts.GetAccessorDeclaration
+  | ts.SetAccessorDeclaration;
+
+export function walkProjectForMangle(checker: ts.TypeChecker, root: ts.SourceFile, files: ts.SourceFile[]): SymbolWalkerVisited {
+  const symbolWalker = createGetSymbolWalker(checker)();
+  walkExportedRelatedNodesFromRoot(root);
+  for (const file of files) {
+    walkFile(file);
+  }
+  const effectNodes = findSideEffectNodes(checker, root);
+  for (const node of effectNodes) {
+    const symbol = checker.getSymbolAtLocation(node);
+    if (symbol) {
+      symbolWalker.walkSymbol(symbol);
+    }
+    const type = checker.getTypeAtLocation(node);
+    symbolWalker.walkType(type);
+  }
+  return symbolWalker.getVisited();
+
+  function walkExportedRelatedNodesFromRoot(root: ts.SourceFile) {
+    const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
+    for (const exported of exportedSymbols) {
+      symbolWalker.walkSymbol(exported);
+    }
+  }
+  
+  function walkFile(file: ts.SourceFile) {
+    // const file = service.getCurrentSourceFile(fname)!;
+    const effectNodes = findSideEffectNodes(checker, file);
+    for (const node of effectNodes) {
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      const type = checker.getTypeAtLocation(node);
+      symbolWalker.walkType(type);
+    }
   }
 }
 
 export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, exportedNodes: Set<ts.Node>) {
-  const bindingIdentifiers = getLocalBindings(checker, file);
+  const bindingIdentifiers = getLocalBindings(file);
 
   const manglables = new Set<ts.Node>();
   const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
@@ -57,6 +102,7 @@ export function findMangleNodes(checker: ts.TypeChecker, file: ts.SourceFile, ex
   return manglables;
 }
 
+// TODO: normalize to omit duplicated rename items
 export function expandRenameActionsToSafeRenameItems(
   findRenameLocations: FindRenameLocations,
   actions: MangleAction[],
@@ -82,7 +128,7 @@ export function expandRenameActionsToSafeRenameItems(
 }
 
 
-export function getMangleActionFromNode(
+export function getMangleActionForNode(
   checker: ts.TypeChecker,
   symbolBuilder: SymbolBuilder,
   node: ts.Node,
@@ -112,24 +158,27 @@ export function getMangleActionFromNode(
   }
 }
 
-export function getMangleNodes(
+export function getMangleActionsForFile(
   checker: ts.TypeChecker,
-  // getSourceFile: (fileName: string) => ts.SourceFile | undefined,
-  // symbolWalker: SymbolWalker,
-  // symbolBuilder: SymbolBuilder,
+  visited: SymbolWalkerVisited,
+  file: ts.SourceFile,
+): MangleAction[] {
+  const symbolBuilder = createSymbolBuilder();
+  const nodes = getMangleNodesForFile(checker, visited, file);
+  return nodes.flatMap((node) => getMangleActionForNode(checker, symbolBuilder, node));
+}
+
+export function getMangleNodesForFile(
+  checker: ts.TypeChecker,
   visited: SymbolWalkerVisited,
   file: ts.SourceFile,
 ): ts.Node[] {
-  // symbolBuilder.reset();
-  // const file = getSourceFile(target)!;
   const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
   return [...findMangleNodes(checker, file, exportedNodes)];
 }
 
-
-
 // get local rename candidates
-export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
+export function getLocalBindings(node: ts.Node) {
   // const decls: ts.Declaration[] = [];
   // const typeDecls: ts.Declaration[] = [];
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
@@ -169,34 +218,27 @@ export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
     // }
 
     if (ts.isPropertyDeclaration(node)) {
-      // decls.push(node);
       visitBinding(node.name);
     }
     if (ts.isMethodDeclaration(node)) {
-      // decls.push(node);
       visitBinding(node.name);
     }
 
     if (ts.isPropertySignature(node)) {
-      // typeDecls.push(node);
       visitBinding(node.name);
     }
     if (ts.isMethodSignature(node)) {
-      // typeDecls.push(node);
       visitBinding(node.name);
     }
     if (ts.isGetAccessorDeclaration(node)) {
-      // decls.push(node);
       visitBinding(node.name);
     }
     if (ts.isSetAccessorDeclaration(node)) {
-      // decls.push(node);
       visitBinding(node.name);
     }
 
     if (ts.isFunctionDeclaration(node)) {
       if (hasDeclareKeyword(node)) return;
-      // decls.push(node);
       if (node.name) {
         visitBinding(node.name);
       }
@@ -209,16 +251,12 @@ export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
 
     if (ts.isEnumDeclaration(node)) {
       if (hasDeclareKeyword(node)) return;
-
-      // decls.push(node);
       if (node.name) {
         visitBinding(node.name);
       }
     }
     if (ts.isModuleDeclaration(node)) {
       if (hasDeclareKeyword(node)) return;
-
-      // decls.push(node);
       if (node.name) {
         visitBinding(node.name);
       }
@@ -259,43 +297,11 @@ export function getLocalBindings(checker: ts.TypeChecker, node: ts.Node) {
       }
     }
   }
-}
-
-function hasDeclareKeyword(
-  node: ts.VariableStatement | ts.FunctionDeclaration | ts.ClassDeclaration | ts.ModuleDeclaration | ts.EnumDeclaration,
-): boolean {
-  return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword) ?? false;
-}
-
-type MangleNode =
-  | ts.TypeLiteralNode
-  | ts.PropertySignature
-  | ts.MethodSignature
-  | ts.TypeAliasDeclaration
-  | ts.InterfaceDeclaration
-  | ts.ParameterDeclaration
-  | ts.PropertyDeclaration
-  | ts.MethodDeclaration
-  | ts.ClassDeclaration
-  | ts.TypeNode
-  | ts.GetAccessorDeclaration
-  | ts.SetAccessorDeclaration;
-
-function isMangleNode(node: ts.Node): node is MangleNode {
-  return (
-    ts.isTypeNode(node) ||
-    ts.isTypeAliasDeclaration(node) ||
-    ts.isInterfaceDeclaration(node) ||
-    ts.isTypeLiteralNode(node) ||
-    ts.isClassDeclaration(node) ||
-    ts.isPropertySignature(node) ||
-    ts.isMethodSignature(node) ||
-    ts.isMethodDeclaration(node) ||
-    ts.isPropertyDeclaration(node) ||
-    ts.isParameter(node) ||
-    ts.isGetAccessor(node) ||
-    ts.isSetAccessor(node)
-  );
+  function hasDeclareKeyword(
+    node: ts.VariableStatement | ts.FunctionDeclaration | ts.ClassDeclaration | ts.ModuleDeclaration | ts.EnumDeclaration,
+  ): boolean {
+    return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword) ?? false;
+  }
 }
 
 export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVisited, debug: boolean = false) {
@@ -308,10 +314,26 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
   }
   return visitedNodes;
 
+  function isMangleTargetNode(node: ts.Node): node is MangleTargetNode {
+    return (
+      ts.isTypeNode(node) ||
+      ts.isTypeAliasDeclaration(node) ||
+      ts.isInterfaceDeclaration(node) ||
+      ts.isTypeLiteralNode(node) ||
+      ts.isClassDeclaration(node) ||
+      ts.isPropertySignature(node) ||
+      ts.isMethodSignature(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isPropertyDeclaration(node) ||
+      ts.isParameter(node) ||
+      ts.isGetAccessor(node) ||
+      ts.isSetAccessor(node)
+    );
+  }
   function visitNode(node: ts.Node, depth: number) {
     log("  ".repeat(depth) + "[Node:" + ts.SyntaxKind[node.kind] + "]", node.getText().slice(0, 10) + "...");
 
-    if (!isMangleNode(node)) return;
+    if (!isMangleTargetNode(node)) return;
     if (visitedNodes.has(node)) return;
     visitedNodes.add(node);
 
@@ -404,3 +426,5 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
     }
   }
 }
+
+
