@@ -1,4 +1,4 @@
-import "../__tests/globals";
+import "./__tests/globals";
 
 import { rollup } from "rollup";
 import { expect, test } from "vitest";

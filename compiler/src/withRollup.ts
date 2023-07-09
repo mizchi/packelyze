@@ -1,9 +1,9 @@
-import { getRenamedChanges } from "./../transformer/renamer";
+import { getRenamedChanges } from "./transformer/renamer";
 import { Plugin } from "rollup";
 import ts from "typescript";
 import path from "node:path";
-import { expandRenameActionsToSafeRenameItems, walkProjectForMangle, getMangleActionsForFile } from "../transformer/mangler";
-import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../services";
+import { expandRenameActionsToSafeRenameItems, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";
+import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 
 export function getPlugin({ projectPath }: { projectPath: string }) {
   const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);

@@ -1,13 +1,12 @@
 import ts from "typescript";
-
-export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
+import { FindRenameLocations } from "../typescript/types";
 
 export type RenameItem = ts.RenameLocation & {
-  source: string;
+  original: string;
   to: string;
 };
 
-export type ChangedItem = {
+type FileChangedItem = {
   fileName: string;
   content: string;
   start?: number;
@@ -31,7 +30,7 @@ export function findRenameItems(
   if (!renames) return;
   // check is export related
   for (const rename of renames) {
-    rename.source = original;
+    rename.original = original;
     rename.to = `${rename.prefixText ?? ""}${to}${rename.suffixText ?? ""}`;
   }
   return renames;
@@ -41,7 +40,7 @@ export function getRenamedChanges(
   renames: RenameItem[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,
-): ChangedItem[] {
+): FileChangedItem[] {
   // rewire renames by each files
   const targetFiles = new Set(renames.map((r) => normalizePath(r.fileName)));
   const rewiredRenames: Map<string, RenameItem[]> = new Map();
@@ -53,7 +52,7 @@ export function getRenamedChanges(
   }
 
   // get unique files
-  const contents: ChangedItem[] = [];
+  const contents: FileChangedItem[] = [];
   // const changes = new Map<string, [changed: string, start: number, end: number]>();
   // const applied: RenameApplied[] = [];
   for (const [fileName, renames] of rewiredRenames.entries()) {
@@ -83,7 +82,7 @@ export function applyRenameItems(
     const toName = rename.to;
     const start = rename.textSpan.start;
     const end = rename.textSpan.start + rename.textSpan.length;
-    debugLog("[name:from]", rename.source, "[name:to]", toName);
+    debugLog("[name:from]", rename.original, "[name:to]", toName);
 
     if (changedStart === 0 || changedStart > start) {
       changedStart = start;

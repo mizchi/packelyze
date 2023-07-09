@@ -2,7 +2,7 @@
 import ts from "typescript";
 import fs from "node:fs";
 import path from "node:path";
-import { createLogger, Logger } from "./logger";
+import { createLogger, Logger } from "../logger";
 import { blue, green } from "colorette";
 
 export interface IncrementalSnapshot extends ts.IScriptSnapshot {

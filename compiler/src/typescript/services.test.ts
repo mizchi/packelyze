@@ -1,4 +1,4 @@
-import "./__tests/globals";
+import "../__tests/globals";
 import { expect, test } from "vitest";
 import ts from "typescript";
 import path from "node:path";
@@ -6,7 +6,7 @@ import path from "node:path";
 import { createIncrementalLanguageServiceHost, createIncrementalLanguageService } from "./services";
 
 test("IncrementalLanguageService", () => {
-  const projectPath = path.join(__dirname, "./__fixtures/examples");
+  const projectPath = path.join(__dirname, "../__fixtures/examples");
   const registory = ts.createDocumentRegistry();
   const host = createIncrementalLanguageServiceHost(projectPath);
   const service = createIncrementalLanguageService(host, registory);
@@ -80,7 +80,7 @@ test("IncrementalLanguageService", () => {
 });
 
 test("IncrementalLanguageService: reuse last state", () => {
-  const projectPath = path.join(__dirname, "./__fixtures/examples");
+  const projectPath = path.join(__dirname, "../__fixtures/examples");
   const registory = ts.createDocumentRegistry();
   const host1 = createIncrementalLanguageServiceHost(projectPath);
   const service1 = createIncrementalLanguageService(host1, registory);

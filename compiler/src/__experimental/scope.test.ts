@@ -13,7 +13,7 @@ import {
   getUnscopedAccesses,
   getAccessesFromExpression,
 } from "./scope";
-import { findClosestBlock, getNodeAtPosition } from "../nodeUtils";
+import { findClosestBlock, getNodeAtPosition } from "../typescript/utils";
 import ts from "typescript";
 import path from "node:path";
 

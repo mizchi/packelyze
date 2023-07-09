@@ -1,10 +1,11 @@
 // import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
-import { type SymbolWalkerVisited, createGetSymbolWalker } from "../symbolWalker";
+import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
-import { FindRenameLocations, RenameItem, findRenameItems } from "./renamer";
+import { RenameItem, findRenameItems } from "./renamer";
 import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors } from "../nodeUtils";
+import { composeVisitors } from "../typescript/utils";
+import { FindRenameLocations } from "../typescript/types";
 
 export type MangleAction = {
   fileName: string;

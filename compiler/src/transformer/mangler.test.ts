@@ -10,7 +10,7 @@ import {
   walkProjectForMangle,
   getMangleActionsForFile,
 } from "./mangler";
-import { createGetSymbolWalker } from "../symbolWalker";
+import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 
 // assert expected mangle results

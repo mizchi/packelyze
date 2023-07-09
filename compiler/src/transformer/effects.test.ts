@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
-import { createGetSymbolWalker } from "../symbolWalker";
+import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 import { findEffectNodes } from "./effects";
 import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";

@@ -4,7 +4,7 @@ import {
   IncrementalLanguageServiceHost,
   createIncrementalLanguageService,
   createIncrementalLanguageServiceHost,
-} from "../services";
+} from "../typescript/services";
 
 let lastRegistry: ts.DocumentRegistry | undefined = undefined;
 let lastHost: IncrementalLanguageServiceHost | undefined = undefined;

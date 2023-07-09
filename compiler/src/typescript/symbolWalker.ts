@@ -1,7 +1,7 @@
 // from: TypeScript/src/compiler/symbolWalker.ts
 
 import ts from "typescript";
-import { getOwnValues } from "./utils";
+import { getOwnValues } from "../utils";
 // import { toReadableSymbol } from "../nodeUtils";
 
 export type SymbolWalkerVisited = {
