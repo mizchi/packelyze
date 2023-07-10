@@ -5,12 +5,12 @@ function MyComponent(props) {
       jsx("h1", { children: "MyComponent" }),
       jsx("div", { children: props.foo }),
       jsx("div", { children: props.children }),
-      jsx(Ck, { value: props.foo }),
+      jsx(SubComponent, { value: props.foo }),
     ],
   });
 }
 
-function Ck(props) {
+function SubComponent(props) {
   return jsxs("div", {
     children: [
       jsx("h1", { children: "SubComponent" }),

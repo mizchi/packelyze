@@ -94,7 +94,10 @@ export function getMangleActionsForFile(
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
   const nodes = getMangleNodesForFile(file);
-  return nodes.flatMap((node) => getMangleActionForNode(symbolBuilder, node));
+  return nodes.flatMap((node) => {
+    const action = getMangleActionForNode(symbolBuilder, node);
+    return action ?? [];
+  });
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
     const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
@@ -133,21 +136,26 @@ export function getMangleActionsForFile(
     return [...manglables];
   }
 
-  function getMangleActionForNode(symbolBuilder: SymbolBuilder, node: ts.Node): MangleAction {
+  function getMangleActionForNode(symbolBuilder: SymbolBuilder, node: ts.Node): MangleAction | undefined {
     const validate = createNameValidator(checker, node);
     if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
       throw new Error("unexpected node type " + node.kind);
     }
     const originalName = node.text;
+
+    // maybe react component name
+    // TODO: const Foo = ...;
+    const maybeFunctionComponentNode =
+      (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
+      isComponentFunctionName(originalName);
+    if (maybeFunctionComponentNode) {
+      console.log("[mangle] maybe react component", originalName);
+      return;
+    }
     // create new symbol builder?
 
     // FIXME: should consume converted name for usedNames check
-    const isFunctionNode = ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent);
-    const newName =
-      isFunctionNode && startsWithUpperCase(originalName)
-        ? "C" + symbolBuilder.create(validate)
-        : (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
-
+    const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
     return {
       fileName: node.getSourceFile().fileName,
@@ -156,8 +164,8 @@ export function getMangleActionsForFile(
       start: node.getStart(),
       isAssignment: isPropertyAssignment,
     };
-    function startsWithUpperCase(str: string) {
-      return str[0] === str[0].toUpperCase();
+    function isComponentFunctionName(name: string) {
+      return !/[a-z]/.test(name[0]);
     }
     function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
       // TODO: check is valid query
