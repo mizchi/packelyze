@@ -21,6 +21,32 @@ export function getNodeAtPosition(sourceFile: ts.SourceFile, position: number): 
   }
 }
 
+export function getFirstNodeFromMatcher(source: ts.SourceFile, matcher: RegExp | string): ts.Node | undefined {
+  const text = source.getFullText();
+  const pos = text.search(matcher);
+  if (pos < 0) {
+    return;
+  }
+  return getNodeAtPosition(source, pos);
+}
+
+/**
+ * find first string matched node in file
+ * for testing purpose
+ */
+export const findFirstNode = (program: ts.Program, fileName: string, matcher: string | RegExp) => {
+  const source = program.getSourceFile(fileName);
+  if (source) {
+    const code = source.getFullText();
+    const pos = code.search(matcher);
+    if (pos < 0) {
+      return;
+    }
+    const node = getNodeAtPosition(source, pos);
+    return node;
+  }
+};
+
 export type Visitor = (node: ts.Node, depth?: number) => boolean | void;
 export function composeVisitors(...visitors: Visitor[]): Visitor {
   const visit = (node: ts.Node, depth = 0) => {
@@ -41,23 +67,6 @@ export function findClosestBlock(node: ts.Node) {
   }
   return node;
 }
-
-/**
- * find first string matched node in file
- * for testing purpose
- */
-export const findFirstNode = (program: ts.Program, fileName: string, matcher: string | RegExp) => {
-  const source = program.getSourceFile(fileName);
-  if (source) {
-    const code = source.getFullText();
-    const pos = code.search(matcher);
-    if (pos < 0) {
-      return;
-    }
-    const node = getNodeAtPosition(source, pos);
-    return node;
-  }
-};
 
 const circularSymbol = Symbol("circular");
 export type ReadbleNode = {
