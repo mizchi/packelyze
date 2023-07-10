@@ -21,6 +21,24 @@ export function getNodeAtPosition(sourceFile: ts.SourceFile, position: number): 
   }
 }
 
+export function getNodeAtRange(sourceFile: ts.SourceFile, start: number, end: number): ts.Node | undefined {
+  let result: ts.Node | undefined = undefined;
+
+  const checkNode = (node: ts.Node): void => {
+    // Check if this node's range matches first
+    if (node.pos <= start && node.end >= end) {
+      result = node; // Set this node as the result
+    }
+
+    // Then, check this node's children
+    ts.forEachChild(node, checkNode);
+  };
+
+  ts.forEachChild(sourceFile, checkNode);
+
+  return result;
+}
+
 export function getFirstNodeFromMatcher(source: ts.SourceFile, matcher: RegExp | string): ts.Node | undefined {
   const text = source.getFullText();
   const pos = text.search(matcher);
