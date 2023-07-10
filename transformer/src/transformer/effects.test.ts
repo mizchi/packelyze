@@ -5,7 +5,7 @@ import ts from "typescript";
 // import { findEffectNodes } from "./effects";
 import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";
 import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors } from "../typescript/utils";
+import { composeVisitors, formatCode } from "../typescript/utils";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();
@@ -17,7 +17,7 @@ export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   return nodes;
 }
 
-test("effect", () => {
+test("effect with builtins", () => {
   const { checker, file } = createOneshotTestProgram(`
   type Ref1 = { local: number };
   const ref1: Ref1 = { local: 1 };
@@ -47,7 +47,7 @@ test("effect", () => {
   const collected = findDeclarationsFromSymbolWalkerVisited(visited);
   expect(
     [...collected].map((node) => {
-      return "(" + ts.SyntaxKind[node.kind] + ")" + node.getText();
+      return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
     //
@@ -55,10 +55,12 @@ test("effect", () => {
     "(NumberKeyword)number",
     "(PropertySignature)yyy: number",
     "(NumberKeyword)number",
+    "(TypeLiteral){ local: number }",
+    "(TypeLiteral){ yyy: number }",
   ]);
 });
 
-test("effect", () => {
+test("effect to global assign", () => {
   const { service } = initTestLanguageServiceWithFiles({
     "src/env.d.ts": `
     declare const MyGlobal: {
@@ -93,11 +95,12 @@ test("effect", () => {
   const collected = findDeclarationsFromSymbolWalkerVisited(visited);
   expect(
     [...collected].map((node) => {
-      return "(" + ts.SyntaxKind[node.kind] + ")" + node.getText();
+      return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
     //
     "(PropertySignature)x: number;",
     "(NumberKeyword)number",
+    `(TypeLiteral){ x: number; }`,
   ]);
 });

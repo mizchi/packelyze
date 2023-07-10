@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import {
   expandToSafeBatchRenameLocations,
   findDeclarationsFromSymbolWalkerVisited,
-  getBindingIdentifiersForFile,
+  getBindingsForFile,
   walkProjectForMangle,
   getMangleActionsForFile,
 } from "./mangler";
@@ -96,7 +96,7 @@ test("find all declarations", () => {
   }
   module M {}
   `);
-  const idents = getBindingIdentifiersForFile(file);
+  const idents = getBindingsForFile(file);
 
   const expected = new Set([
     "X",
@@ -167,6 +167,8 @@ test("findDeclarationsFromSymbolWalkerVisited", () => {
     "(NumberKeyword)number",
     "(PropertySignature)fx: 1",
     "(LiteralType)1",
+    "(TypeLiteral){ local: number; }",
+    "(TypeLiteral){ fx: 1 }",
   ]);
 });
 
@@ -672,6 +674,7 @@ test("mangle: keep effect nodes", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
+// TODO: fix project diagnostics
 test.skip("mangle: react components", () => {
   const files = {
     "src/index.ts": `export { MyComponent } from "./components";`,

@@ -24,6 +24,8 @@ export function walkProjectForMangle(
     const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
     for (const exported of exportedSymbols) {
       symbolWalker.walkSymbol(exported);
+      const type = checker.getTypeOfSymbol(exported);
+      symbolWalker.walkType(type);
     }
   }
 
@@ -93,15 +95,17 @@ export function getMangleActionsForFile(
   file: ts.SourceFile,
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
-  const nodes = getMangleNodesForFile(file);
-  return nodes.flatMap((node) => {
+  const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
+
+  const mangleNodes = getMangleNodesForFile(file);
+
+  return mangleNodes.flatMap((node) => {
     const action = getMangleActionForNode(symbolBuilder, node);
     return action ?? [];
   });
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
-    const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
-    const bindingIdentifiers = getBindingIdentifiersForFile(file);
+    const bindings = getBindingsForFile(file);
 
     const manglables = new Set<ts.Node>();
     const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
@@ -110,7 +114,7 @@ export function getMangleActionsForFile(
     //   "[findMangleNodesForFile]]",
     //   [...fileExportedSymbols].map((s) => toReadableSymbol(s)),
     // );
-    for (const identifier of bindingIdentifiers) {
+    for (const identifier of bindings) {
       // skip: type <Foo> = { ... }
       if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
         continue;
@@ -126,10 +130,15 @@ export function getMangleActionsForFile(
       }
 
       // node is exported
-      const symbol = checker.getSymbolAtLocation(identifier)!;
-      if (exportSymbols.includes(symbol)) {
+      const symbol = checker.getSymbolAtLocation(identifier);
+      if (symbol && exportSymbols.includes(symbol)) {
         continue;
       }
+
+      // const type = checker.getTypeAtLocation(identifier);
+      // if (visited.visitedTypes.includes(type)) {
+      //   continue;
+      // }
 
       manglables.add(identifier);
     }
@@ -149,7 +158,7 @@ export function getMangleActionsForFile(
       (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
       isComponentFunctionName(originalName);
     if (maybeFunctionComponentNode) {
-      console.log("[mangle] maybe react component", originalName);
+      // console.log("[mangle] maybe react component", originalName);
       return;
     }
     // create new symbol builder?
@@ -187,7 +196,7 @@ export function getMangleActionsForFile(
 
 // get local rename candidates
 type BindingIdentifier = ts.Identifier | ts.PrivateIdentifier;
-export function getBindingIdentifiersForFile(file: ts.SourceFile): BindingIdentifier[] {
+export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
@@ -313,6 +322,26 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       visitNode(declaration, 0);
     }
   }
+
+  for (const type of visited.visitedTypes) {
+    if (type.symbol) {
+      for (const declaration of type.symbol.getDeclarations() ?? []) {
+        visitNode(declaration, 0);
+      }
+    }
+    // if (type.aliasSymbol) {
+    //   for (const declaration of type.aliasSymbol.getDeclarations() ?? []) {
+    //     visitNode(declaration, 0);
+    //   }
+    //   for (const declaration of (type.aliasTypeArguments ?? []).flatMap((x) => x.symbol?.getDeclarations() ?? [])) {
+    //     visitNode(declaration, 0);
+    //   }
+    // }
+    // for (const declaration of symbol.getDeclarations() ?? []) {
+    //   visitNode(declaration, 0);
+    // }
+  }
+
   return visitedNodes;
 
   function isMangleTargetNode(node: ts.Node): node is MangleTargetNode {

@@ -20,15 +20,15 @@ class C {
     return this.q.x;
   }
 }
-class w {
+class C2 {
   c2() {
-    return this.g();
+    return this.w();
   }
-  g() {
+  w() {
     return 2;
   }
 }
-class C3 extends w {
+class C3 extends C2 {
   c3() {
     return this.c2();
   }

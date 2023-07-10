@@ -2,7 +2,7 @@ import "../__tests/globals";
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, createTestLanguageService } from "../__tests/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
-import { toReadableSymbol, toReadableType } from "./utils";
+import { toReadableNode, toReadableSymbol, toReadableType } from "./utils";
 import ts from "typescript";
 import { isSymbolInferredFromValueDeclaration } from "./utils";
 import path from "path";
@@ -165,6 +165,59 @@ test("symbolWalker # function internal partial", () => {
       // types
       "number",
       "{ v: number; }",
+    ]),
+  );
+});
+
+test.only("symbolWalker # typeArguments", () => {
+  const { checker, file } = createOneshotTestProgram(`
+    type X = {
+      type: "X";
+      payload: {
+        d: string;
+      };
+    };
+    function identify<T>(v: T): T {
+      return v;
+    }
+    export const v = identify<X>({ type: "X", payload: { d: "D" } });
+  `);
+  const getSymbolWalker = createGetSymbolWalker(checker);
+  const symbolWalker = getSymbolWalker();
+
+  const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const exported of exportedSymbols) {
+    symbolWalker.walkSymbol(exported);
+    // const type = checker.getTypeOfSymbol(exported);
+    // console.log(
+    //   "symbol",
+    //   exported.name,
+    //   // toReadableSymbol(exported),
+    //   toReadableType(type),
+    // );
+  }
+
+  const visited = symbolWalker.getVisited();
+  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
+  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+
+  // console.log(symbolSet);
+  // console.log(
+  //   typeSet,
+  //   // visited.visitedTypes.map((t) => toReadableType(t)),
+  //   visited.visitedTypes.map((t) => toReadableNode(t.symbol.declarations![0])),
+  // );
+
+  expect(symbolSet).toEqualSet(
+    new Set([
+      // symbols
+      "v",
+    ]),
+  );
+  expect(typeSet).toEqualSet(
+    new Set([
+      // types
+      "X",
     ]),
   );
 });

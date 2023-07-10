@@ -19,6 +19,9 @@ export function getEffectDetectorEnter(checker: ts.TypeChecker, onEnter: (node: 
     if (ts.isCallExpression(node)) {
       const type = checker.getTypeAtLocation(node.expression);
       if (type.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile) {
+        for (const typeArg of node.typeArguments ?? []) {
+          onEnter(typeArg);
+        }
         for (const arg of node.arguments) {
           onEnter(arg);
         }

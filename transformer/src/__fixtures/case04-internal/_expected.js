@@ -11,4 +11,10 @@ function myfn(input) {
   };
   return q.j + z.p();
 }
-export { myfn }
+function f(props) {
+  return props.y + props.w;
+}
+function componentLike2() {
+  return f({ y: 1, w: 2 });
+}
+export { componentLike2, myfn }

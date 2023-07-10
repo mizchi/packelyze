@@ -194,3 +194,7 @@ export function isTypeInferredFromValueDeclaration(type: ts.Type) {
   }
   return type.symbol?.valueDeclaration === type.symbol?.declarations?.[0];
 }
+
+export function formatCode(code: string) {
+  return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
+}
