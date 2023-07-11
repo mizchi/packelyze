@@ -10,7 +10,7 @@
     "typecheck": "pnpm tsc -p .",
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest src --run",
-    "perf": "PERF=1 vitest --run src/perf.test.ts"
+    "perf": "PERF=1 vitest --run test/perf.test.ts"
   },
   "exports": {
     ".": {

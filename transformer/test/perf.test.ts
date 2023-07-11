@@ -1,7 +1,7 @@
-import "./__tests/globals";
+import "./globals";
 import { rollup } from "rollup";
 import { test } from "vitest";
-import { getPlugin } from "./withRollup";
+import { getPlugin } from "../src/withRollup";
 import path from "node:path";
 import fs from "node:fs";
 import terser from "@rollup/plugin-terser";
@@ -24,7 +24,7 @@ async function compareBuildSize(projectPath: string) {
 
     const bundle = await rollup({
       input: inputPath,
-      external: ["node:path"],
+      external: ["node:path", "myModule", "ext-a", "ext-b", "react", "react/jsx-runtime"],
       plugins: [
         // plugins
         getPlugin({ projectPath }),
@@ -43,7 +43,7 @@ async function compareBuildSize(projectPath: string) {
 
     const bundle = await rollup({
       input: inputPath,
-      external: ["node:path"],
+      external: ["node:path", "myModule", "ext-a", "ext-b", "react", "react/jsx-runtime"],
       plugins: [
         ts({
           transpileOnly: true,
@@ -62,17 +62,17 @@ async function compareBuildSize(projectPath: string) {
 
 if (process.env.PERF) {
   // require tslib
-  const skipList: string[] = [];
+  const skipList: string[] = ["case12", "case17"];
   const cases = fs
-    .readdirSync(path.join(__dirname, "../test/fixtures"))
+    .readdirSync(path.join(__dirname, "./fixtures"))
     .filter((x) => x.startsWith("case"))
     .filter((caseName) => {
-      return !skipList.includes(caseName);
+      return !skipList.some((x) => caseName.startsWith(x));
     });
   for (const caseName of cases) {
     test(`rollup plugin #${caseName}`, async () => {
       const __dirname = path.dirname(new URL(import.meta.url).pathname);
-      const projectPath = path.join(__dirname, "../test/fixtures", caseName);
+      const projectPath = path.join(__dirname, "./fixtures", caseName);
       await compareBuildSize(projectPath);
     });
   }

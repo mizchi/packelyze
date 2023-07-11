@@ -1,6 +1,6 @@
-import "../__tests/globals";
+import "../../test/globals";
 import { expect, test } from "vitest";
-import { createTestLanguageService } from "../__tests/testHarness";
+import { createTestLanguageService } from "../../test/testHarness";
 import { bundle, createModuleGraph } from "./bundler";
 
 test("bundle", () => {

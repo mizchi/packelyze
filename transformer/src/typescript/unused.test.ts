@@ -1,7 +1,7 @@
-import "../__tests/globals";
+import "../../test/globals";
 import path from "node:path";
 import { expect, test } from "vitest";
-import { createTestLanguageService } from "../__tests/testHarness";
+import { createTestLanguageService } from "../../test/testHarness";
 import { deleteUnusedInProject, deleteUnusedInProjectUntilNoErrors } from "./unused";
 
 const projectPath = path.join(__dirname, "../../test/fixtures/minimum-unused");

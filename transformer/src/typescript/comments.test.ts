@@ -11,7 +11,7 @@ import {
   INTERNAL_TAG,
   hasCommentTagFromSymbol,
 } from "./comments";
-import { createOneshotTestProgram } from "../__tests/testHarness";
+import { createOneshotTestProgram } from "../../test/testHarness";
 
 test("TS: comments", () => {
   const code = `

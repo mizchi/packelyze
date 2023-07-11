@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
+import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 // import { findEffectNodes } from "./effects";

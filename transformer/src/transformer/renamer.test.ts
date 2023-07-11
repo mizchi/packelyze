@@ -1,8 +1,8 @@
-import "../__tests/globals";
+import "../../test/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
 import { applyBatchRenameLocations, findBatchRenameLocations, getRenamedFileChanges } from "./renamer";
-import { createTestLanguageService } from "../__tests/testHarness";
+import { createTestLanguageService } from "../../test/testHarness";
 import { findFirstNode } from "../typescript/utils";
 import { BatchRenameLocation } from "./types";
 

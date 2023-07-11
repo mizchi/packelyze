@@ -1,6 +1,6 @@
-import "../__tests/globals";
+import "../../test/globals";
 import { test, expect } from "vitest";
-import { createOneshotTestProgram, createTestLanguageService } from "../__tests/testHarness";
+import { createOneshotTestProgram, createTestLanguageService } from "../../test/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
 import { toReadableNode, toReadableSymbol, toReadableType } from "./utils";
 import ts from "typescript";

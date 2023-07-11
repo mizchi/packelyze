@@ -1,5 +1,5 @@
-import "../__tests/globals";
-import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../__tests/testHarness";
+import "../../test/globals";
+import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "./renamer";
 import { expect, test } from "vitest";
 import {
