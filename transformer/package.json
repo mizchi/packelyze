@@ -8,8 +8,9 @@
   "scripts": {
     "prepublishOnly": "pnpm build",
     "typecheck": "pnpm tsc -p .",
-    "build": "rimraf lib && tsc -p tsconfig.build.json",
+    "build": "rimraf lib dist && tsc -p tsconfig.build.json && rollup -c rollup.config.js",
     "test": "vitest --run",
+    "test:cov": "vitest run --coverage",
     "perf": "PERF=1 vitest --run test/perf.test.ts"
   },
   "exports": {
@@ -25,23 +26,27 @@
     "url": "https://github.com/mizchi/packelyze.git",
     "directory": "transformer"
   },
-  "files": ["lib", "src"],
+  "files": ["lib", "src", "dist"],
   "dependencies": {
     "colorette": "^2.0.20",
     "ts-clone-node": "^2.0.4",
-    "typescript": "5.1.3"
+    "typescript": "5.1.6"
   },
   "devDependencies": {
-    "@rollup/plugin-terser": "^0.4.2",
+    "@rollup/plugin-commonjs": "^25.0.2",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@rollup/plugin-terser": "^0.4.3",
     "@types/prettier": "^2.7.3",
-    "@types/react": "^18.2.6",
+    "@types/react": "^18.2.14",
+    "@vitest/coverage-c8": "^0.33.0",
+    "@vitest/coverage-v8": "^0.33.0",
     "prettier": "^2.8.8",
-    "rimraf": "^5.0.0",
-    "rollup": "^3.21.7",
+    "rimraf": "^5.0.1",
+    "rollup": "^3.26.2",
     "rollup-plugin-esbuild": "^5.0.0",
     "rollup-plugin-ts": "^3.2.0",
     "ts-morph": "^19.0.0",
-    "vite": "^4.3.8",
-    "vitest": "^0.31.1"
+    "vite": "^4.4.2",
+    "vitest": "^0.33.0"
   }
 }

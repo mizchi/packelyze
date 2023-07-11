@@ -1,26 +1,12 @@
 # packelyze-transnformer
 
-Experimental typescript minifier
-
-## What it is
-
 `packelyze-transformer` transforms typescript code with LanguageService(that has IDE power).
 
 We focus on what terser `cannot` do.
 
-## Example
+## Features
 
-(WIP)
-
-```ts
-import { createMinifier } from "packelyze-transformer";
-const minifier = createMinifier(...);
-
-// transform ts in memory
-minifier.process();
-// get transformed result
-const result = minifier.readFile(filePath);
-```
+- Mangle unexported symbol with type analyzer
 
 ## with vite
 
@@ -38,10 +24,19 @@ export default defineConfig({
 });
 ```
 
-## Features
+## API
 
-- Mangle unexported symbol with type analyzer
+(WIP)
 
+```ts
+import { createMinifier } from "packelyze-transformer";
+const minifier = createMinifier(...);
+
+// transform ts in memory
+minifier.process();
+// get transformed result
+const result = minifier.readFile(filePath);
+```
 
 ## How it works
 
@@ -63,7 +58,6 @@ Internal Steps.
 - [ ] Delete unused class members with treeshake
 - [x] Mangle
 - [x] Bundle
-
 
 ## TODO
 

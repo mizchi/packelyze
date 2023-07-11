@@ -23,5 +23,7 @@
     "src/__tests/**/*",
     "src/__fixtures/**/*",
     "src/**/*.test.ts",
+    "lib",
+    "dist"
   ]
 }
