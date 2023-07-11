@@ -10,6 +10,7 @@
     "typecheck": "pnpm tsc -p .",
     "build": "rimraf lib dist && tsc -p tsconfig.build.json && rollup -c rollup.config.js",
     "test": "vitest --run",
+    "test:ci": "pnpm test:cov && pnpm build",
     "test:cov": "vitest run --coverage",
     "perf": "PERF=1 vitest --run test/perf.test.ts"
   },
