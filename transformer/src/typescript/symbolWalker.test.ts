@@ -304,7 +304,7 @@ test("symbolWalker # class", () => {
 });
 
 test.skip("symbolWalker # tsx", () => {
-  const projectPath = path.resolve(__dirname, "../__fixtures/minimum-react");
+  const projectPath = path.resolve(__dirname, "../../test/minimum-react");
   const { service } = createTestLanguageService(projectPath);
   service.writeSnapshotContent(
     "src/index.tsx",

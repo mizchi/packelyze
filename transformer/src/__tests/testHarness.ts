@@ -11,7 +11,7 @@ let lastHost: IncrementalLanguageServiceHost | undefined = undefined;
 
 export function initTestLanguageServiceWithFiles(
   files: Record<string, string>,
-  projectPath: string = path.join(__dirname, "../__fixtures/minimum"),
+  projectPath: string = path.join(__dirname, "../../test/fixtures/minimum"),
   revertRootFiles = true,
 ) {
   const testLsp = createTestLanguageService(projectPath, revertRootFiles);
@@ -23,7 +23,7 @@ export function initTestLanguageServiceWithFiles(
 }
 
 export function createTestLanguageService(
-  projectPath: string = path.join(__dirname, "../__fixtures/minimum"),
+  projectPath: string = path.join(__dirname, "../../test/fixtures/minimum"),
   revertRootFiles = true,
 ) {
   // console.time("createTestLanguageService");
@@ -78,7 +78,7 @@ export function createTestLanguageService(
 let oldOneshotProgram: ts.Program | undefined = undefined;
 export function createOneshotTestProgram(
   indexCode: string,
-  projectPath: string = path.join(__dirname, "__fixtures/minimum"),
+  projectPath: string = path.join(__dirname, "../../test/fixtures/minimum"),
 ): { file: ts.SourceFile; program: ts.Program; checker: ts.TypeChecker } {
   const tsconfig = ts.readConfigFile(path.join(projectPath, "tsconfig.json"), ts.sys.readFile);
   const options = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, projectPath);

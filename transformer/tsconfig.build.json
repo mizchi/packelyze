@@ -8,6 +8,10 @@
     "types": [
       "vitest/importMeta"
     ],
+    "rootDirs": [
+      "src",
+      "test"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
@@ -15,6 +19,7 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": [
+    "test/**/*",
     "src/__tests/**/*",
     "src/__fixtures/**/*",
     "src/**/*.test.ts",

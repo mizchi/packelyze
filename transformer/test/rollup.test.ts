@@ -1,8 +1,8 @@
-import "./__tests/globals";
+import "../src/__tests/globals";
 
 import { rollup } from "rollup";
 import { expect, test } from "vitest";
-import { getPlugin } from "./withRollup";
+import { getPlugin } from "../src/withRollup";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -37,7 +37,7 @@ const skipList: string[] = [];
 const onlyList: string[] = [];
 
 const cases = fs
-  .readdirSync(path.join(__dirname, "./__fixtures"))
+  .readdirSync(path.join(__dirname, "./fixtures"))
   .filter((x) => x.startsWith("case"))
   .filter((caseName) => onlyList.length === 0 || onlyList.includes(caseName))
   .filter((caseName) => !skipList.includes(caseName));
@@ -45,7 +45,7 @@ const cases = fs
 for (const caseName of cases) {
   test(`rollup plugin #${caseName}`, async () => {
     const __dirname = path.dirname(new URL(import.meta.url).pathname);
-    const projectPath = path.join(__dirname, "./__fixtures", caseName);
+    const projectPath = path.join(__dirname, "./fixtures", caseName);
     await buildAndAssertExpected(projectPath);
   });
 }
