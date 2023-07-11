@@ -37,7 +37,7 @@ test("symbolWalker", () => {
   const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
   // console.log(symbolSet);
   expect(symbolSet).toEqual(
-    new Set(["f", "arg", "v", "o", "p", "o2", "ClassInternal", "C", "ci", "iv", "instance", "prototype"]),
+    new Set(["f", "arg", "v", "o", "p", "o2", "ClassInternal", "C", "ci", "instance", "prototype"]),
   );
   // console.log(typeSet);
   expect(typeSet).toEqual(
@@ -50,7 +50,7 @@ test("symbolWalker", () => {
       "MyType",
       "C",
       "this",
-      "ClassInternal",
+      "typeof C",
     ]),
   );
 });
@@ -169,7 +169,7 @@ test("symbolWalker # function internal partial", () => {
   );
 });
 
-test.only("symbolWalker # typeArguments", () => {
+test("symbolWalker # typeArguments", () => {
   const { checker, file } = createOneshotTestProgram(`
     type X = {
       type: "X";
