@@ -8,10 +8,14 @@ Experimental typescript minifier
 
 We focus on what terser `cannot` do.
 
+## Example
+
+TBD
+
 ## Features
 
 - Mangle unexported symbol with type analyzer
-- [ ] Drop unused class members / object members
+
 
 ## How it works
 
@@ -22,6 +26,18 @@ We focus on what terser `cannot` do.
 - Traverse external import related nodes.
 - Collect mangleable nodes that has no relations to symbols and types for exported symbol, external import or builtin access.
 - Apply batch renaming to files
+
+Internal Steps.
+
+- [ ] Analyze function side-effects
+- [ ] Analyze class-member references
+- [ ] Replace constants
+- [ ] Delete dead code like `if (false)`
+- [x] Delete unusedLocals / unusedParameters
+- [ ] Delete unused class members with treeshake
+- [x] Mangle
+- [x] Bundle
+
 
 ## TODO
 

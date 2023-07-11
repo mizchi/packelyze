@@ -65,3 +65,77 @@ export class C6 extends C5 {
     return 1;
   }
 }
+
+// Generics
+export class GenericClass<T> {
+  constructor(private value: T) {}
+
+  getValue(): T {
+    return this.value;
+  }
+
+  setValue(value: T): void {
+    this.value = value;
+  }
+}
+
+export const stringInstance = new GenericClass<string>("Hello");
+
+// Method chaining
+export class Calculator {
+  constructor(private value: number = 0) {}
+
+  add(value: number): this {
+    this.value += value;
+    return this;
+  }
+
+  subtract(value: number): this {
+    this.value -= value;
+    return this;
+  }
+
+  result(): number {
+    return this.value;
+  }
+}
+
+const calculator = new Calculator();
+calculator.add(5).subtract(3);
+
+// Accessors
+export class Circle {
+  // TODO: fix private initializer
+  constructor(private _radius: number) {}
+
+  get radius() {
+    return this._radius;
+  }
+
+  set radius(radius: number) {
+    this._radius = radius;
+  }
+
+  get area() {
+    return Math.PI * Math.pow(this._radius, 2);
+  }
+}
+
+const circle = new Circle(5);
+circle.radius = 10;
+
+// Optional methods and properties
+interface OptionalInterface {
+  requiredMethod(): void;
+  optionalMethod?(): void;
+  requiredProp: number;
+  optionalProp?: number;
+}
+
+export class OptionalClass implements OptionalInterface {
+  requiredMethod() {
+    console.log("Required method");
+  }
+
+  requiredProp = 1;
+}

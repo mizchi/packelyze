@@ -16,7 +16,11 @@ async function buildAndAssertExpected(projectPath: string) {
   const expected = fs.readFileSync(expectedPath, "utf-8");
   const bundle = await rollup({
     input: inputPath,
-    external: ["node:path", "react", "react/jsx-runtime"],
+    onwarn(warning, defaultHandler) {
+      if (warning.code === "THIS_IS_UNDEFINED") return;
+      defaultHandler(warning);
+    },
+    external: ["node:path", "react", "react/jsx-runtime", "myModule", "external-xxx", "ext-a", "ext-b"],
     plugins: [getPlugin({ projectPath })],
   });
 

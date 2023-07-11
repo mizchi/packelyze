@@ -4,8 +4,9 @@ import { expect, test } from "vitest";
 import { createTestLanguageService } from "../__tests/testHarness";
 import { deleteUnusedInProject, deleteUnusedInProjectUntilNoErrors } from "./unused";
 
+const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
+
 test("TS: unused", async () => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
   const code = `
   const x = 1;
   const unused_local1 = 2;
@@ -43,8 +44,7 @@ test("TS: unused", async () => {
   `);
 });
 
-test("TS: delete unused until no error", async (t) => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
+test("TS: delete unused until no error", async () => {
   const code = `
   const x = 1;
   const unused_local1 = 2;
@@ -71,7 +71,6 @@ test("TS: delete unused until no error", async (t) => {
 });
 
 test("TS: delete unused until no error", async () => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
   const code = `
   let x: number;
   if (false) {
@@ -90,7 +89,6 @@ test("TS: delete unused until no error", async () => {
 });
 
 test.skip("TS: DCE with __PURE__", async () => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
   const code = `
   function f() {
     return 1;
@@ -106,26 +104,7 @@ test.skip("TS: DCE with __PURE__", async () => {
   `);
 });
 
-test.skip("TS: DCE with __NO_SIDE_EFFECT__", async () => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
-  const code = `
-  /* #__NO_SIDE_EFFECT__ */
-  function f() {
-    return 1;
-  }
-  const x = f();
-  export {};
-  `;
-  const { service } = createTestLanguageService(projectPath);
-  service.writeSnapshotContent("index.ts", code);
-  expect(service.getSemanticDiagnostics("index.ts")).toHaveLength(0);
-  expect(service.readSnapshotContent("index.ts")).toEqualFormatted(`
-  export {};
-  `);
-});
-
 test.skip("TS: Inlining with __INLINE__", async () => {
-  const projectPath = path.join(__dirname, "../__fixtures/minimum-unused");
   const code = `
   function f() {
     return 1;

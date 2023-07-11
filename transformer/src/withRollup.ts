@@ -72,6 +72,7 @@ export function getPlugin({ projectPath }: { projectPath: string }) {
             esModuleInterop: true,
             allowSyntheticDefaultImports: true,
             strict: true,
+            experimentalDecorators: true,
             jsx: isTsx ? ts.JsxEmit.ReactJSX : ts.JsxEmit.None,
             noImplicitAny: true,
           },
