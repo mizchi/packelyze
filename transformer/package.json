@@ -7,8 +7,8 @@
   "types": "./lib/index.d.ts",
   "scripts": {
     "prepublishOnly": "pnpm build",
-    "typecheck": "pnpm tsc -p . --noEmit --emitDeclarationOnly false",
-    "build": "tsc -p .",
+    "typecheck": "pnpm tsc -p .",
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest src --run",
     "perf": "PERF=1 vitest --run src/perf.test.ts"
   },

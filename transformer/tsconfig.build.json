@@ -1,7 +1,9 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
+    "rootDir": "src",
+    "outDir": "lib",
+    "declaration": true,
     "skipLibCheck": true,
     "types": [
       "vitest/importMeta"
@@ -9,8 +11,12 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/__tests/**/*",
+    "src/__fixtures/**/*",
+    "src/**/*.test.ts",
+  ]
 }
