@@ -28,14 +28,12 @@ function generateDiff(expectedLines: string[], receivedLines: string[]): string 
     }
   }
 
-  // expectedLinesに追加の行がある場合、差分として生成します
   if (expectedLines.length > minLength) {
     for (let i = minLength; i < expectedLines.length; i++) {
       diffLines.push(`- ${expectedLines[i]}`);
     }
   }
 
-  // receivedLinesに追加の行がある場合、差分として生成します
   if (receivedLines.length > minLength) {
     for (let i = minLength; i < receivedLines.length; i++) {
       diffLines.push(`+ ${receivedLines[i]}`);
@@ -68,10 +66,8 @@ expect.extend({
     const pass = received.size === expected.size && [...receivedSet].every((item) => expectedSet.has(item));
 
     return {
-      // do not alter your "pass" based on isNot. Vitest does it for you
       pass,
       message: () => {
-        // if (isNot) {
         const plus = [...expectedSet].filter((item) => !receivedSet.has(item)).map((x) => `"${x}"`);
         const minus = [...receivedSet].filter((item) => !expectedSet.has(item)).map((x) => `"${x}"`);
         let text = `Set differences:`;
@@ -82,8 +78,6 @@ expect.extend({
           text += `\n${minus.map((t) => `\n- ${t}`).join("")}`;
         }
         return text;
-        // }
-        // return `${[...received].map((t) => t)} is ${[...expected].map((t) => t)}`;
       },
     };
   },

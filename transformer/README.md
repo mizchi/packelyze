@@ -10,7 +10,33 @@ We focus on what terser `cannot` do.
 
 ## Example
 
-TBD
+(WIP)
+
+```ts
+import { createMinifier } from "packelyze-transformer";
+const minifier = createMinifier(...);
+
+// transform ts in memory
+minifier.process();
+// get transformed result
+const result = minifier.readFile(filePath);
+```
+
+## with vite
+
+```js
+import { tsMinify } from "packelyze-transformer";
+import { defineConfig } from "vite";
+export default defineConfig({
+  plugins: [
+    tsMinify({
+      // only ts to minified-ts transform
+      // vite's internal esbuild will consume it as ts to js
+      preTransformOnly: true
+    })
+  ]
+});
+```
 
 ## Features
 

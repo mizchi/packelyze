@@ -2,11 +2,12 @@ import "./globals";
 
 import { rollup } from "rollup";
 import { expect, test } from "vitest";
-import { getPlugin } from "../src/withRollup";
+import { tsMinify } from "../src/index";
 import path from "node:path";
 import fs from "node:fs";
+import ts from "typescript";
 
-async function buildAndAssertExpected(projectPath: string) {
+async function assertResultToExpected(projectPath: string) {
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
 
@@ -21,9 +22,22 @@ async function buildAndAssertExpected(projectPath: string) {
       defaultHandler(warning);
     },
     external: ["node:path", "react", "react/jsx-runtime", "myModule", "external-xxx", "ext-a", "ext-b"],
-    plugins: [getPlugin({ projectPath })],
+    plugins: [
+      tsMinify({
+        cwd: projectPath,
+        compilerOptions: {
+          target: ts.ScriptTarget.ESNext,
+          module: ts.ModuleKind.ESNext,
+          experimentalDecorators: true,
+        },
+        transpileOptions: {
+          target: ts.ScriptTarget.ESNext,
+          module: ts.ModuleKind.ESNext,
+          experimentalDecorators: true,
+        },
+      }),
+    ],
   });
-
   const { output } = await bundle.generate({
     format: "esm",
   });
@@ -46,6 +60,6 @@ for (const caseName of cases) {
   test(`rollup plugin #${caseName}`, async () => {
     const __dirname = path.dirname(new URL(import.meta.url).pathname);
     const projectPath = path.join(__dirname, "./fixtures", caseName);
-    await buildAndAssertExpected(projectPath);
+    await assertResultToExpected(projectPath);
   });
 }

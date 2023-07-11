@@ -1,7 +1,7 @@
 import "./globals";
 import { rollup } from "rollup";
 import { test } from "vitest";
-import { getPlugin } from "../src/withRollup";
+import { tsMinify } from "../src/index";
 import path from "node:path";
 import fs from "node:fs";
 import terser from "@rollup/plugin-terser";
@@ -10,8 +10,6 @@ import ts from "rollup-plugin-ts";
 async function compareBuildSize(projectPath: string) {
   const opted = await buildWithOptimizer(projectPath);
   const normal = await buildNormal(projectPath);
-  // console.log("opt", opted);
-  // console.log("nor", normal);
   console.log({
     target: projectPath,
     optedSize: opted.length,
@@ -27,7 +25,7 @@ async function compareBuildSize(projectPath: string) {
       external: ["node:path", "myModule", "ext-a", "ext-b", "react", "react/jsx-runtime"],
       plugins: [
         // plugins
-        getPlugin({ projectPath }),
+        tsMinify({ cwd: projectPath }),
         terser(),
       ],
     });
