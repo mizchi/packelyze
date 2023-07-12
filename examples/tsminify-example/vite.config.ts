@@ -1,22 +1,22 @@
 import { defineConfig } from "vite";
-// import analyzed from "./_packelyze-analyzed.json";
 import { tsMinify } from "packelyze-transformer";
 
-export default defineConfig({
-  build: {
-    modulePreload: {
-      polyfill: false,
+export default defineConfig((config) => {
+  return {
+    build: {
+      modulePreload: {
+        polyfill: false,
+      },
     },
-  },
-  plugins: [
-    tsMinify({
-      preTransformOnly: true,
-      rootFileNames: ["./src/index.ts"],
-    }),
-  ],
-  // Does not work: can not rename with library internals.
-  // esbuild: {
-  //   mangleProps: /.*/,
-  //   reserveProps: new RegExp(`^(${reserved})$`),
-  // },
+    plugins: [
+      config.mode === "production" &&
+        tsMinify({
+          // only ts to minified-ts transform
+          // vite's internal esbuild will consume it as ts to js
+          preTransformOnly: true,
+          // for vite entrypoint
+          rootFileNames: ["./src/index.ts"],
+        }),
+    ],
+  };
 });

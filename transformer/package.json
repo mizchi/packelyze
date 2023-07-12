@@ -8,7 +8,7 @@
   "scripts": {
     "prepublishOnly": "pnpm build",
     "typecheck": "pnpm tsc -p .",
-    "build": "rimraf lib dist && tsc -p tsconfig.build.json && rollup -c rollup.config.js",
+    "build": "rimraf lib/* dist/* && tsc -p tsconfig.build.json && rollup -c rollup.config.js",
     "test": "vitest --run",
     "test:ci": "vitest run --coverage --allowOnly false",
     "test:cov": "vitest run --coverage",
@@ -27,11 +27,7 @@
     "url": "https://github.com/mizchi/packelyze.git",
     "directory": "transformer"
   },
-  "files": [
-    "lib",
-    "src",
-    "dist"
-  ],
+  "files": ["lib", "src", "dist"],
   "dependencies": {
     "colorette": "^2.0.20",
     "magic-string": "^0.30.1",

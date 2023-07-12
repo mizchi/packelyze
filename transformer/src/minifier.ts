@@ -7,9 +7,10 @@ import { createIncrementalLanguageService, createIncrementalLanguageServiceHost 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
   process(): void;
-  readFile(id: string): string | undefined;
+  readFile(fileName: string): string | undefined;
+  notifyChange(fileName: string, content: string): void;
   getSourceMapForFile(id: string): string | undefined;
-  exists(id: string): boolean;
+  exists(fileName: string): boolean;
   getCompilerOptions(): ts.CompilerOptions;
 }
 
@@ -37,10 +38,15 @@ export function createMinifier(
   };
 
   const sourceMaps = new Map<string, string>();
-
   return {
     process,
     exists: host.fileExists,
+    notifyChange(id, content) {
+      // service.writeFileSnapshot(id, content);
+      service.writeSnapshotContent(id, content);
+      // TODO: update only changed files
+      process();
+    },
     getSourceMapForFile(id) {
       return sourceMaps.get(id);
     },

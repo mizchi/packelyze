@@ -1,6 +1,6 @@
 type SubLocal = {
-  subLocal: number;
+  sub: number;
 };
 export const sub: SubLocal = {
-  subLocal: 1,
+  sub: 1,
 };

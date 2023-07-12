@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { InputOption, Plugin } from "rollup";
@@ -5,6 +6,7 @@ import ts from "typescript";
 import { type Minifier, createMinifier } from "./minifier";
 
 const BASE_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx", ".js", ".jsx", ".mjs", ".mjsx"];
+const TRANSFORM_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx"];
 
 export type TsMinifyOptions = {
   // current dir
@@ -27,9 +29,19 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
   const cwd = opts.cwd ?? process.cwd();
   const overrideCompilerOptions = opts.compilerOptions;
   const resolveIdFromSpecifier = createDefaultResolver(cwd, opts.extensions ?? BASE_EXTENSIONS);
+  const normalize = (id: string) => {
+    if (id.startsWith("/")) return id;
+    return path.join(cwd, id);
+  };
 
   // initialize on options with input
   let minifier: Minifier;
+  const includes = opts.include?.map(normalize);
+  const isTransformTarget = (id: string) => {
+    id = normalize(id);
+    if (includes?.includes(id)) return true;
+    return TRANSFORM_EXTENSIONS.some((ext) => id.endsWith(ext));
+  };
   const plugin: Plugin = {
     name: "test",
     options(options) {
@@ -51,24 +63,31 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       minifier = createMinifier(cwd, rootFileNames, targetFileNames, parsed.options, overrideCompilerOptions);
       minifier.process();
     },
+    // WIP
+    watchChange(id, change) {
+      if (!isTransformTarget(id)) return;
+      if (change.event === "update") {
+        const content = fs.readFileSync(id, "utf-8");
+        minifier.notifyChange(id, content);
+      }
+    },
     load(id) {
+      if (!isTransformTarget(id)) return;
       return minifier.readFile(id);
     },
     resolveId(id, importer) {
       // delegate to other plugins
       if (opts.preTransformOnly) return;
       if (importer) {
-        let resolvedId = path.join(path.dirname(importer), id);
-        const found = resolveIdFromSpecifier(resolvedId);
-        if (found) return found;
+        const resolvedId = path.join(path.dirname(importer), id);
+        const foundId = resolveIdFromSpecifier(resolvedId);
+        if (foundId && isTransformTarget(foundId)) return foundId;
       } else {
-        if (id.startsWith("/")) {
-          return id;
-        }
-        return path.join(cwd, id);
+        if (isTransformTarget(id)) return normalize(id);
       }
     },
     transform(code, id) {
+      if (!isTransformTarget(id)) return;
       // delegate to other plugins
       if (opts.preTransformOnly) {
         const sourceMap = minifier.getSourceMapForFile(id);

@@ -2,19 +2,30 @@ import { ext } from "./ext";
 import { sub } from "./sub";
 
 type Local1 = {
-  local: number;
+  l1: number;
 };
 type Local2 = {
-  pub: number;
+  l2: number;
 };
 
 function fff(): Local2 {
-  const fLocal: Local1 = { local: 1 };
+  const fLocal: Local1 = { l1: 1 };
   return {
-    pub: fLocal.local,
+    l2: fLocal.l1,
   };
 }
 const x = fff();
-const subItem = sub.subLocal;
 
-console.log(ext(x.pub.toString(), subItem.toString()), sub);
+function throwFuncForSourceMapCheck() {
+  // throw new Error("test");
+  try {
+    throw new Error("test");
+  } catch (e) {
+    console.log("catched", e);
+  }
+}
+const subItem = sub.sub;
+
+console.log(ext(x.l2.toString(), subItem.toString()), sub);
+throwFuncForSourceMapCheck();
+console.log(3);

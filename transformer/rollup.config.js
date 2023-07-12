@@ -6,16 +6,18 @@ export default {
   output: {
     dir: "dist",
     format: "esm",
+    // sourcemap: true,
   },
-  external: ["typescript", "node:path", "node:process", "node:fs", "node:test", "rollup"],
+  external: ["typescript", "node:path", "node:process", "node:fs", "node:test", "rollup", "source-map", "magic-string"],
   plugins: [
     nodeResolve(),
     cjs(),
     ts({
       tsconfig: "tsconfig.build.json",
       compilerOptions: {
+        sourcemap: true,
         declaration: true,
       }
-    })
+    }),
   ],
 };

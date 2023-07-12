@@ -2,7 +2,7 @@
 
 `packelyze-transformer` transforms typescript code with LanguageService(that has IDE power).
 
-We focus on what terser `cannot` do.
+We focus on what terser can not do.
 
 ## Features
 
@@ -11,17 +11,20 @@ We focus on what terser `cannot` do.
 ## with vite
 
 ```js
-import { tsMinify } from "packelyze-transformer";
 import { defineConfig } from "vite";
-export default defineConfig({
+import { tsMinify } from "packelyze-transformer";
+
+export default defineConfig((config) => ({
   plugins: [
-    tsMinify({
+    config.mode === "production" && tsMinify({
       // only ts to minified-ts transform
       // vite's internal esbuild will consume it as ts to js
-      preTransformOnly: true
+      preTransformOnly: true,
+      // keep module interfaces for vite
+      rootFileNames: ["./src/index.ts"],
     })
   ]
-});
+}));
 ```
 
 ## API
@@ -61,6 +64,7 @@ Internal Steps.
 
 ## TODO
 
+- Support rollup/vite watch mode
 - IncrementalLanguageService
   - ranged snapshot create/update
   - with project reference(s)
