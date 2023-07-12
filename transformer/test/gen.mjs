@@ -11,7 +11,7 @@ import { assertRollupWithFixture } from "./testUtils";
 
 `;
 
-const genCase = (caseName: string) => `test("rollup #${caseName}", async () => {
+const genCase = (caseName) => `test("rollup #${caseName}", async () => {
   await assertRollupWithFixture(path.join(__dirname, "./fixtures/${caseName}"));
 });`;
 
