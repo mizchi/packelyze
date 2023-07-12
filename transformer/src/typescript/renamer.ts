@@ -55,86 +55,9 @@ export function getRenamedFileChanges(
 export function applyBatchRenameLocations(
   code: string,
   renames: BatchRenameLocation[],
+  smc?: SourceMapConsumer,
   debug = false,
-): Omit<FileChangeResult, "fileName"> {
-  const debugLog = debug ? console.log : () => {};
-  let current = code;
-  let offset = 0;
-  let changedStart = 0;
-  let changedEnd = 0;
-  for (const rename of renames) {
-    const toName = rename.to;
-    const start = rename.textSpan.start;
-    const end = rename.textSpan.start + rename.textSpan.length;
-    debugLog("[name:from]", rename.original, "[name:to]", toName);
-
-    if (changedStart === 0 || changedStart > start) {
-      changedStart = start;
-    }
-    if (changedEnd === 0 || changedEnd < end) {
-      changedEnd = end;
-    }
-    current = current.slice(0, start + offset) + toName + current.slice(end + offset);
-    offset += toName.length - (end - start);
-  }
-  return {
-    content: current,
-    start: changedStart,
-    end: changedEnd,
-  };
-}
-
-// export function applyBatchRenameLocations2(
-//   code: string,
-//   renames: BatchRenameLocation[],
-//   sourceMapText?: string,
-//   debug = false,
-// ): { content: string, start: number, end: number, map: string } {
-//   const debugLog = debug ? console.log : () => {};
-//   let magicString = new MagicString(code);
-
-//   // Apply the existing source map if provided
-//   if (sourceMapText) {
-//     const smc = new SourceMapConsumer(sourceMapText);
-//     magicString = magicString.transform(({ start, end }) => {
-//         const originalStartPosition = smc.originalPositionFor({ line: start.line + 1, column: start.column });
-//         const originalEndPosition = smc.originalPositionFor({ line: end.line + 1, column: end.column });
-//         return { start: originalStartPosition, end: originalEndPosition };
-//     });
-//   }
-
-//   let changedStart = 0;
-//   let changedEnd = 0;
-
-//   for (const rename of renames) {
-//     const toName = rename.to;
-//     const start = rename.textSpan.start;
-//     const end = rename.textSpan.start + rename.textSpan.length;
-//     debugLog("[name:from]", rename.original, "[name:to]", toName);
-
-//     if (changedStart === 0 || changedStart > start) {
-//       changedStart = start;
-//     }
-//     if (changedEnd === 0 || changedEnd < end) {
-//       changedEnd = end;
-//     }
-//     magicString.overwrite(start, end, toName);
-//   }
-
-//   return {
-//     content: magicString.toString(),
-//     start: changedStart,
-//     end: changedEnd,
-//     map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
-//   };
-// }
-
-export async function applyBatchRenameLocations3(
-  code: string,
-  renames: BatchRenameLocation[],
-  sourceMapText?: string,
-  debug = false,
-): Promise<{ content: string; start: number; end: number; map: string }> {
+): { content: string; start: number; end: number; map: string } {
   const debugLog = debug ? console.log : () => {};
   let magicString = new MagicString(code);
 
@@ -157,25 +80,22 @@ export async function applyBatchRenameLocations3(
   }
 
   // Apply the existing source map if provided
-  if (sourceMapText) {
-    const smc = await new SourceMapConsumer(sourceMapText);
-    // const s1 = magicString.generateDecodedMap();
+  if (smc) {
     const s1String = magicString.toString();
     const s2 = SourceMapGenerator.fromSourceMap(smc);
     s2.applySourceMap(smc, s1String, undefined);
-
     return {
       content: magicString.toString(),
       start: changedStart,
       end: changedEnd,
       map: s2.toString(),
     };
-  } else {
-    return {
-      content: magicString.toString(),
-      start: changedStart,
-      end: changedEnd,
-      map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
-    };
   }
+
+  return {
+    content: magicString.toString(),
+    start: changedStart,
+    end: changedEnd,
+    map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
+  };
 }

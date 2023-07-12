@@ -1,61 +1,12 @@
 import ts from "typescript";
-import MagicString from "magic-string";
-import { SourceMapConsumer, SourceMapGenerator } from "source-map";
+import { SourceMapConsumer } from "source-map";
 import { test, expect } from "vitest";
+import { applyBatchRenameLocations } from "./renamer";
 
 export type BatchRenameLocation = ts.RenameLocation & {
   original: string;
   to: string;
 };
-
-export function applyBatchRenameLocations(
-  code: string,
-  renames: BatchRenameLocation[],
-  smc?: SourceMapConsumer,
-  debug = false,
-): { content: string; start: number; end: number; map: string } {
-  const debugLog = debug ? console.log : () => {};
-  let magicString = new MagicString(code);
-
-  let changedStart = 0;
-  let changedEnd = 0;
-
-  for (const rename of renames) {
-    const toName = rename.to;
-    const start = rename.textSpan.start;
-    const end = rename.textSpan.start + rename.textSpan.length;
-    debugLog("[name:from]", rename.original, "[name:to]", toName);
-
-    if (changedStart === 0 || changedStart > start) {
-      changedStart = start;
-    }
-    if (changedEnd === 0 || changedEnd < end) {
-      changedEnd = end;
-    }
-    magicString.overwrite(start, end, toName);
-  }
-
-  // Apply the existing source map if provided
-  if (smc) {
-    const s1String = magicString.toString();
-    const s2 = SourceMapGenerator.fromSourceMap(smc);
-    s2.applySourceMap(smc, s1String, undefined);
-
-    return {
-      content: magicString.toString(),
-      start: changedStart,
-      end: changedEnd,
-      map: s2.toString(),
-    };
-  } else {
-    return {
-      content: magicString.toString(),
-      start: changedStart,
-      end: changedEnd,
-      map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
-    };
-  }
-}
 
 function getOriginalPositionFromTSPosition(smc: SourceMapConsumer, file: ts.SourceFile, position: number) {
   const p = file.getLineAndCharacterOfPosition(position);

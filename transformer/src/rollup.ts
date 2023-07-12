@@ -69,14 +69,21 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       }
     },
     transform(code, id) {
+      // delegate to other plugins
+      if (opts.preTransformOnly) {
+        const sourceMap = minifier.getSourceMapForFile(id);
+        if (sourceMap) {
+          return {
+            code,
+            map: sourceMap,
+          };
+        }
+      }
+      // TODO: multiple sourceMap transforms
       const mergedTranspileCompilerOptions: ts.CompilerOptions = {
         ...minifier.getCompilerOptions(),
         ...opts.transpileOptions,
       };
-      // delegate to other plugins
-      if (opts.preTransformOnly) return;
-      // return minifier.transform(code, id);
-      // const nid = normalizePath(id);
       if (minifier.exists(id)) {
         const result = ts.transpileModule(code, {
           fileName: id,

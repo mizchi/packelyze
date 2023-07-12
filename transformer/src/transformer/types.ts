@@ -8,6 +8,7 @@ export type FileChangeResult = {
   content: string;
   start?: number;
   end?: number;
+  map?: string;
 };
 
 export type MangleAction = {

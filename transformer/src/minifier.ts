@@ -8,6 +8,7 @@ import { createIncrementalLanguageService, createIncrementalLanguageServiceHost 
 export interface Minifier {
   process(): void;
   readFile(id: string): string | undefined;
+  getSourceMapForFile(id: string): string | undefined;
   exists(id: string): boolean;
   getCompilerOptions(): ts.CompilerOptions;
 }
@@ -35,9 +36,14 @@ export function createMinifier(
     return path.join(projectPath, fname); //
   };
 
+  const sourceMaps = new Map<string, string>();
+
   return {
     process,
     exists: host.fileExists,
+    getSourceMapForFile(id) {
+      return sourceMaps.get(id);
+    },
     getCompilerOptions() {
       return mergedCompilerOptions;
     },
@@ -62,6 +68,7 @@ export function createMinifier(
     const changes = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {
       service.writeSnapshotContent(change.fileName, change.content);
+      if (change.map) sourceMaps.set(change.fileName, change.map);
     }
   }
 }
