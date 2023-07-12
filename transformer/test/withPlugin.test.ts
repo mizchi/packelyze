@@ -1,12 +1,12 @@
 import "./globals";
-import { test, expect } from "vitest";
-import { tsMinify } from "../src/index";
-import { rollup } from "rollup";
 import path from "node:path";
 import fs from "node:fs";
+import { test, expect } from "vitest";
+import { rollup } from "rollup";
 import typescript from "typescript";
 import ts from "rollup-plugin-ts";
 import esbuild from "rollup-plugin-esbuild";
+import { tsMinify } from "../src/index";
 
 test(`with rollup-plugin-ts`, async () => {
   const projectPath = path.join(__dirname, "./fixtures/case01-basic");

@@ -1,13 +1,11 @@
-import "./globals";
-
-import { rollup } from "rollup";
-import { expect, test } from "vitest";
-import { tsMinify } from "../src/index";
-import path from "node:path";
+import { expect } from "vitest";
 import fs from "node:fs";
+import path from "node:path";
+import { rollup } from "rollup";
+import { tsMinify } from "../src";
 import ts from "typescript";
 
-async function assertResultToExpected(projectPath: string) {
+export async function assertRollupWithFixture(projectPath: string) {
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
 
@@ -43,23 +41,4 @@ async function assertResultToExpected(projectPath: string) {
   });
   expect(output[0].code).toEqualFormatted(expected);
   return output[0].code;
-}
-
-const skipList: string[] = [];
-// WIP
-// const skipList: string[] = ["case07-react"];
-const onlyList: string[] = [];
-
-const cases = fs
-  .readdirSync(path.join(__dirname, "./fixtures"))
-  .filter((x) => x.startsWith("case"))
-  .filter((caseName) => onlyList.length === 0 || onlyList.includes(caseName))
-  .filter((caseName) => !skipList.includes(caseName));
-
-for (const caseName of cases) {
-  test(`rollup plugin #${caseName}`, async () => {
-    const __dirname = path.dirname(new URL(import.meta.url).pathname);
-    const projectPath = path.join(__dirname, "./fixtures", caseName);
-    await assertResultToExpected(projectPath);
-  });
 }
