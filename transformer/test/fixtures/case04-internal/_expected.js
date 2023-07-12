@@ -5,16 +5,17 @@ function myfn(input) {
   const z = {
     k: q.j,
     x: input.input,
-    p() {
+    get() {
       return this.k + this.x;
     },
   };
-  return q.j + z.p();
+  return q.j + z.get();
 }
-function f(props) {
-  return props.y + props.w;
+function p(props) {
+  return props.f + props.y;
 }
 function componentLike2() {
-  return f({ y: 1, w: 2 });
+  return p({ f: 1, y: 2 });
 }
-export { componentLike2, myfn }
+
+export { componentLike2, myfn };

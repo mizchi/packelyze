@@ -1,10 +1,10 @@
 function createObj() {
   return {
-    xxx: x,
-    k() {
+    xxx: k,
+    yyy() {
       return undefined;
     },
   };
-  function x() {}
+  function k() {}
 }
-export { createObj as createMinifier };
+export { createObj };

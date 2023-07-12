@@ -10,6 +10,5 @@ export function createObj(): Obj {
       return undefined;
     },
   };
-
   function xxx() {}
 }

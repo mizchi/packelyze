@@ -69,7 +69,14 @@ export function createMinifier(
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProjectForMangle(checker, root, targetsFiles);
+    // for (const sym of visited.visitedSymbols) {
+    //   console.log("[minifier:symbol]", sym.getName());
+    // }
+    // for (const type of visited.visitedTypes) {
+    //   console.log("[minifier:type]", checker.typeToString(type));
+    // }
     const actions = targetsFiles.flatMap((file) => getMangleActionsForFile(checker, visited, file));
+    // console.log("[minifier:actions]", actions);
     const renames = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
     const changes = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {

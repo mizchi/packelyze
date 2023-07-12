@@ -28,6 +28,8 @@ export type MangleTargetNode =
   | ts.InterfaceDeclaration
   | ts.ParameterDeclaration
   | ts.PropertyDeclaration
+  // | ts.FunctionDeclaration
+  // | ts.PropertyAssignment
   | ts.MethodDeclaration
   | ts.ClassDeclaration
   | ts.TypeNode

@@ -4,7 +4,7 @@ import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/s
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors } from "../typescript/utils";
+import { composeVisitors, toReadableNode, toReadableSymbol } from "../typescript/utils";
 import { FindRenameLocations } from "../typescript/types";
 import { type MangleAction, MangleTargetNode } from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
@@ -107,13 +107,19 @@ export function getMangleActionsForFile(
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
     const bindings = getBindingsForFile(file);
+    // console.log(
+    //   "[findMangleNodesForFile]",
+    //   file.fileName,
+    //   [...bindings].map((s) => toReadableNode(s)),
+    // );
 
     const manglables = new Set<ts.Node>();
+    // need this?
     const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
 
     // console.log(
-    //   "[findMangleNodesForFile]]",
-    //   [...fileExportedSymbols].map((s) => toReadableSymbol(s)),
+    //   "[findMangleNodesForFile]",
+    //   [...exportSymbols].map((s) => toReadableSymbol(s)),
     // );
     for (const identifier of bindings) {
       // skip: type <Foo> = { ... }
@@ -125,8 +131,14 @@ export function getMangleActionsForFile(
         continue;
       }
 
+      // FIXME: this includes exported
+      // if (ts.isMethodDeclaration(identifier.parent) && identifier.parent.name === identifier) {
+      //   continue;
+      // }
+
       // node is related to export
       if (exportedNodes.has(identifier.parent)) {
+        // console.log("skip: exported", identifier.text);
         continue;
       }
 
@@ -140,6 +152,14 @@ export function getMangleActionsForFile(
       // if (visited.visitedTypes.includes(type)) {
       //   continue;
       // }
+
+      // console.log(
+      //   "[mangler:add]",
+      //   identifier.text,
+      //   ts.SyntaxKind[identifier.kind],
+      //   "in",
+      //   ts.SyntaxKind[identifier.parent.kind],
+      // );
 
       manglables.add(identifier);
     }
@@ -206,18 +226,25 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
     // console.log("[bindings]", ts.SyntaxKind[node.kind], "\n" + node.getText());
     // declarable nodes
     // stop if declared
+
+    const isParentClass = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
+
     if (ts.isVariableStatement(node)) {
       // stop if declare cont v: ...;
       if (hasDeclareOrAbstract(node)) return;
     }
 
+    // only for classes
+    // ObjectLiteral's methodDeclaration will be broken
+    if (isParentClass && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
+      if (hasDeclareOrAbstract(node)) return;
+      visitNamedBinding(node.name);
+    }
     if (
       ts.isFunctionDeclaration(node) ||
       ts.isClassDeclaration(node) ||
       ts.isEnumDeclaration(node) ||
-      ts.isModuleDeclaration(node) ||
-      ts.isMethodDeclaration(node) ||
-      ts.isPropertyDeclaration(node)
+      ts.isModuleDeclaration(node)
     ) {
       if (hasDeclareOrAbstract(node)) return;
       if (node.name) {
@@ -355,6 +382,7 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       ts.isPropertySignature(node) ||
       ts.isMethodSignature(node) ||
       ts.isMethodDeclaration(node) ||
+      // ts.isFunctionDeclaration(node) ||
       ts.isPropertyDeclaration(node) ||
       ts.isParameter(node) ||
       ts.isGetAccessor(node) ||
@@ -367,6 +395,9 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
     if (!isMangleTargetNode(node)) return;
     if (visitedNodes.has(node)) return;
     visitedNodes.add(node);
+
+    // now only for classes
+    const isClassParent = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
 
     if (ts.isTypeAliasDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
@@ -427,16 +458,18 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
       }
     }
 
-    if (ts.isPropertyDeclaration(node)) {
+    if (ts.isPropertyDeclaration(node) && isClassParent) {
       if (node.type) {
         visitNode(node.type, depth + 1);
       }
     }
-    if (ts.isMethodDeclaration(node)) {
+    // now only for classes
+    if (ts.isMethodDeclaration(node) && isClassParent) {
       for (const param of node.parameters) {
         visitNode(param, depth + 1);
       }
     }
+
     if (ts.isGetAccessor(node)) {
       for (const param of node.parameters) {
         visitNode(param, depth + 1);
