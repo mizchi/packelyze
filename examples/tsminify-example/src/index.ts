@@ -25,7 +25,13 @@ function throwFuncForSourceMapCheck() {
   }
 }
 const subItem = sub.sub;
+type ShouldKeep = {
+  shouldKeep: number;
+};
 
-console.log(ext(x.l2.toString(), subItem.toString()), sub);
+const shouldKeep: ShouldKeep = {
+  shouldKeep: 1,
+};
+console.log(ext(x.l2.toString(), subItem.toString()), shouldKeep);
+
 throwFuncForSourceMapCheck();
-console.log(3);

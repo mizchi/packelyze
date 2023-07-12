@@ -4,6 +4,7 @@ import process from "node:process";
 import { InputOption, Plugin } from "rollup";
 import ts from "typescript";
 import { type Minifier, createMinifier } from "./minifier";
+import { sync as globSync } from "glob";
 
 const BASE_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx", ".js", ".jsx", ".mjs", ".mjsx"];
 const TRANSFORM_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx"];
@@ -36,7 +37,8 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
 
   // initialize on options with input
   let minifier: Minifier;
-  const includes = opts.include?.map(normalize);
+  // const includes = opts.include?.map(normalize);
+  const includes = opts.include ? expandIncludePatterns(opts.include, cwd) : undefined;
   const isTransformTarget = (id: string) => {
     id = normalize(id);
     if (includes?.includes(id)) return true;
@@ -46,19 +48,19 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
     name: "test",
     options(options) {
       const configPath = ts.findConfigFile(cwd, ts.sys.fileExists, "tsconfig.json");
-      const tsconfig = ts.readConfigFile(configPath!, ts.sys.readFile);
+      if (!configPath) {
+        throw new Error("[ts-minify] tsconfig.json is not found");
+      }
+      const tsconfig = ts.readConfigFile(configPath, ts.sys.readFile);
       const parsed = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, cwd);
       const targetFileNames = parsed.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
       const rootFileNames = opts.rootFileNames
-        ? opts.rootFileNames.map((x) => {
-            if (x.startsWith("/")) return x;
-            return path.join(cwd, x);
-          })
+        ? opts.rootFileNames.map(normalize)
         : options.input
         ? inputToRootFileNames(options.input)
         : [];
       if (rootFileNames.length === 0) {
-        throw new Error("input is not specified");
+        throw new Error("[tsMinify] input is not specified");
       }
       minifier = createMinifier(cwd, rootFileNames, targetFileNames, parsed.options, overrideCompilerOptions);
       minifier.process();
@@ -79,8 +81,7 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       // delegate to other plugins
       if (opts.preTransformOnly) return;
       if (importer) {
-        const resolvedId = path.join(path.dirname(importer), id);
-        const foundId = resolveIdFromSpecifier(resolvedId);
+        const foundId = resolveIdFromSpecifier(path.join(path.dirname(importer), id));
         if (foundId && isTransformTarget(foundId)) return foundId;
       } else {
         if (isTransformTarget(id)) return normalize(id);
@@ -99,14 +100,14 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
         }
       }
       // TODO: multiple sourceMap transforms
-      const mergedTranspileCompilerOptions: ts.CompilerOptions = {
+      const transpileOptions: ts.CompilerOptions = {
         ...minifier.getCompilerOptions(),
         ...opts.transpileOptions,
       };
       if (minifier.exists(id)) {
         const result = ts.transpileModule(code, {
           fileName: id,
-          compilerOptions: mergedTranspileCompilerOptions,
+          compilerOptions: transpileOptions,
         });
         return {
           code: result.outputText,
@@ -139,4 +140,13 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       }
     };
   }
+}
+
+function expandIncludePatterns(include: string[], cwd: string) {
+  const expanded: string[] = [];
+  for (const pattern of include) {
+    const files = globSync(pattern, { cwd });
+    expanded.push(...files);
+  }
+  return [...new Set(expanded)];
 }

@@ -8,7 +8,16 @@ export default {
     format: "esm",
     // sourcemap: true,
   },
-  external: ["typescript", "node:path", "node:process", "node:fs", "node:test", "rollup", "source-map", "magic-string"],
+  external: [
+    "node:path",
+    "node:process",
+    "node:fs",
+    "node:test", "rollup",
+    "typescript",
+    "source-map",
+    "magic-string",
+    "glob"
+  ],
   plugins: [
     nodeResolve(),
     cjs(),

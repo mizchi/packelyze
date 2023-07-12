@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "serve": "vite serve"
+    "serve": "vite serve",
+    "test": "pnpm build && node posttest.mjs"
   },
   "license": "MIT",
   "devDependencies": {

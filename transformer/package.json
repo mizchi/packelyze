@@ -27,9 +27,14 @@
     "url": "https://github.com/mizchi/packelyze.git",
     "directory": "transformer"
   },
-  "files": ["lib", "src", "dist"],
+  "files": [
+    "lib",
+    "src",
+    "dist"
+  ],
   "dependencies": {
     "colorette": "^2.0.20",
+    "glob": "^10.3.3",
     "magic-string": "^0.30.1",
     "source-map": "^0.7.4",
     "ts-clone-node": "^2.0.4",
