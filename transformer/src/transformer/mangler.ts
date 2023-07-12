@@ -131,11 +131,6 @@ export function getMangleActionsForFile(
         continue;
       }
 
-      // FIXME: this includes exported
-      // if (ts.isMethodDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-      //   continue;
-      // }
-
       // node is related to export
       if (exportedNodes.has(identifier.parent)) {
         // console.log("skip: exported", identifier.text);
@@ -153,13 +148,7 @@ export function getMangleActionsForFile(
       //   continue;
       // }
 
-      // console.log(
-      //   "[mangler:add]",
-      //   identifier.text,
-      //   ts.SyntaxKind[identifier.kind],
-      //   "in",
-      //   ts.SyntaxKind[identifier.parent.kind],
-      // );
+      // console.log("[mangler:add]", identifier.text, "in", ts.SyntaxKind[identifier.parent.kind]);
 
       manglables.add(identifier);
     }

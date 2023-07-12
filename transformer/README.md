@@ -88,6 +88,18 @@ Internal Steps.
   - Delegate to other transformer
   - SourceMap
 
+## Internal
+
+- FIX: intersection export types
+- Pure detection
+  - Promise resolve/rejectwm
+  - React jsxs
+- Use vitest local snapshot and update
+- Filter mangle AST pattern by explicit config
+- Self hosting
+- Support rollup watch mode
+- Support sourceMap
+
 ## Related
 
 - https://github.com/fairysword/rollup-plugin-pure-annotation
