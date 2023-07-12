@@ -1,4 +1,4 @@
-import { getRenamedFileChanges } from "./transformer/renamer";
+import { getRenamedFileChanges } from "./typescript/renamer";
 import ts from "typescript";
 import path from "node:path";
 import { expandToSafeBatchRenameLocations, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";

@@ -1,13 +1,6 @@
 import ts from "typescript";
 
 /**
- * to batch rename, we need to know the original text and the new text.
- */
-export type BatchRenameLocation = ts.RenameLocation & {
-  original: string;
-  to: string;
-};
-/**
  * to update partial nodes, keep start and end
  */
 export type FileChangeResult = {

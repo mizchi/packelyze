@@ -11,6 +11,8 @@ export type TsMinifyOptions = {
   cwd?: string;
   // searching extension for rollup resolveId
   extensions?: string[];
+  // explicit rootFileNames (required by vite)
+  rootFileNames?: string[];
   // override compiler options
   compilerOptions?: Partial<ts.CompilerOptions>;
   // override transpile compiler options
@@ -35,7 +37,14 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       const tsconfig = ts.readConfigFile(configPath!, ts.sys.readFile);
       const parsed = ts.parseJsonConfigFileContent(tsconfig.config, ts.sys, cwd);
       const targetFileNames = parsed.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
-      const rootFileNames = options.input ? inputToRootFileNames(options.input) : [];
+      const rootFileNames = opts.rootFileNames
+        ? opts.rootFileNames.map((x) => {
+            if (x.startsWith("/")) return x;
+            return path.join(cwd, x);
+          })
+        : options.input
+        ? inputToRootFileNames(options.input)
+        : [];
       if (rootFileNames.length === 0) {
         throw new Error("input is not specified");
       }

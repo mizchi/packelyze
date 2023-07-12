@@ -1,0 +1,24 @@
+{
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build",
+    "serve": "vite serve"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.2",
+    "packelyze": "workspace:*",
+    "packelyze-transformer": "workspace:*",
+    "rollup": "^3.21.7",
+    "rollup-plugin-ts": "^3.2.0",
+    "zero-runtime": "workspace:*"
+  },
+  "dependencies": {
+    "esbuild": "^0.17.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

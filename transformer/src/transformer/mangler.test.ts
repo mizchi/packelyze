@@ -1,6 +1,6 @@
 import "../../test/globals";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
-import { getRenamedFileChanges } from "./renamer";
+import { getRenamedFileChanges } from "../typescript/renamer";
 import { expect, test } from "vitest";
 import {
   expandToSafeBatchRenameLocations,

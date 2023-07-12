@@ -2,11 +2,12 @@
 import ts from "typescript";
 import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
-import { findBatchRenameLocations } from "./renamer";
+import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors } from "../typescript/utils";
 import { FindRenameLocations } from "../typescript/types";
-import { BatchRenameLocation, MangleAction, MangleTargetNode } from "./types";
+import { type MangleAction, MangleTargetNode } from "./types";
+import { type BatchRenameLocation } from "../typescript/types";
 
 export function walkProjectForMangle(
   checker: ts.TypeChecker,

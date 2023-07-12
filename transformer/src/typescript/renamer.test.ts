@@ -3,8 +3,8 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { applyBatchRenameLocations, findBatchRenameLocations, getRenamedFileChanges } from "./renamer";
 import { createTestLanguageService } from "../../test/testHarness";
-import { findFirstNode } from "../typescript/utils";
-import { BatchRenameLocation } from "./types";
+import { findFirstNode } from "./utils";
+import { type BatchRenameLocation } from "./types";
 
 test("batch renaming", () => {
   const { service, normalizePath } = createTestLanguageService();
