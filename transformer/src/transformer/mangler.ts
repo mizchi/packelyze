@@ -72,7 +72,9 @@ export function walkProjectForMangle(
   return symbolWalker.getVisited();
 
   function walkExportedRelatedNodesFromRoot(root: ts.SourceFile) {
-    const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
+    const fileSymbol = checker.getSymbolAtLocation(root);
+    if (!fileSymbol) return;
+    const exportedSymbols = checker.getExportsOfModule(fileSymbol);
     for (const exported of exportedSymbols) {
       symbolWalker.walkSymbol(exported);
       const type = checker.getTypeOfSymbol(exported);
@@ -158,7 +160,8 @@ export function getMangleActionsForFile(
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
     const bindings = getBindingsForFile(file);
-    const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+    const fileSymbol = checker.getSymbolAtLocation(file);
+    const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {
       return isMangleIdentifier(checker, identifier, exportedNodes, exportSymbols);
     });
