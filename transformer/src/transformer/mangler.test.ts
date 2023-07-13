@@ -217,7 +217,40 @@ test("findRelatedNodes # union", () => {
   ]);
 });
 
-test("nodeWalker #2 class", () => {
+test("findRelatedNodes # as", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  type A = {
+    aaa: number;
+  };
+  type B = {
+    bbb: number;
+  }
+  export const a = {
+    aaa: 1
+  } as A
+`);
+  const walker = createGetSymbolWalker(checker)();
+  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of symbols) {
+    walker.walkSymbol(symbol);
+  }
+  const visited = walker.getVisited();
+  const relatedNodes = findRelatedNodes(visited);
+  expect(
+    [...relatedNodes].map((node) => {
+      return {
+        kind: ts.SyntaxKind[node.kind],
+        text: formatCode(node.getText()),
+      };
+    }),
+  ).toEqual([
+    { kind: "PropertySignature", text: "aaa: number;" },
+    { kind: "NumberKeyword", text: "number" },
+    { kind: "TypeLiteral", text: "{ aaa: number; }" },
+  ]);
+});
+
+test("findRelatedNodes # class", () => {
   const { checker, file } = createOneshotTestProgram(`
   interface I {
     f1(): number;
