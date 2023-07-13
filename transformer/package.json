@@ -9,9 +9,9 @@
     "prepublishOnly": "pnpm build",
     "typecheck": "pnpm tsc -p .",
     "build": "rimraf lib/* dist/* && tsc -p tsconfig.build.json && rollup -c rollup.config.js",
-    "test": "node test/gen.mjs && vitest --run",
-    "test:ci": "node test/gen.mjs && vitest run --coverage --allowOnly false",
-    "test:cov": "node test/gen.mjs && vitest run --coverage",
+    "test": "node scripts/gen.mjs && vitest --run",
+    "test:ci": "node scripts/gen.mjs && vitest run --coverage --allowOnly false",
+    "test:cov": "node scripts/gen.mjs && vitest run --coverage",
     "perf": "PERF=1 vitest --run test/perf.test.ts"
   },
   "exports": {

@@ -3,12 +3,6 @@ import path from "node:path";
 import { test } from "vitest";
 import { assertRollupWithFixture } from "./testUtils";
 
-test("rollup #case08-typeargs", async () => {
-  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case08-typeargs"));
-});
-test("rollup #case09-complex", async () => {
-  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case09-complex"));
-});
 test("rollup #case10-module", async () => {
   await assertRollupWithFixture(path.join(__dirname, "./fixtures/case10-module"));
 });
@@ -26,4 +20,13 @@ test("rollup #case14-promise", async () => {
 });
 test("rollup #case15-external-import", async () => {
   await assertRollupWithFixture(path.join(__dirname, "./fixtures/case15-external-import"));
+});
+test("rollup #case16-destructuring", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case16-destructuring"));
+});
+test("rollup #case17-re-export", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case17-re-export"));
+});
+test("rollup #case18-export-type", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case18-export-type"));
 });

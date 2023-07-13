@@ -27,3 +27,9 @@ test("rollup #case06-types", async () => {
 test("rollup #case07-react", async () => {
   await assertRollupWithFixture(path.join(__dirname, "./fixtures/case07-react"));
 });
+test("rollup #case08-typeargs", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case08-typeargs"));
+});
+test("rollup #case09-complex", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "./fixtures/case09-complex"));
+});
