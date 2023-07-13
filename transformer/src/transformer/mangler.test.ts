@@ -11,10 +11,8 @@ import {
 } from "./mangler";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-
-function formatCode(code: string) {
-  return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
-}
+import { toReadableNode } from "../typescript/utils";
+import { formatCode } from "../typescript/utils";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -64,7 +62,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   }
 }
 
-test("find all declarations", () => {
+test("getBindingsForFile", () => {
   const { file } = createOneshotTestProgram(`
   interface X {
     x: number;
@@ -130,7 +128,7 @@ test("find all declarations", () => {
   }
 });
 
-test("findDeclarationsFromSymbolWalkerVisited", () => {
+test("findRelatedNodes", () => {
   const { checker, file } = createOneshotTestProgram(`
   type Hidden = {
     __hidden: number;
@@ -151,9 +149,9 @@ test("findDeclarationsFromSymbolWalkerVisited", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const collected = findRelatedNodes(visited);
+  const relatedNodes = findRelatedNodes(visited);
   expect(
-    [...collected].map((node) => {
+    [...relatedNodes].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
@@ -169,6 +167,53 @@ test("findDeclarationsFromSymbolWalkerVisited", () => {
     "(LiteralType)1",
     "(TypeLiteral){ local: number; }",
     "(TypeLiteral){ fx: 1 }",
+  ]);
+});
+
+test("findRelatedNodes # union", () => {
+  const { checker, file } = createOneshotTestProgram(`
+  type A = {
+    aaa: number;
+  };
+  type B = {
+    bbb: number;
+  }
+  export type T = {
+    union: A | B;
+    intersection: A & B;
+  };
+`);
+  const walker = createGetSymbolWalker(checker)();
+  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  for (const symbol of symbols) {
+    walker.walkSymbol(symbol);
+  }
+  const visited = walker.getVisited();
+  const relatedNodes = findRelatedNodes(visited);
+  expect(
+    [...relatedNodes].map((node) => {
+      return {
+        kind: ts.SyntaxKind[node.kind],
+        text: formatCode(node.getText()),
+      };
+    }),
+  ).toEqual([
+    {
+      kind: "TypeAliasDeclaration",
+      text: "export type T = { union: A | B; intersection: A & B; };",
+    },
+    {
+      kind: "TypeLiteral",
+      text: "{ union: A | B; intersection: A & B; }",
+    },
+    { kind: "PropertySignature", text: "union: A | B;" },
+    { kind: "UnionType", text: "A | B" },
+    { kind: "TypeReference", text: "A" },
+    { kind: "TypeReference", text: "B" },
+    { kind: "PropertySignature", text: "intersection: A & B;" },
+    { kind: "IntersectionType", text: "A & B" },
+    { kind: "TypeReference", text: "A" },
+    { kind: "TypeReference", text: "B" },
   ]);
 });
 

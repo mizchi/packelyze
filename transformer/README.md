@@ -94,6 +94,7 @@ Internal Steps.
 
 ## Internal
 
+- typeof v
 - Pure detection
   - Promise resolve/rejectwm
   - React jsxs

@@ -37,7 +37,9 @@ export type MangleTargetNode =
   | ts.ClassDeclaration
   | ts.TypeNode
   | ts.GetAccessorDeclaration
-  | ts.SetAccessorDeclaration;
+  | ts.SetAccessorDeclaration
+  | ts.EnumDeclaration;
+// | ts.EnumMember;
 
 export type SymbolBuilder = {
   create: (validate?: (char: string) => boolean) => string;
