@@ -38,7 +38,7 @@ test("should rename and generate correct source map", async () => {
   const result = applyBatchRenameLocations(code, renames);
 
   expect(result.content).to.equal("let bar = 1; bar = 2;");
-  const smc = await new SourceMapConsumer(result.map);
+  const smc = await new SourceMapConsumer(result.map!);
   const originalPosition1 = smc.originalPositionFor({ line: 1, column: 4 });
   expect(originalPosition1.line).to.equal(1);
   expect(originalPosition1.column).to.equal(4);
@@ -47,6 +47,7 @@ test("should rename and generate correct source map", async () => {
   expect(originalPosition2.line).to.equal(1);
   expect(originalPosition2.column).to.equal(13);
 });
+
 test.skip("should rename multiple locations and generate correct source map", async () => {
   const code = `let foo = 1; let bar = 2;
 foo = foo + bar;
@@ -76,14 +77,14 @@ foo = foo - bar;`;
   ].sort((a, b) => a.textSpan.start - b.textSpan.start);
   const result = applyBatchRenameLocations(code, renames);
   const file = ts.createSourceFile("test.ts", code, ts.ScriptTarget.Latest, true);
-  console.log(renames.map((r) => file.getLineAndCharacterOfPosition(r.textSpan.start)));
+  // console.log(renames.map((r) => file.getLineAndCharacterOfPosition(r.textSpan.start)));
 
   expect(result.content).to.equal(`let x = 1; let y = 2;
 x = x + y;
 y = x - y;
 x = x - y;`);
   const transformedFile = ts.createSourceFile("test.ts", result.content, ts.ScriptTarget.Latest, true);
-  const smc = await new SourceMapConsumer(result.map);
+  const smc = await new SourceMapConsumer(result.map!);
   expect(renames.map((r) => getOriginalPositionFromTSPosition(smc, transformedFile, r.textSpan.start))).toEqual([
     { source: ".", line: 1, column: 4, name: null },
     { source: ".", line: 1, column: 21, name: null },

@@ -185,9 +185,9 @@ export function toReadableSymbol(
     flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
   };
 
-  // if (useFlags) {
-  //   ret.flags = toReadabelSymbolFlags(symbol.flags);
-  // }
+  if (useFlags) {
+    ret.flags = toReadabelSymbolFlags(symbol.flags);
+  }
 
   return ret;
 
