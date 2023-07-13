@@ -3,28 +3,12 @@ import path from "node:path";
 import process from "node:process";
 import { InputOption, Plugin } from "rollup";
 import ts from "typescript";
-import { type Minifier, createMinifier } from "./minifier";
+import { createMinifier } from "./minifier";
 import { sync as globSync } from "glob";
+import { Minifier, TsMinifyOptions } from "./types";
 
 const BASE_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx", ".js", ".jsx", ".mjs", ".mjsx"];
 const TRANSFORM_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx"];
-
-export type TsMinifyOptions = {
-  // current dir
-  cwd?: string;
-  // searching extension for rollup resolveId
-  extensions?: string[];
-  // explicit rootFileNames (required by vite)
-  rootFileNames?: string[];
-  // override compiler options
-  compilerOptions?: Partial<ts.CompilerOptions>;
-  // override transpile compiler options
-  transpileOptions?: Partial<ts.CompilerOptions>;
-  // transform only include
-  include?: string[];
-  // load transformed code only to use with other plugins (e.g. rollup-plugin-ts)
-  preTransformOnly?: boolean;
-};
 
 export function getPlugin(opts: TsMinifyOptions = {}) {
   const cwd = opts.cwd ?? process.cwd();

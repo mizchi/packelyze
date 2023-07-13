@@ -2,22 +2,8 @@
 
 import ts from "typescript";
 import { getOwnValues } from "../utils";
-import { type MappedType, SymbolWithId, TypeWithId } from "./types";
+import type { MappedType, SymbolWithId, TypeWithId, SymbolWalkerResult, SymbolWalker } from "./types";
 // import { toReadableSymbol } from "../nodeUtils";
-
-export type SymbolWalkerResult = {
-  types: ReadonlyArray<ts.Type>;
-  symbols: ReadonlyArray<ts.Symbol>;
-};
-
-export interface SymbolWalker {
-  /** Note: Return values are not ordered. */
-  walkType(root: ts.Type): void;
-  /** Note: Return values are not ordered. */
-  walkSymbol(root: ts.Symbol): void;
-  getVisited(): SymbolWalkerResult;
-  clear(): void;
-}
 
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)

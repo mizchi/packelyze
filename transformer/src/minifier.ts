@@ -5,16 +5,7 @@ import { expandToSafeBatchRenameLocations, walkProjectForMangle, getMangleAction
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 import { FileChangeResult, MangleAction } from "./transformer/types";
 import { BatchRenameLocation } from "./typescript/types";
-
-// subset of rollup plugin but not only for rollup
-export interface Minifier {
-  process(): void;
-  readFile(fileName: string): string | undefined;
-  notifyChange(fileName: string, content: string): void;
-  getSourceMapForFile(id: string): string | undefined;
-  exists(fileName: string): boolean;
-  getCompilerOptions(): ts.CompilerOptions;
-}
+import { type Minifier } from "./types";
 
 export function createMinifier(
   projectPath: string,
@@ -68,6 +59,7 @@ export function createMinifier(
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     // const fileNames = options.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
     const checker = service.getProgram()!.getTypeChecker();
+
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProjectForMangle(checker, rootFiles, targetsFiles);
     // for (const sym of visited.visitedSymbols) {
@@ -84,5 +76,26 @@ export function createMinifier(
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);
     }
+
+    // const diagnostics = targetFileNames
+    //   .filter((t) => !t.endsWith(".d.ts") && !t.includes("__experimental") && !t.endsWith("index.ts"))
+    //   .flatMap((fname) => service.getSemanticDiagnostics(fname));
+
+    // // const diagnostics = targetFileNames
+    // //   .filter((t) => !t.endsWith(".d.ts") && !t.includes("__experimental"))
+    // //   .flatMap((fname) => service.getSemanticDiagnostics(fname));
+    // console.log(
+    //   "[minifier:diagnostics]",
+    //   diagnostics.map((d) => {
+    //     return {
+    //       file: d.file?.fileName.replace(projectPath + "/", ""),
+    //       messageText: d.messageText,
+    //     };
+    //   }),
+    // );
+    // for (const target of targetFileNames) {
+    //   const diagnostics =  service.getSemanticDiagnostics(target);
+
+    // }
   }
 }

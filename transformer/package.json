@@ -12,7 +12,8 @@
     "test": "node scripts/gen.mjs && vitest --run",
     "test:ci": "node scripts/gen.mjs && vitest run --coverage --allowOnly false",
     "test:cov": "node scripts/gen.mjs && vitest run --coverage",
-    "perf": "PERF=1 vitest --run test/perf.test.ts"
+    "perf": "PERF=1 vitest --run test/perf.test.ts",
+    "check:selfhost": "tsm scripts/genSelfhostSrc.ts && tsc -p tsconfig.__src.json"
   },
   "exports": {
     ".": {

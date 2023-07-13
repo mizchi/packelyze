@@ -69,13 +69,11 @@ Internal Steps.
 
 ## TODO
 
-- Assert inferred returnType to explicit returnType relation
-- Support rollup/vite watch mode
 - IncrementalLanguageService
   - ranged snapshot create/update
-  - with project reference(s)
+  - with project references
 - Mangle
-  - Mangle with `@internal` leading-trivia comments
+  - Mangle with `@internal` leading comments
   - Skip mangle with `/* packelyze-ignore */` leading-trivia comments
   - dynamic import and worker (multiple rootFiles)
   - Add alert for inferred object initialization without type: `const obj = { v: 1 }`
@@ -96,7 +94,6 @@ Internal Steps.
 
 ## Internal
 
-- FIX: intersection export types
 - Pure detection
   - Promise resolve/rejectwm
   - React jsxs
@@ -105,7 +102,9 @@ Internal Steps.
 - Self hosting
 - Support rollup watch mode
 - Support sourceMap
-- Additional assign: `const v = {...}; v.additional = 1`;
+- Additional upcast assigning: `const v = {...} as Additional; v.additional = 1`;
+- Assert inferred returnType to explicit returnType relation
+- Support rollup/vite watch mode
 
 ## Related
 

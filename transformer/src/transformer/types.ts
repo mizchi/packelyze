@@ -38,3 +38,8 @@ export type MangleTargetNode =
   | ts.TypeNode
   | ts.GetAccessorDeclaration
   | ts.SetAccessorDeclaration;
+
+export type SymbolBuilder = {
+  create: (validate?: (char: string) => boolean) => string;
+  reset: (next?: number) => void;
+};

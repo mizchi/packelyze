@@ -30,6 +30,20 @@ export interface SymbolWithId extends ts.Symbol {
   id: number;
 }
 
+export type SymbolWalkerResult = {
+  types: ReadonlyArray<ts.Type>;
+  symbols: ReadonlyArray<ts.Symbol>;
+};
+
+export interface SymbolWalker {
+  /** Note: Return values are not ordered. */
+  walkType(root: ts.Type): void;
+  /** Note: Return values are not ordered. */
+  walkSymbol(root: ts.Symbol): void;
+  getVisited(): SymbolWalkerResult;
+  clear(): void;
+}
+
 // local types
 
 export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
