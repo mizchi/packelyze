@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { BatchRenameLocation, FindRenameLocations } from "./types";
-import { FileChangeResult } from "../transformer/types";
+import { ChangeResult, FileChangeResult } from "../transformer/types";
 import MagicString from "magic-string";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map";
 
@@ -35,14 +35,17 @@ export function getRenamedFileChanges(
 ): FileChangeResult[] {
   // rewire renames by each files
   const fileNames = [...new Set(renames.map((r) => normalizePath(r.fileName)))];
-  return fileNames.map((targetFile) => {
+  return fileNames.map<FileChangeResult>((targetFile) => {
     const current = readCurrentFile(targetFile)!;
     const renames = findRenamesForFile(targetFile);
     const result = applyBatchRenameLocations(current, renames);
     return {
       fileName: targetFile,
-      ...result,
-    };
+      content: result.content,
+      start: result.start,
+      end: result.end,
+      map: result.map,
+    } as FileChangeResult;
   });
 
   function findRenamesForFile(fileName: string) {
@@ -57,7 +60,7 @@ export function applyBatchRenameLocations(
   renames: BatchRenameLocation[],
   smc?: SourceMapConsumer,
   debug = false,
-): { content: string; start: number; end: number; map: string } {
+): ChangeResult {
   const debugLog = debug ? console.log : () => {};
   let magicString = new MagicString(code);
 
@@ -92,10 +95,11 @@ export function applyBatchRenameLocations(
     };
   }
 
-  return {
+  const result: ChangeResult = {
     content: magicString.toString(),
     start: changedStart,
     end: changedEnd,
     map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
   };
+  return result;
 }

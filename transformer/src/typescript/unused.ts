@@ -2,12 +2,6 @@ import ts from "typescript";
 import { IncrementalLanguageService } from "./services";
 import { getNodeAtRange } from "./utils";
 
-type UnusedFileRange = {
-  file: ts.SourceFile;
-  start: number;
-  end: number;
-};
-
 const MAX_UNCHANGED_COUNT = 10;
 
 export function deleteUnusedInProjectUntilNoErrors(service: IncrementalLanguageService) {
@@ -34,7 +28,7 @@ export function deleteUnusedInProjectUntilNoErrors(service: IncrementalLanguageS
 export function deleteUnusedInProject(service: IncrementalLanguageService) {
   const program = service.getProgram()!;
   const diagnostics = program.getSemanticDiagnostics();
-  const ranges: UnusedFileRange[] = diagnostics.map((d) => {
+  const ranges = diagnostics.map((d) => {
     return {
       file: d.file!,
       start: d.start!,

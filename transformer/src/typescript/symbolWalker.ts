@@ -2,6 +2,7 @@
 
 import ts from "typescript";
 import { getOwnValues } from "../utils";
+import { type MappedType, SymbolWithId, TypeWithId } from "./types";
 // import { toReadableSymbol } from "../nodeUtils";
 
 export type SymbolWalkerResult = {
@@ -14,37 +15,8 @@ export interface SymbolWalker {
   walkType(root: ts.Type): void;
   /** Note: Return values are not ordered. */
   walkSymbol(root: ts.Symbol): void;
-  // additional
   getVisited(): SymbolWalkerResult;
   clear(): void;
-}
-
-// ---- TypeScript internal types ----
-
-// An instantiated anonymous type has a target and a mapper
-interface AnonymousType extends ts.ObjectType {
-  target?: AnonymousType; // Instantiation target
-  // mapper?: ts.TypeMapper;     // Instantiation mapper
-  // instantiations?: Mapz<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
-}
-interface MappedType extends AnonymousType {
-  declaration: ts.MappedTypeNode;
-  typeParameter?: ts.TypeParameter;
-  constraintType?: ts.Type;
-  nameType?: ts.Type;
-  templateType?: ts.Type;
-  modifiersType?: ts.Type;
-  resolvedApparentType?: ts.Type;
-  containsError?: boolean;
-}
-
-interface TypeWithId extends ts.Type {
-  // original hidden member
-  id: number;
-}
-interface SymbolWithId extends ts.Symbol {
-  // original hidden member
-  id: number;
 }
 
 // rebuild symbolWalker with ts.TypeChecker

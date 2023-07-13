@@ -9,3 +9,11 @@ export {
   type Minifier,
 } from "./minifier";
 export { getPlugin as tsMinify, type TsMinifyOptions } from "./rollup";
+
+// to keep interface
+export type {
+  MappedType,
+  AnonymousType,
+  TypeWithId,
+  SymbolWithId,
+} from "./typescript/types";

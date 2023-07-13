@@ -182,11 +182,12 @@ export function toReadableSymbol(
     typeOnly: !!typeOnly,
     valueDeclaration: symbol.valueDeclaration && toReadableNode(symbol.valueDeclaration, includeParent),
     declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
+    flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
   };
 
-  if (useFlags) {
-    ret.flags = toReadabelSymbolFlags(symbol.flags);
-  }
+  // if (useFlags) {
+  //   ret.flags = toReadabelSymbolFlags(symbol.flags);
+  // }
 
   return ret;
 

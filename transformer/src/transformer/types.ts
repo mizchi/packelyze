@@ -1,15 +1,18 @@
 import ts from "typescript";
 
-/**
- * to update partial nodes, keep start and end
- */
-export type FileChangeResult = {
-  fileName: string;
+export type ChangeResult = {
   content: string;
   start?: number;
   end?: number;
   map?: string;
 };
+
+/**
+ * to update partial nodes, keep start and end
+ */
+export interface FileChangeResult extends ChangeResult {
+  fileName: string;
+}
 
 export type MangleAction = {
   fileName: string;

@@ -69,6 +69,7 @@ Internal Steps.
 
 ## TODO
 
+- Assert inferred returnType to explicit returnType relation
 - Support rollup/vite watch mode
 - IncrementalLanguageService
   - ranged snapshot create/update
@@ -104,6 +105,7 @@ Internal Steps.
 - Self hosting
 - Support rollup watch mode
 - Support sourceMap
+- Additional assign: `const v = {...}; v.additional = 1`;
 
 ## Related
 

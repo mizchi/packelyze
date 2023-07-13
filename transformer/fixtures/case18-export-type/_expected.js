@@ -1,11 +1,14 @@
 function createObj() {
   return {
-    xxx: k,
+    xxx: x,
     yyy() {
-      return undefined;
+      const k = {
+        value: "hello",
+      };
+      return k;
     },
   };
-  function k() {}
+  function x() {}
 }
 
 export { createObj };

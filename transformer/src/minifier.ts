@@ -3,6 +3,8 @@ import ts from "typescript";
 import path from "node:path";
 import { expandToSafeBatchRenameLocations, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
+import { FileChangeResult, MangleAction } from "./transformer/types";
+import { BatchRenameLocation } from "./typescript/types";
 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
@@ -74,10 +76,10 @@ export function createMinifier(
     // for (const type of visited.visitedTypes) {
     //   console.log("[minifier:type]", checker.typeToString(type));
     // }
-    const actions = targetsFiles.flatMap((file) => getMangleActionsForFile(checker, visited, file));
+    const actions = targetsFiles.flatMap<MangleAction>((file) => getMangleActionsForFile(checker, visited, file));
     // console.log("[minifier:actions]", actions);
-    const renames = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
-    const changes = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
+    const renames: BatchRenameLocation[] = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
+    const changes: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);

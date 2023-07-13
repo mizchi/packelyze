@@ -1,13 +1,20 @@
+type Result = {
+  value: string;
+};
+
 export interface Obj {
   xxx(): void;
-  yyy(): string | undefined;
+  yyy(): Result;
 }
 
 export function createObj(): Obj {
   return {
     xxx,
-    yyy(): string | undefined {
-      return undefined;
+    yyy(): Result {
+      const ret: Result = {
+        value: "hello",
+      };
+      return ret;
     },
   };
   function xxx() {}
