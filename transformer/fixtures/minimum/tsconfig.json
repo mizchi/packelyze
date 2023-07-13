@@ -7,13 +7,12 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "jsx": "react-jsx",
-    "typeRoots": ["../../../node_modules/@types"],
+    "typeRoots": ["../../node_modules/@types"],
+    "outDir": "./lib",
     "esModuleInterop": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["./*.ts"]
+  "include": ["index.ts"]
 }

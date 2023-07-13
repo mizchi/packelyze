@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { createTestLanguageService } from "../../test/testHarness";
 import { deleteUnusedInProject, deleteUnusedInProjectUntilNoErrors } from "./unused";
 
-const projectPath = path.join(__dirname, "../../test/fixtures/minimum-unused");
+const projectPath = path.join(__dirname, "../../fixtures/minimum-unused");
 
 test("TS: unused", async () => {
   const code = `

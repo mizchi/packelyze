@@ -9,7 +9,7 @@ import esbuild from "rollup-plugin-esbuild";
 import { tsMinify } from "../src/index";
 
 test(`with rollup-plugin-ts`, async () => {
-  const projectPath = path.join(__dirname, "./fixtures/case01-basic");
+  const projectPath = path.join(__dirname, "../fixtures/case01-basic");
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
   const expected = fs.readFileSync(expectedPath, "utf-8");
@@ -38,7 +38,7 @@ test(`with rollup-plugin-ts`, async () => {
 });
 
 test(`with rollup-plugin-esbuild`, async () => {
-  const projectPath = path.join(__dirname, "./fixtures/case01-basic");
+  const projectPath = path.join(__dirname, "../fixtures/case01-basic");
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
   const expected = fs.readFileSync(expectedPath, "utf-8");
@@ -67,7 +67,7 @@ test(`with rollup-plugin-esbuild`, async () => {
 });
 
 test(`preTransformOnly can not bundle by itself`, async () => {
-  const projectPath = path.join(__dirname, "./fixtures/case01-basic");
+  const projectPath = path.join(__dirname, "../fixtures/case01-basic");
   const inputPath = path.join(projectPath, "index.ts");
   try {
     await rollup({

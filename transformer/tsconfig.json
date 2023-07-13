@@ -13,6 +13,6 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*", "test/**/*", "fixtures", "scripts/gen.mjs"],
   "exclude": ["lib", "dist"]
 }

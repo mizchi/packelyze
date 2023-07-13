@@ -2,13 +2,18 @@
   "compilerOptions": {
     "stripInternal": true,
     "target": "es2022",
+    "lib": ["ES2019", "DOM", "DOM.Iterable"],
+    "types": [],
     "module": "ESNext",
+    "moduleResolution": "Node",
     "jsx": "react-jsx",
-    "typeRoots": ["../../../node_modules/@types"],
+    "typeRoots": ["../../node_modules/@types"],
     "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["index.tsx"]
+  "include": ["./*.ts"]
 }

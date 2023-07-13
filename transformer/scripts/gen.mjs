@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
-const cases = fs.readdirSync(path.join(__dirname, "../test/fixtures")).filter((x) => x.startsWith("case"));
+const cases = fs.readdirSync(path.join(__dirname, "../fixtures")).filter((x) => x.startsWith("case"));
 
 const pre = `import "./globals";
 import path from "node:path";
@@ -12,7 +12,7 @@ import { assertRollupWithFixture } from "./testUtils";
 `;
 
 const genCase = (caseName) => `test("rollup #${caseName}", async () => {
-  await assertRollupWithFixture(path.join(__dirname, "./fixtures/${caseName}"));
+  await assertRollupWithFixture(path.join(__dirname, "../fixtures/${caseName}"));
 });`;
 
 const TEST_SIZE_PER_FILE = 10;

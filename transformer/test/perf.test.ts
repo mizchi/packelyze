@@ -62,7 +62,7 @@ if (process.env.PERF) {
   // require tslib
   const skipList: string[] = ["case12", "case17"];
   const cases = fs
-    .readdirSync(path.join(__dirname, "./fixtures"))
+    .readdirSync(path.join(__dirname, "../fixtures"))
     .filter((x) => x.startsWith("case"))
     .filter((caseName) => {
       return !skipList.some((x) => caseName.startsWith(x));
@@ -70,7 +70,7 @@ if (process.env.PERF) {
   for (const caseName of cases) {
     test(`rollup plugin #${caseName}`, async () => {
       const __dirname = path.dirname(new URL(import.meta.url).pathname);
-      const projectPath = path.join(__dirname, "./fixtures", caseName);
+      const projectPath = path.join(__dirname, "../fixtures", caseName);
       await compareBuildSize(projectPath);
     });
   }

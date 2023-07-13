@@ -4,7 +4,7 @@
     "module": "esnext",
     "noEmit": true,
     "strict": true,
-    "typeRoots": ["../../../node_modules/@types"],
+    "typeRoots": ["../../node_modules/@types"],
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "moduleResolution": "node",
