@@ -62,13 +62,12 @@ export function createMinifier(
   };
 
   function process() {
-    const rootFileName = rootFileNames[0];
     // TODO: handle all
-    const root = service.getCurrentSourceFile(rootFileName)!;
+    const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     // const fileNames = options.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const visited = walkProjectForMangle(checker, root, targetsFiles);
+    const visited = walkProjectForMangle(checker, rootFiles, targetsFiles);
     // for (const sym of visited.visitedSymbols) {
     //   console.log("[minifier:symbol]", sym.getName());
     // }

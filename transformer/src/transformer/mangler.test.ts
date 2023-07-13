@@ -31,7 +31,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const checker = service.getProgram()!.getTypeChecker();
   const visited = walkProjectForMangle(
     checker,
-    root,
+    [root],
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
 

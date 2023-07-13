@@ -59,11 +59,13 @@ export function isEnsurableNode(node: ts.Node): node is MangleTargetNode {
 
 export function walkProjectForMangle(
   checker: ts.TypeChecker,
-  root: ts.SourceFile,
+  rootFiles: ts.SourceFile[],
   files: ts.SourceFile[],
 ): SymbolWalkerVisited {
   const symbolWalker = createGetSymbolWalker(checker)();
-  walkExportedRelatedNodesFromRoot(root);
+  for (const root of rootFiles) {
+    walkExportedRelatedNodesFromRoot(root);
+  }
   for (const file of files) {
     walkFile(file);
   }
