@@ -13,4 +13,5 @@ function createPayloadOfC() {
     c: "c",
   };
 }
+
 export { createPayloadOfC, foo };

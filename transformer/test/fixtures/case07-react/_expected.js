@@ -1,4 +1,5 @@
 import { jsxs, jsx } from "react/jsx-runtime";
+
 function MyComponent(props) {
   return jsxs("div", {
     children: [
@@ -9,7 +10,6 @@ function MyComponent(props) {
     ],
   });
 }
-
 function SubComponent(props) {
   return jsxs("div", {
     children: [

@@ -48,7 +48,6 @@ class C6 extends C5 {
     return 1;
   }
 }
-
 // Generics
 class GenericClass {
   value;
@@ -108,6 +107,7 @@ class OptionalClass {
   }
   requiredProp = 1;
 }
+
 export {
   C,
   C3,

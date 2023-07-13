@@ -1,4 +1,5 @@
 import * as myModule from "myModule";
+
 var k;
 (function (k) {
   k.x = "Hello from internal module";
@@ -24,4 +25,5 @@ const messages = {
 };
 const f = myModule.myFunction("Hello, TypeScript!");
 console.log(f);
+
 export { messages };

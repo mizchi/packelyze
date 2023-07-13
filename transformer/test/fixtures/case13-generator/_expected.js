@@ -20,4 +20,5 @@ async function* asyncObjectGenerator() {
     await new Promise((resolve) => setTimeout(resolve, 1000)); // delay for demonstration
   }
 }
+
 export { asyncObjectGenerator, run };

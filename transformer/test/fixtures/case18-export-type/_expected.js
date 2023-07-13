@@ -7,4 +7,5 @@ function createObj() {
   };
   function k() {}
 }
+
 export { createObj };

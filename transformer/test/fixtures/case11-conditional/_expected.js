@@ -7,4 +7,5 @@ let g = {
   cat: w.sound,
   bird: myBird.sound,
 };
+
 export { myBird, g as sounds };

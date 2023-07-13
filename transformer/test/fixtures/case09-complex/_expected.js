@@ -53,6 +53,7 @@ class DecoratorTest {
   g = "property";
 }
 __decorate([w], DecoratorTest.prototype, "g", void 0);
+
 export {
   Color,
   DecoratorTest,

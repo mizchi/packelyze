@@ -21,7 +21,6 @@ export async function assertRollupWithFixture(projectPath: string) {
   expect(fs.existsSync(expectedPath)).toBe(true);
   expect(fs.existsSync(inputPath)).toBe(true);
 
-  const expected = fs.readFileSync(expectedPath, "utf-8");
   const bundle = await rollup({
     input: inputPath,
     onwarn(warning, defaultHandler) {
@@ -48,6 +47,7 @@ export async function assertRollupWithFixture(projectPath: string) {
   const { output } = await bundle.generate({
     format: "esm",
   });
-  expect(output[0].code).toEqualFormatted(expected);
-  return output[0].code;
+
+  const formatted = formatTs(output[0].code);
+  expect(formatted).toMatchFileSnapshot(expectedPath);
 }
