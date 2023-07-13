@@ -282,9 +282,9 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   }
 }
 
-export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = false): ts.Node[] {
+export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = false): MangleTargetNode[] {
   const log = debug ? console.log : () => {};
-  const relatedNodes = new Set<ts.Node>();
+  const relatedNodes = new Set<MangleTargetNode>();
   for (const symbol of visited.symbols) {
     for (const declaration of symbol.getDeclarations() ?? []) {
       visitRelatedNode(declaration, 0);
@@ -310,6 +310,17 @@ export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = f
 
     // now only for classes
     const isClassParent = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
+    if (ts.isPropertyDeclaration(node) && isClassParent) {
+      if (node.type) {
+        visitRelatedNode(node.type, depth + 1);
+      }
+    }
+    // now only for classes
+    if (ts.isMethodDeclaration(node) && isClassParent) {
+      for (const param of node.parameters) {
+        visitRelatedNode(param, depth + 1);
+      }
+    }
 
     if (ts.isTypeAliasDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
@@ -363,17 +374,6 @@ export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = f
       }
     }
     if (ts.isMethodSignature(node)) {
-      for (const param of node.parameters) {
-        visitRelatedNode(param, depth + 1);
-      }
-    }
-    if (ts.isPropertyDeclaration(node) && isClassParent) {
-      if (node.type) {
-        visitRelatedNode(node.type, depth + 1);
-      }
-    }
-    // now only for classes
-    if (ts.isMethodDeclaration(node) && isClassParent) {
       for (const param of node.parameters) {
         visitRelatedNode(param, depth + 1);
       }
