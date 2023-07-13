@@ -1,6 +1,6 @@
 // import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
-import { type SymbolWalkerVisited, createGetSymbolWalker } from "../typescript/symbolWalker";
+import { type SymbolWalkerResult, createGetSymbolWalker } from "../typescript/symbolWalker";
 import { SymbolBuilder, createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
@@ -61,7 +61,7 @@ export function walkProjectForMangle(
   checker: ts.TypeChecker,
   rootFiles: ts.SourceFile[],
   files: ts.SourceFile[],
-): SymbolWalkerVisited {
+): SymbolWalkerResult {
   const symbolWalker = createGetSymbolWalker(checker)();
   for (const root of rootFiles) {
     walkExportedRelatedNodesFromRoot(root);
@@ -142,12 +142,12 @@ export function expandToSafeBatchRenameLocations(findRenameLocations: FindRename
 
 export function getMangleActionsForFile(
   checker: ts.TypeChecker,
-  visited: SymbolWalkerVisited,
+  visited: SymbolWalkerResult,
   file: ts.SourceFile,
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
 
-  const exportedNodes = findEnsureNodesFromVisited(visited);
+  const exportedNodes = findRelatedNodes(visited);
 
   const mangleNodes = getMangleNodesForFile(file);
 
@@ -339,7 +339,7 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   }
 }
 
-export function findEnsureNodesFromVisited(visited: SymbolWalkerVisited, debug: boolean = false) {
+export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = false) {
   const log = debug ? console.log : () => {};
   const ensuredNodes = new Set<ts.Node>();
   for (const symbol of visited.symbols) {

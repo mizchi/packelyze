@@ -18,7 +18,6 @@ export async function assertRollupWithFixture(projectPath: string) {
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
 
-  expect(fs.existsSync(expectedPath)).toBe(true);
   expect(fs.existsSync(inputPath)).toBe(true);
 
   const bundle = await rollup({

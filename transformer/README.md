@@ -62,6 +62,11 @@ Internal Steps.
 - [x] Mangle
 - [x] Bundle
 
+
+## Resctriction
+
+- Types consumed as object rest spread (`{...v}`) can not mangle because typescript compiler is unsafe for it.
+
 ## TODO
 
 - Support rollup/vite watch mode

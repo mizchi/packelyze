@@ -3,7 +3,7 @@ import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../.
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 // import { findEffectNodes } from "./effects";
-import { findEnsureNodesFromVisited } from "./mangler";
+import { findRelatedNodes } from "./mangler";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, formatCode } from "../typescript/utils";
 
@@ -44,7 +44,7 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findEnsureNodesFromVisited(visited);
+  const collected = findRelatedNodes(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -92,7 +92,7 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findEnsureNodesFromVisited(visited);
+  const collected = findRelatedNodes(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -103,4 +103,47 @@ test("effect to global assign", () => {
     "(NumberKeyword)number",
     `(TypeLiteral){ x: number; }`,
   ]);
+});
+
+test("detect object rest spread", () => {
+  const { service } = initTestLanguageServiceWithFiles({
+    "src/index.ts": `
+  type Foo = {
+    x: number;
+    y: number;
+  }
+  type Bar = {
+    x: number;
+  }
+  const bar: Bar = {
+    x: 1
+  };
+  export const foo: Foo = {
+      ...bar,
+      y: 2
+  };
+    `,
+  });
+  const checker = service.getProgram()!.getTypeChecker();
+  const file = service.getProgram()!.getSourceFile("src/index.ts")!;
+
+  const walker = createGetSymbolWalker(checker)();
+  const nodes = findEffectNodes(checker, file);
+  expect(nodes.size).toEqual(1);
+  // console.log("nodes", nodes.size);
+  for (const node of nodes) {
+    const symbol = checker.getSymbolAtLocation(node);
+    if (symbol) {
+      walker.walkSymbol(symbol);
+      const type = checker.getTypeOfSymbolAtLocation(symbol, node);
+      walker.walkType(type);
+    }
+  }
+  const visited = walker.getVisited();
+  const collected = findRelatedNodes(visited);
+  expect(
+    [...collected].map((node) => {
+      return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
+    }),
+  ).toEqual(["(PropertySignature)x: number;", "(NumberKeyword)number", "(TypeLiteral){ x: number; }"]);
 });

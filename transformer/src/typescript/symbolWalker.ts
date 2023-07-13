@@ -4,12 +4,10 @@ import ts from "typescript";
 import { getOwnValues } from "../utils";
 // import { toReadableSymbol } from "../nodeUtils";
 
-export type SymbolWalkerVisited = {
-  types: ts.Type[];
-  symbols: ts.Symbol[];
+export type SymbolWalkerResult = {
+  types: ReadonlyArray<ts.Type>;
+  symbols: ReadonlyArray<ts.Symbol>;
 };
-
-// ---- TypeScript internal types ----
 
 export interface SymbolWalker {
   /** Note: Return values are not ordered. */
@@ -17,9 +15,11 @@ export interface SymbolWalker {
   /** Note: Return values are not ordered. */
   walkSymbol(root: ts.Symbol): void;
   // additional
-  getVisited(): SymbolWalkerVisited;
+  getVisited(): SymbolWalkerResult;
   clear(): void;
 }
+
+// ---- TypeScript internal types ----
 
 // An instantiated anonymous type has a target and a mapper
 interface AnonymousType extends ts.ObjectType {
@@ -50,7 +50,7 @@ interface SymbolWithId extends ts.Symbol {
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
 // added: skip private/hard-private declaration in class
-export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolWalkerVisited) {
+export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolWalkerResult) {
   return getSymbolWalker;
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
     const visitedTypes: ts.Type[] = visited?.types ? [...visited.types] : []; // Sparse array from id to type

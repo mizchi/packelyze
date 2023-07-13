@@ -27,5 +27,10 @@ export function getEffectDetectorEnter(checker: ts.TypeChecker, onEnter: (node: 
         }
       }
     }
+
+    // FIXME object spread is unsafe for typescript renamer: like {...obj}
+    if (ts.isSpreadAssignment(node) && ts.isObjectLiteralExpression(node.parent)) {
+      onEnter(node.expression);
+    }
   };
 }

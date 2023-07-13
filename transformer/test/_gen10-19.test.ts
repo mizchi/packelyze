@@ -30,3 +30,6 @@ test("rollup #case17-re-export", async () => {
 test("rollup #case18-export-type", async () => {
   await assertRollupWithFixture(path.join(__dirname, "../fixtures/case18-export-type"));
 });
+test("rollup #case19-extend", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "../fixtures/case19-extend"));
+});
