@@ -1,13 +1,5 @@
 import { expect } from "vitest";
-import prettier from "prettier";
-
-function format(code: string) {
-  return prettier.format(code, {
-    filepath: "$.tsx",
-    parser: "typescript",
-    semi: true,
-  });
-}
+import { formatTs } from "./testUtils";
 
 const stripEmptyLines = (code: string) => {
   return code
@@ -45,8 +37,8 @@ function generateDiff(expectedLines: string[], receivedLines: string[]): string 
 
 expect.extend({
   toEqualFormatted(received: string, expected: string) {
-    const receivedFormatted = stripEmptyLines(format(received));
-    const expectedFormatted = stripEmptyLines(format(expected));
+    const receivedFormatted = stripEmptyLines(formatTs(received));
+    const expectedFormatted = stripEmptyLines(formatTs(expected));
 
     const receivedFormattedLines = receivedFormatted.split("\n");
     const expectedFormattedLines = expectedFormatted.split("\n");

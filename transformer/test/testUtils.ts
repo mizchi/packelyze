@@ -4,6 +4,15 @@ import path from "node:path";
 import { rollup } from "rollup";
 import { tsMinify } from "../src";
 import ts from "typescript";
+import prettier from "prettier";
+
+export function formatTs(code: string) {
+  return prettier.format(code, {
+    filepath: "$.tsx",
+    parser: "typescript",
+    semi: true,
+  });
+}
 
 export async function assertRollupWithFixture(projectPath: string) {
   const expectedPath = path.join(projectPath, "_expected.js");
