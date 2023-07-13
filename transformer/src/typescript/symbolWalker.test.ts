@@ -33,8 +33,8 @@ test("symbolWalker", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
   // console.log(symbolSet);
   expect(symbolSet).toEqual(
     new Set(["f", "arg", "v", "o", "p", "o2", "ClassInternal", "C", "ci", "instance", "prototype"]),
@@ -74,8 +74,8 @@ test("symbolWalker # partial", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
   // console.log(symbolSet);
   // console.log(typeSet);
   expect(symbolSet).toEqual(
@@ -113,8 +113,8 @@ test("symbolWalker # function internal", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
   expect(symbolSet).toEqual(
     new Set([
       // symbols
@@ -152,8 +152,8 @@ test("symbolWalker # function internal partial", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
   expect(symbolSet).toEqual(
     new Set([
       // symbols
@@ -198,8 +198,8 @@ test("symbolWalker # typeArguments", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
 
   // console.log(symbolSet);
   // console.log(
@@ -264,8 +264,8 @@ test("symbolWalker # class", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
 
   // console.log(symbolSet);
   // console.log(typeSet);
@@ -327,8 +327,8 @@ test.skip("symbolWalker # tsx", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
 
   const diagnostics = service.getSemanticDiagnostics("src/index.tsx");
 
@@ -373,8 +373,8 @@ test("symbolWalker # infer", () => {
   }
 
   const visited = symbolWalker.getVisited();
-  const symbolSet = new Set(visited.visitedSymbols.map((s) => s.name));
-  const typeSet = new Set(visited.visitedTypes.map((t) => checker.typeToString(t)));
+  const symbolSet = new Set(visited.symbols.map((s) => s.name));
+  const typeSet = new Set(visited.types.map((t) => checker.typeToString(t)));
 
   expect(symbolSet).toEqualSet(
     new Set([

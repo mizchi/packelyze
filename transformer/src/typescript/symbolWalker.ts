@@ -5,8 +5,8 @@ import { getOwnValues } from "../utils";
 // import { toReadableSymbol } from "../nodeUtils";
 
 export type SymbolWalkerVisited = {
-  visitedTypes: ts.Type[];
-  visitedSymbols: ts.Symbol[];
+  types: ts.Type[];
+  symbols: ts.Symbol[];
 };
 
 // ---- TypeScript internal types ----
@@ -19,7 +19,6 @@ export interface SymbolWalker {
   // additional
   getVisited(): SymbolWalkerVisited;
   clear(): void;
-  createChildSymbolWalker(): SymbolWalker;
 }
 
 // An instantiated anonymous type has a target and a mapper
@@ -54,8 +53,8 @@ interface SymbolWithId extends ts.Symbol {
 export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolWalkerVisited) {
   return getSymbolWalker;
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
-    const visitedTypes: ts.Type[] = visited?.visitedTypes ? [...visited.visitedTypes] : []; // Sparse array from id to type
-    const visitedSymbols: ts.Symbol[] = visited?.visitedSymbols ? [...visited.visitedSymbols] : []; // Sparse array from id to symbol
+    const visitedTypes: ts.Type[] = visited?.types ? [...visited.types] : []; // Sparse array from id to type
+    const visitedSymbols: ts.Symbol[] = visited?.symbols ? [...visited.symbols] : []; // Sparse array from id to symbol
     // cached symbol id incrementer
     let symbolId = 0;
 
@@ -65,20 +64,13 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
         clear(visitedSymbols);
       },
       getVisited: () => {
-        return { visitedTypes: getOwnValues(visitedTypes), visitedSymbols: getOwnValues(visitedSymbols) };
+        return { types: getOwnValues(visitedTypes), symbols: getOwnValues(visitedSymbols) };
       },
       walkType: (type) => {
         visitType(type);
       },
       walkSymbol: (symbol) => {
         visitSymbol(symbol);
-      },
-      createChildSymbolWalker: () => {
-        const visited = { visitedTypes: [...visitedTypes], visitedSymbols: [...visitedSymbols] };
-        return createGetSymbolWalker(checker, visited)(accept);
-
-        // const childVisitedTypes: ts.Type[] = [...visitedTypes];
-        // const childVisitedSymbols: ts.Symbol[] = [...visitedSymbols];
       },
     };
 

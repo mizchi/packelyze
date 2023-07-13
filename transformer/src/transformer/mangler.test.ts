@@ -4,7 +4,7 @@ import { getRenamedFileChanges } from "../typescript/renamer";
 import { expect, test } from "vitest";
 import {
   expandToSafeBatchRenameLocations,
-  findDeclarationsFromSymbolWalkerVisited,
+  findEnsureNodesFromVisited,
   getBindingsForFile,
   walkProjectForMangle,
   getMangleActionsForFile,
@@ -151,7 +151,7 @@ test("findDeclarationsFromSymbolWalkerVisited", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
+  const collected = findEnsureNodesFromVisited(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -189,7 +189,7 @@ test("nodeWalker #2 class", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const decls = findDeclarationsFromSymbolWalkerVisited(visited);
+  const decls = findEnsureNodesFromVisited(visited);
   expect(
     [...decls].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());

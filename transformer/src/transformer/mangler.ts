@@ -9,6 +9,54 @@ import { FindRenameLocations } from "../typescript/types";
 import { type MangleAction, MangleTargetNode } from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
 
+export function isMangleIdentifier(
+  checker: ts.TypeChecker,
+  identifier: ts.Identifier | ts.PrivateIdentifier,
+  exportedNodes: Set<ts.Node>,
+  exportedSymbols: ts.Symbol[],
+) {
+  // skip: type <Foo> = { ... }
+  if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
+    return false;
+  }
+  // skip: interface <Foo>{ ... }
+  if (ts.isInterfaceDeclaration(identifier.parent) && identifier.parent.name === identifier) {
+    return false;
+  }
+
+  // node is related to export
+  if (exportedNodes.has(identifier.parent)) {
+    // console.log("skip: exported", identifier.text);
+    return false;
+  }
+
+  // FIXME
+  // node is exported
+  const symbol = checker.getSymbolAtLocation(identifier);
+  if (symbol && exportedSymbols.includes(symbol)) {
+    return false;
+  }
+  return true;
+}
+
+export function isEnsurableNode(node: ts.Node): node is MangleTargetNode {
+  return (
+    ts.isTypeNode(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeLiteralNode(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isPropertySignature(node) ||
+    ts.isMethodSignature(node) ||
+    ts.isMethodDeclaration(node) ||
+    // ts.isFunctionDeclaration(node) ||
+    ts.isPropertyDeclaration(node) ||
+    ts.isParameter(node) ||
+    ts.isGetAccessor(node) ||
+    ts.isSetAccessor(node)
+  );
+}
+
 export function walkProjectForMangle(
   checker: ts.TypeChecker,
   root: ts.SourceFile,
@@ -96,7 +144,8 @@ export function getMangleActionsForFile(
   file: ts.SourceFile,
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
-  const exportedNodes = findDeclarationsFromSymbolWalkerVisited(visited);
+
+  const exportedNodes = findEnsureNodesFromVisited(visited);
 
   const mangleNodes = getMangleNodesForFile(file);
 
@@ -107,52 +156,10 @@ export function getMangleActionsForFile(
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
     const bindings = getBindingsForFile(file);
-    // console.log(
-    //   "[findMangleNodesForFile]",
-    //   file.fileName,
-    //   [...bindings].map((s) => toReadableNode(s)),
-    // );
-
-    const manglables = new Set<ts.Node>();
-    // need this?
     const exportSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-
-    // console.log(
-    //   "[findMangleNodesForFile]",
-    //   [...exportSymbols].map((s) => toReadableSymbol(s)),
-    // );
-    for (const identifier of bindings) {
-      // skip: type <Foo> = { ... }
-      if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-        continue;
-      }
-      // skip: interface <Foo>{ ... }
-      if (ts.isInterfaceDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-        continue;
-      }
-
-      // node is related to export
-      if (exportedNodes.has(identifier.parent)) {
-        // console.log("skip: exported", identifier.text);
-        continue;
-      }
-
-      // node is exported
-      const symbol = checker.getSymbolAtLocation(identifier);
-      if (symbol && exportSymbols.includes(symbol)) {
-        continue;
-      }
-
-      // const type = checker.getTypeAtLocation(identifier);
-      // if (visited.visitedTypes.includes(type)) {
-      //   continue;
-      // }
-
-      // console.log("[mangler:add]", identifier.text, "in", ts.SyntaxKind[identifier.parent.kind]);
-
-      manglables.add(identifier);
-    }
-    return [...manglables];
+    return bindings.filter((identifier) => {
+      return isMangleIdentifier(checker, identifier, exportedNodes, exportSymbols);
+    });
   }
 
   function getMangleActionForNode(symbolBuilder: SymbolBuilder, node: ts.Node): MangleAction | undefined {
@@ -210,7 +217,6 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
-
   function visit(node: ts.Node) {
     // console.log("[bindings]", ts.SyntaxKind[node.kind], "\n" + node.getText());
     // declarable nodes
@@ -331,59 +337,31 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   }
 }
 
-export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVisited, debug: boolean = false) {
+export function findEnsureNodesFromVisited(visited: SymbolWalkerVisited, debug: boolean = false) {
   const log = debug ? console.log : () => {};
-  const visitedNodes = new Set<ts.Node>();
-  for (const symbol of visited.visitedSymbols) {
+  const ensuredNodes = new Set<ts.Node>();
+  for (const symbol of visited.symbols) {
     for (const declaration of symbol.getDeclarations() ?? []) {
       visitNode(declaration, 0);
     }
   }
 
-  for (const type of visited.visitedTypes) {
+  for (const type of visited.types) {
     if (type.symbol) {
       for (const declaration of type.symbol.getDeclarations() ?? []) {
         visitNode(declaration, 0);
       }
     }
-    // if (type.aliasSymbol) {
-    //   for (const declaration of type.aliasSymbol.getDeclarations() ?? []) {
-    //     visitNode(declaration, 0);
-    //   }
-    //   for (const declaration of (type.aliasTypeArguments ?? []).flatMap((x) => x.symbol?.getDeclarations() ?? [])) {
-    //     visitNode(declaration, 0);
-    //   }
-    // }
-    // for (const declaration of symbol.getDeclarations() ?? []) {
-    //   visitNode(declaration, 0);
-    // }
   }
 
-  return visitedNodes;
+  return ensuredNodes;
 
-  function isMangleTargetNode(node: ts.Node): node is MangleTargetNode {
-    return (
-      ts.isTypeNode(node) ||
-      ts.isTypeAliasDeclaration(node) ||
-      ts.isInterfaceDeclaration(node) ||
-      ts.isTypeLiteralNode(node) ||
-      ts.isClassDeclaration(node) ||
-      ts.isPropertySignature(node) ||
-      ts.isMethodSignature(node) ||
-      ts.isMethodDeclaration(node) ||
-      // ts.isFunctionDeclaration(node) ||
-      ts.isPropertyDeclaration(node) ||
-      ts.isParameter(node) ||
-      ts.isGetAccessor(node) ||
-      ts.isSetAccessor(node)
-    );
-  }
   function visitNode(node: ts.Node, depth: number) {
     log("  ".repeat(depth) + "[Node:" + ts.SyntaxKind[node.kind] + "]", node.getText().slice(0, 10) + "...");
 
-    if (!isMangleTargetNode(node)) return;
-    if (visitedNodes.has(node)) return;
-    visitedNodes.add(node);
+    if (!isEnsurableNode(node)) return;
+    if (ensuredNodes.has(node)) return;
+    ensuredNodes.add(node);
 
     // now only for classes
     const isClassParent = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
@@ -424,7 +402,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         }
       }
     }
-
     if (ts.isTypeLiteralNode(node)) {
       for (const member of node.members) {
         visitNode(member, depth + 1);
@@ -435,7 +412,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         visitNode(node.type, depth + 1);
       }
     }
-
     if (ts.isPropertySignature(node)) {
       if (node.type) {
         visitNode(node.type, depth + 1);
@@ -446,7 +422,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         visitNode(param, depth + 1);
       }
     }
-
     if (ts.isPropertyDeclaration(node) && isClassParent) {
       if (node.type) {
         visitNode(node.type, depth + 1);
@@ -458,7 +433,6 @@ export function findDeclarationsFromSymbolWalkerVisited(visited: SymbolWalkerVis
         visitNode(param, depth + 1);
       }
     }
-
     if (ts.isGetAccessor(node)) {
       for (const param of node.parameters) {
         visitNode(param, depth + 1);

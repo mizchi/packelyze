@@ -3,7 +3,7 @@ import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../.
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 // import { findEffectNodes } from "./effects";
-import { findDeclarationsFromSymbolWalkerVisited } from "./mangler";
+import { findEnsureNodesFromVisited } from "./mangler";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, formatCode } from "../typescript/utils";
 
@@ -44,7 +44,7 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
+  const collected = findEnsureNodesFromVisited(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -92,7 +92,7 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findDeclarationsFromSymbolWalkerVisited(visited);
+  const collected = findEnsureNodesFromVisited(visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
