@@ -1,7 +1,7 @@
 import { getRenamedFileChanges } from "./typescript/renamer";
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeBatchRenameLocations, walkProjectForMangle, getMangleActionsForFile } from "./transformer/mangler";
+import { expandToSafeRenameLocations, walkProject, getActionsForFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 import { FileChangeResult, MangleAction } from "./transformer/types";
 import { BatchRenameLocation } from "./typescript/types";
@@ -61,16 +61,16 @@ export function createMinifier(
     const checker = service.getProgram()!.getTypeChecker();
 
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const visited = walkProjectForMangle(checker, rootFiles, targetsFiles);
+    const visited = walkProject(checker, rootFiles, targetsFiles);
     // for (const sym of visited.visitedSymbols) {
     //   console.log("[minifier:symbol]", sym.getName());
     // }
     // for (const type of visited.visitedTypes) {
     //   console.log("[minifier:type]", checker.typeToString(type));
     // }
-    const actions = targetsFiles.flatMap<MangleAction>((file) => getMangleActionsForFile(checker, visited, file));
+    const actions = targetsFiles.flatMap<MangleAction>((file) => getActionsForFile(checker, visited, file));
     // console.log("[minifier:actions]", actions);
-    const renames: BatchRenameLocation[] = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
+    const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
     const changes: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {
       service.writeSnapshotContent(change.fileName, change.content);

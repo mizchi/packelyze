@@ -2,7 +2,7 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { findRelatedNodes } from "./mangler";
+import { findRelatedNodes } from "./relation";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, formatCode } from "../typescript/utils";
 

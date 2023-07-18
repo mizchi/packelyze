@@ -2,17 +2,12 @@ import "../../test/globals";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "../typescript/renamer";
 import { expect, test } from "vitest";
-import {
-  expandToSafeBatchRenameLocations,
-  findRelatedNodes,
-  getBindingsForFile,
-  walkProjectForMangle,
-  getMangleActionsForFile,
-} from "./mangler";
+import { expandToSafeRenameLocations, walkProject, getActionsForFile } from "./mangler";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
 import { toReadableNode } from "../typescript/utils";
 import { formatCode } from "../typescript/utils";
+import { findRelatedNodes, getBindingsForFile } from "./relation";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -27,14 +22,14 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const targetFiles = fileNames.map((fname) => service.getCurrentSourceFile(fname)!);
 
   const checker = service.getProgram()!.getTypeChecker();
-  const visited = walkProjectForMangle(
+  const visited = walkProject(
     checker,
     [root],
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
 
-  const actions = targetFiles.flatMap((target) => getMangleActionsForFile(checker, visited, target));
-  const items = expandToSafeBatchRenameLocations(service.findRenameLocations, actions);
+  const actions = targetFiles.flatMap((target) => getActionsForFile(checker, visited, target));
+  const items = expandToSafeRenameLocations(service.findRenameLocations, actions);
   const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
 
   // rename for assert
