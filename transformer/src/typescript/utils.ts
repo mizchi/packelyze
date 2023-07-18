@@ -134,7 +134,7 @@ export function toReadableNode(node: ts.Node, includeParentDepth: number = 0): R
         }
       }
     }
-    return obj;
+    return toDefinedObject(obj) as typeof obj;
   }
 
   function toReadableFlags(flags: ts.NodeFlags) {
@@ -159,13 +159,23 @@ export function toReadableNode(node: ts.Node, includeParentDepth: number = 0): R
 }
 
 export type ReadableSymbol = {
-  name: string;
-  valueDeclaration?: ReadbleNode;
-  declarations?: ReadbleNode[];
-  isSingleSource: boolean;
+  symbolName: string;
+  // isSingleSource: false;
+  // valueDeclaration?: ReadbleNode;
+  // declarations?: ReadbleNode[];
   typeOnly: boolean;
   flags?: Array<ts.SymbolFlags[keyof ts.SymbolFlags]>;
-};
+} & (
+  | {
+      isSingleSource: true;
+      declaration: ReadbleNode;
+    }
+  | {
+      isSingleSource: false;
+      valueDeclaration?: ReadbleNode;
+      declarations?: ReadbleNode[];
+    }
+);
 
 export function toReadableSymbol(
   symbol: ts.Symbol,
@@ -176,20 +186,30 @@ export function toReadableSymbol(
     symbol.declarations && symbol.declarations.length === 1 && symbol.declarations[0] === symbol.valueDeclaration;
   const typeOnly =
     !symbol.valueDeclaration && symbol.declarations && symbol.declarations.every((decl) => ts.isTypeNode(decl));
-  const ret: ReadableSymbol = {
-    name: symbol.name,
-    isSingleSource: !!isSingleSource,
-    typeOnly: !!typeOnly,
-    valueDeclaration: symbol.valueDeclaration && toReadableNode(symbol.valueDeclaration, includeParent),
-    declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
-    flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
-  };
+  let ret: ReadableSymbol;
+  if (isSingleSource) {
+    ret = {
+      symbolName: symbol.name,
+      isSingleSource: true,
+      declaration: toReadableNode(symbol.valueDeclaration!),
+      typeOnly: !!typeOnly,
+      flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
+    };
+  } else {
+    ret = {
+      symbolName: symbol.name,
+      isSingleSource: false,
+      typeOnly: !!typeOnly,
+      flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
+      valueDeclaration: symbol.valueDeclaration && toReadableNode(symbol.valueDeclaration, includeParent),
+      declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
+    };
+  }
 
   if (useFlags) {
     ret.flags = toReadabelSymbolFlags(symbol.flags);
   }
-
-  return ret;
+  return toDefinedObject(ret) as ReadableSymbol;
 
   function toReadabelSymbolFlags(flags: ts.SymbolFlags) {
     const ret: string[] = [];
@@ -204,11 +224,11 @@ export function toReadableSymbol(
 
 export function toReadableType(type: ts.Type) {
   const checker = (type as any).checker as ts.TypeChecker;
-  return {
+  return toDefinedObject({
     typeName: checker.typeToString(type),
     symbol: type.symbol && toReadableSymbol(type.symbol),
     aliasSymbol: type.aliasSymbol && toReadableSymbol(type.aliasSymbol),
-  };
+  });
 }
 
 export function isSymbolInferredFromValueDeclaration(checker: ts.TypeChecker, symbol: ts.Symbol) {
@@ -217,12 +237,18 @@ export function isSymbolInferredFromValueDeclaration(checker: ts.TypeChecker, sy
 }
 
 export function isTypeInferredFromValueDeclaration(type: ts.Type) {
-  if (type.symbol?.declarations && type.symbol?.declarations.length > 1) {
+  const decls = type.symbol?.declarations;
+  if (decls && decls.length > 1) {
     return false;
   }
-  return type.symbol?.valueDeclaration === type.symbol?.declarations?.[0];
+  const valueDecl = type.symbol?.valueDeclaration;
+  return valueDecl === decls?.[0];
 }
 
 export function formatCode(code: string) {
   return code.replace(/[\s\n]+/g, " ").trim().trimEnd();
+}
+
+function toDefinedObject(obj: Record<string, any>) {
+  return Object.fromEntries(Object.entries(obj).filter(([, val]) => val != null));
 }

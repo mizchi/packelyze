@@ -43,7 +43,7 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodes(visited);
+  const collected = findRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -91,7 +91,7 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodes(visited);
+  const collected = findRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -139,7 +139,7 @@ test("detect object rest spread", () => {
     }
   }
   const visited = walker.getVisited();
-  const collected = findRelatedNodes(visited);
+  const collected = findRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());

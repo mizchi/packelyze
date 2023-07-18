@@ -66,8 +66,8 @@ export function createIncrementalLanguageService(
     log("getCurrentSourceFile", fileName);
     // touch file to script snapshot updating
     // console.time("getCurrentSourceFile");
-    const program = languageService.getProgram();
-    const _checker = program?.getTypeChecker();
+    // const program = languageService.getProgram();
+    // const _checker = program?.getTypeChecker();
     return languageService.getProgram()?.getSourceFile(fileName);
   };
   const writeSnapshotContent = (fileName: string, content: string) => {

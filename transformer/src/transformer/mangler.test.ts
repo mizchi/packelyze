@@ -5,9 +5,10 @@ import { expect, test } from "vitest";
 import { expandToSafeRenameLocations, walkProject, getActionsForFile } from "./mangler";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { toReadableNode } from "../typescript/utils";
+import { toReadableNode, toReadableSymbol, toReadableType } from "../typescript/utils";
 import { formatCode } from "../typescript/utils";
 import { findRelatedNodes, getBindingsForFile } from "./relation";
+import { SymbolWalkerResult } from "../typescript/types";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -28,7 +29,10 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
 
+  // debugVisitResult(visited);
+
   const actions = targetFiles.flatMap((target) => getActionsForFile(checker, visited, target));
+
   const items = expandToSafeRenameLocations(service.findRenameLocations, actions);
   const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
 
@@ -58,7 +62,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 }
 
 test("getBindingsForFile", () => {
-  const { file } = createOneshotTestProgram(`
+  const { file, checker } = createOneshotTestProgram(`
   interface X {
     x: number;
   }
@@ -89,7 +93,7 @@ test("getBindingsForFile", () => {
   }
   module M {}
   `);
-  const idents = getBindingsForFile(file);
+  const idents = getBindingsForFile(checker, file);
 
   const expected = new Set([
     "X",
@@ -144,7 +148,7 @@ test("findRelatedNodes", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const relatedNodes = findRelatedNodes(visited);
+  const relatedNodes = findRelatedNodes(checker, visited);
   expect(
     [...relatedNodes].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -184,7 +188,7 @@ test("findRelatedNodes # union", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const relatedNodes = findRelatedNodes(visited);
+  const relatedNodes = findRelatedNodes(checker, visited);
   expect(
     [...relatedNodes].map((node) => {
       return {
@@ -230,7 +234,7 @@ test("findRelatedNodes # as", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const relatedNodes = findRelatedNodes(visited);
+  const relatedNodes = findRelatedNodes(checker, visited);
   expect(
     [...relatedNodes].map((node) => {
       return {
@@ -262,7 +266,7 @@ test("findRelatedNodes # class", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const decls = findRelatedNodes(visited);
+  const decls = findRelatedNodes(checker, visited);
   expect(
     [...decls].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -808,6 +812,31 @@ test.skip("mangle: react components with sub component", () => {
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
 
+test("mangle: with typed", () => {
+  const files = {
+    "src/index.ts": `
+    const vvv = {
+      value: {
+        vvv: 1,
+      }
+    };
+    export const yyy = vvv.value;
+  `,
+  };
+  const expected = {
+    "src/index.ts": `
+    const k = {
+      value: {
+        vvv: 1
+      }
+    };
+    export const yyy = k.value;
+    `,
+  };
+
+  assertExpectedMangleResult("src/index.ts", files, expected);
+});
+
 test.skip("mangle (or assert) with infer", () => {
   const files = {
     "src/index.ts": `
@@ -821,11 +850,26 @@ test.skip("mangle (or assert) with infer", () => {
   const expected = {
     "src/index.ts": `
     const k = {
-      x: 1,
+      aaa: 1,
     };
-    export const yyy = k.x;
+    export const yyy = k.aaa;
     `,
   };
 
   assertExpectedMangleResult("src/index.ts", files, expected);
 });
+
+function debugVisitResult(visited: SymbolWalkerResult) {
+  console.log(
+    "[debug:visited:symbols]",
+    [...visited.symbols].map((s) => {
+      return toReadableSymbol(s);
+    }),
+  );
+  console.log(
+    "[debug:visited:types]",
+    [...visited.types].map((t) => {
+      return toReadableType(t);
+    }),
+  );
+}

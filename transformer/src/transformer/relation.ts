@@ -1,40 +1,12 @@
 import ts from "typescript";
 import type { MangleTargetNode as MangleRelatedNode } from "./types";
 import { SymbolWalkerResult } from "../typescript/types";
-
-export function isMangleIdentifier(
-  checker: ts.TypeChecker,
-  identifier: ts.Identifier | ts.PrivateIdentifier,
-  exportedNodes: ts.Node[],
-  exportedSymbols: ts.Symbol[],
-) {
-  // skip: type <Foo> = { ... }
-  if (ts.isTypeAliasDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-    return false;
-  }
-  // skip: interface <Foo>{ ... }
-  if (ts.isInterfaceDeclaration(identifier.parent) && identifier.parent.name === identifier) {
-    return false;
-  }
-
-  // node is related to export
-  if (exportedNodes.includes(identifier.parent)) {
-    // console.log("skip: exported", identifier.text);
-    return false;
-  }
-
-  // FIXME
-  // node is exported
-  const symbol = checker.getSymbolAtLocation(identifier);
-  if (symbol && exportedSymbols.includes(symbol)) {
-    return false;
-  }
-  return true;
-}
+import { formatCode, toReadableSymbol } from "../typescript/utils";
 
 // get local rename candidates
-type BindingIdentifier = ts.Identifier | ts.PrivateIdentifier;
-export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
+type BindingNode = ts.Identifier | ts.PrivateIdentifier;
+
+export function getBindingsForFile(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
@@ -46,8 +18,8 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
     }
     // only for classes
     // ObjectLiteral's methodDeclaration will be broken
-    const isParentClass = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
-    if (isParentClass && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
+    const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
+    if (isClassMember && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
       if (hasDeclareOrAbstract(node)) return;
       visitNamedBinding(node.name);
     }
@@ -82,7 +54,8 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
     }
     // TODO: activate for infered nodes
     // if (ts.isPropertyAssignment(node)) {
-    //   visitBinding(node.name);
+    // throw "stop";
+    // visitBinding(node.name);
     // }
     ts.forEachChild(node, visit);
   }
@@ -138,7 +111,11 @@ export function getBindingsForFile(file: ts.SourceFile): BindingIdentifier[] {
   }
 }
 
-export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = false): MangleRelatedNode[] {
+export function findRelatedNodes(
+  checker: ts.TypeChecker,
+  visited: SymbolWalkerResult,
+  debug: boolean = false,
+): MangleRelatedNode[] {
   const log = debug ? console.log : () => {};
   const relatedNodes = new Set<MangleRelatedNode>();
   for (const symbol of visited.symbols) {
@@ -165,33 +142,41 @@ export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = f
       ts.isClassDeclaration(node) ||
       ts.isPropertySignature(node) ||
       ts.isMethodSignature(node) ||
+      ts.isObjectLiteralExpression(node) ||
       ts.isMethodDeclaration(node) ||
       ts.isPropertyDeclaration(node) ||
       ts.isParameter(node) ||
       ts.isGetAccessor(node) ||
       ts.isSetAccessor(node) ||
+      ts.isPropertyAssignment(node) ||
       ts.isIntersectionTypeNode(node) ||
       ts.isUnionTypeNode(node)
     );
   }
   function visitRelatedNode(node: ts.Node, depth: number) {
-    log("  ".repeat(depth) + "[Node:" + ts.SyntaxKind[node.kind] + "]", node.getText().slice(0, 10) + "...");
+    log(
+      "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
+      formatCode(node.getText()).slice(0, 20) + "...",
+    );
 
     if (!isRelatedNode(node)) return;
     if (relatedNodes.has(node)) return;
     relatedNodes.add(node);
 
     // now only for classes
-    const isClassParent = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
-    if (ts.isPropertyDeclaration(node) && isClassParent) {
+    const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
+    if (ts.isPropertyDeclaration(node) && isClassMember) {
       if (node.type) {
         visitRelatedNode(node.type, depth + 1);
       }
     }
     // now only for classes
-    if (ts.isMethodDeclaration(node) && isClassParent) {
+    if (isClassMember && ts.isMethodDeclaration(node)) {
       for (const param of node.parameters) {
         visitRelatedNode(param, depth + 1);
+      }
+      for (const typeParams of node.typeParameters ?? []) {
+        visitRelatedNode(typeParams, depth + 1);
       }
     }
 
@@ -262,11 +247,18 @@ export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = f
       }
     }
     if (ts.isObjectLiteralExpression(node)) {
+      // const type = checker.getTypeAtLocation(node);
+      // console.log("<ObjectLiteral>", checker.typeToString(type), type.symbol.valueDeclaration?.getFullText());
+      // throw "stop";
+      // TODO: check type
       for (const prop of node.properties) {
         visitRelatedNode(prop, depth + 1);
       }
     }
     if (ts.isPropertyAssignment(node)) {
+      // const type = checker.getTypeAtLocation(node.name);
+      // console.log("<Assignment>", { ...type, checker: null });
+      // throw "stop";
       visitRelatedNode(node.name, depth + 1);
     }
 
@@ -277,4 +269,34 @@ export function findRelatedNodes(visited: SymbolWalkerResult, debug: boolean = f
       }
     }
   }
+}
+
+export function isMangleIdentifier(
+  checker: ts.TypeChecker,
+  binding: BindingNode,
+  exportedNodes: ts.Node[],
+  exportedSymbols: ts.Symbol[],
+) {
+  // skip: type <Foo> = { ... }
+  if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
+    return false;
+  }
+  // skip: interface <Foo>{ ... }
+  if (ts.isInterfaceDeclaration(binding.parent) && binding.parent.name === binding) {
+    return false;
+  }
+
+  // node is related to export
+  if (exportedNodes.includes(binding.parent)) {
+    // console.log("skip: exported", identifier.text);
+    return false;
+  }
+
+  // FIXME
+  // node is exported
+  const symbol = checker.getSymbolAtLocation(binding);
+  if (symbol && exportedSymbols.includes(symbol)) {
+    return false;
+  }
+  return true;
 }

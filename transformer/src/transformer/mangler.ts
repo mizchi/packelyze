@@ -32,6 +32,9 @@ export function walkProject(
       symbolWalker.walkSymbol(exported);
       const type = checker.getTypeOfSymbol(exported);
       symbolWalker.walkType(type);
+      if (type.symbol) {
+        symbolWalker.walkSymbol(type.symbol);
+      }
     }
   }
 
@@ -61,7 +64,13 @@ export function getActionsForFile(
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
 
-  const relatedNodes = findRelatedNodes(visited);
+  const relatedNodes = findRelatedNodes(checker, visited);
+
+  // console.log(
+  //   "[getActionsForFile] relatedNodes",
+  //   visited.symbols.map((x) => toReadableSymbol(x)),
+  //   relatedNodes.map((x) => toReadableNode(x)),
+  // );
 
   const mangleNodes = getMangleNodesForFile(file);
 
@@ -71,7 +80,7 @@ export function getActionsForFile(
   });
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
-    const bindings = getBindingsForFile(file);
+    const bindings = getBindingsForFile(checker, file);
     const fileSymbol = checker.getSymbolAtLocation(file);
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {
