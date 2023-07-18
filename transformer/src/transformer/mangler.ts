@@ -8,7 +8,7 @@ import { composeVisitors, toReadableNode, toReadableSymbol } from "../typescript
 import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
 import { type MangleAction, MangleTargetNode as MangleRelatedNode, SymbolBuilder } from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
-import { findRelatedNodes, getBindingsForFile, isMangleIdentifier } from "./relation";
+import { findRelatedNodes, getBindingsForFile, isMangleBinding } from "./relation";
 
 export function walkProject(
   checker: ts.TypeChecker,
@@ -84,7 +84,7 @@ export function getActionsForFile(
     const fileSymbol = checker.getSymbolAtLocation(file);
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {
-      return isMangleIdentifier(checker, identifier, relatedNodes, exportSymbols);
+      return isMangleBinding(checker, identifier, relatedNodes, exportSymbols, [...visited.types]);
     });
   }
 

@@ -1,7 +1,7 @@
 import ts from "typescript";
 import type { MangleTargetNode as MangleRelatedNode } from "./types";
 import { SymbolWalkerResult } from "../typescript/types";
-import { formatCode, toReadableSymbol } from "../typescript/utils";
+import { formatCode, toReadableSymbol, toReadableType } from "../typescript/utils";
 
 // get local rename candidates
 type BindingNode = ts.Identifier | ts.PrivateIdentifier;
@@ -53,10 +53,21 @@ export function getBindingsForFile(checker: ts.TypeChecker, file: ts.SourceFile)
       }
     }
     // TODO: activate for infered nodes
-    // if (ts.isPropertyAssignment(node)) {
-    // throw "stop";
-    // visitBinding(node.name);
-    // }
+    if (ts.isPropertyAssignment(node)) {
+      // const parent = node.parent;
+      // const parentType = checker.getTypeAtLocation(parent);
+      // console.log("<Assignment>", parentType.symbol?.name, parentType && checker.typeToString(parentType));
+      // Skip infered type
+
+      // TODO: skip by type.symbol
+      // if (parentType.symbol?.name === "__object" || parentType.symbol?.name === "__function") {
+      //   visitNamedBinding(node.name);
+      // }
+      // const type = checker.getTypeAtLocation(node.name);
+      // console.log("<Assignment>", type && checker.typeToString(type));
+      // throw "stop";
+      visitNamedBinding(node.name);
+    }
     ts.forEachChild(node, visit);
   }
   function visitNamedBinding(
@@ -271,11 +282,12 @@ export function findRelatedNodes(
   }
 }
 
-export function isMangleIdentifier(
+export function isMangleBinding(
   checker: ts.TypeChecker,
   binding: BindingNode,
   exportedNodes: ts.Node[],
   exportedSymbols: ts.Symbol[],
+  exportedTypes: ts.Type[],
 ) {
   // skip: type <Foo> = { ... }
   if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
@@ -286,6 +298,29 @@ export function isMangleIdentifier(
     return false;
   }
 
+  // skip inferred type
+  if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
+    const type = checker.getTypeAtLocation(binding.parent);
+    if (exportedTypes.includes(type)) {
+      return false;
+    }
+
+    if (type.symbol && exportedSymbols.includes(type.symbol)) {
+      return false;
+    }
+
+    // inferred object type member will skip mangle
+    // ex. const x = {vvv: 1};
+    const objectType = checker.getTypeAtLocation(binding.parent.parent);
+    if (objectType.symbol?.name === "__object") {
+      return false;
+    }
+    // if (objectType.symbol?.name && exportedSymbols.includes(objectType.symbol)) {
+    //   return false;
+    // }
+  }
+  const symbol = checker.getSymbolAtLocation(binding);
+
   // node is related to export
   if (exportedNodes.includes(binding.parent)) {
     // console.log("skip: exported", identifier.text);
@@ -294,7 +329,6 @@ export function isMangleIdentifier(
 
   // FIXME
   // node is exported
-  const symbol = checker.getSymbolAtLocation(binding);
   if (symbol && exportedSymbols.includes(symbol)) {
     return false;
   }
