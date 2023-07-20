@@ -15,6 +15,8 @@ export interface FileChangeResult extends ChangeResult {
 }
 
 export type MangleAction = {
+  actionType: "rename" | "remove";
+  parentKind: ts.SyntaxKind;
   fileName: string;
   original: string;
   to: string;
@@ -31,6 +33,7 @@ export type MangleTargetNode =
   | ts.InterfaceDeclaration
   | ts.ParameterDeclaration
   | ts.PropertyDeclaration
+  | ts.ClassExpression
   // | ts.FunctionDeclaration
   // | ts.PropertyAssignment
   | ts.MethodDeclaration

@@ -236,6 +236,10 @@ export function isSymbolInferredFromValueDeclaration(checker: ts.TypeChecker, sy
   return isTypeInferredFromValueDeclaration(type);
 }
 
+export function isInferredNode(checker: ts.TypeChecker, node: ts.Node) {
+  return checker.getTypeAtLocation(node).symbol?.valueDeclaration === node;
+}
+
 export function isTypeInferredFromValueDeclaration(type: ts.Type) {
   const decls = type.symbol?.declarations;
   if (decls && decls.length > 1) {

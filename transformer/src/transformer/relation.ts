@@ -6,7 +6,7 @@ import { formatCode, toReadableSymbol, toReadableType } from "../typescript/util
 // get local rename candidates
 type BindingNode = ts.Identifier | ts.PrivateIdentifier;
 
-export function getBindingsForFile(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
+export function findFileBindings(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
@@ -122,7 +122,7 @@ export function getBindingsForFile(checker: ts.TypeChecker, file: ts.SourceFile)
   }
 }
 
-export function findRelatedNodes(
+export function findRootRelatedNodes(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,
@@ -130,8 +130,20 @@ export function findRelatedNodes(
   const log = debug ? console.log : () => {};
   const relatedNodes = new Set<MangleRelatedNode>();
   for (const symbol of visited.symbols) {
+    // register symbol declaration
     for (const declaration of symbol.getDeclarations() ?? []) {
       visitRelatedNode(declaration, 0);
+    }
+
+    // type inferred nodes
+    const type = checker.getTypeOfSymbol(symbol);
+    if (type.symbol) {
+      for (const declaration of type.symbol.getDeclarations() ?? []) {
+        visitRelatedNode(declaration, 0);
+      }
+      if (type.symbol.valueDeclaration) {
+        visitRelatedNode(type.symbol.valueDeclaration, 0);
+      }
     }
   }
 
@@ -146,11 +158,14 @@ export function findRelatedNodes(
   return [...relatedNodes];
   function isRelatedNode(node: ts.Node): node is MangleRelatedNode {
     return (
+      // types
       ts.isTypeNode(node) ||
       ts.isTypeAliasDeclaration(node) ||
       ts.isInterfaceDeclaration(node) ||
       ts.isTypeLiteralNode(node) ||
+      // classes
       ts.isClassDeclaration(node) ||
+      ts.isClassExpression(node) ||
       ts.isPropertySignature(node) ||
       ts.isMethodSignature(node) ||
       ts.isObjectLiteralExpression(node) ||
@@ -160,10 +175,18 @@ export function findRelatedNodes(
       ts.isGetAccessor(node) ||
       ts.isSetAccessor(node) ||
       ts.isPropertyAssignment(node) ||
+      // advanced type literals
       ts.isIntersectionTypeNode(node) ||
       ts.isUnionTypeNode(node)
     );
   }
+  // function visitRelatedNodeFromInferredType(type: ts.Type, depth: number) {
+  //   if (type.symbol) {
+  //     for (const declaration of type.symbol.getDeclarations() ?? []) {
+  //       visitRelatedNode(declaration, depth);
+  //     }
+  //   }
+  // }
   function visitRelatedNode(node: ts.Node, depth: number) {
     log(
       "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
@@ -282,38 +305,40 @@ export function findRelatedNodes(
   }
 }
 
+type MangleBindingReason = "TypeDeclaration" | "ExportRelated" | "Inferred" | "Local";
+// TODO: return reason
 export function isMangleBinding(
   checker: ts.TypeChecker,
   binding: BindingNode,
   exportedNodes: ts.Node[],
   exportedSymbols: ts.Symbol[],
   exportedTypes: ts.Type[],
-) {
+): [result: boolean, reason: MangleBindingReason] {
   // skip: type <Foo> = { ... }
   if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
-    return false;
+    return [false, "TypeDeclaration"];
   }
   // skip: interface <Foo>{ ... }
   if (ts.isInterfaceDeclaration(binding.parent) && binding.parent.name === binding) {
-    return false;
+    return [false, "TypeDeclaration"];
   }
 
   // skip inferred type
   if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
     const type = checker.getTypeAtLocation(binding.parent);
     if (exportedTypes.includes(type)) {
-      return false;
+      return [false, "ExportRelated"];
     }
 
     if (type.symbol && exportedSymbols.includes(type.symbol)) {
-      return false;
+      return [false, "ExportRelated"];
     }
 
     // inferred object type member will skip mangle
     // ex. const x = {vvv: 1};
     const objectType = checker.getTypeAtLocation(binding.parent.parent);
     if (objectType.symbol?.name === "__object") {
-      return false;
+      return [false, "Inferred"];
     }
     // if (objectType.symbol?.name && exportedSymbols.includes(objectType.symbol)) {
     //   return false;
@@ -324,13 +349,13 @@ export function isMangleBinding(
   // node is related to export
   if (exportedNodes.includes(binding.parent)) {
     // console.log("skip: exported", identifier.text);
-    return false;
+    return [false, "ExportRelated"];
   }
 
   // FIXME
   // node is exported
   if (symbol && exportedSymbols.includes(symbol)) {
-    return false;
+    return [false, "ExportRelated"];
   }
-  return true;
+  return [true, "Local"];
 }

@@ -19,14 +19,9 @@ const targets = parsed.fileNames.filter(
   (fname) => fname.startsWith(srcRoot) && !fname.endsWith(".d.ts") && !fname.endsWith(".test.ts"),
 );
 
-const rootFileNames = [
-  path.join(process.cwd(), "./src/transformer/types.ts"),
-  // path.join(process.cwd(), "./src/typescript/types.ts"),
-  // path.join(cwd, "./src/types.ts"),
-  path.join(cwd, "./src/index.ts"),
-];
+const rootFileNames = [path.join(cwd, "./src/index.ts")];
 
-const minifier = createMinifier(cwd, rootFileNames, targets, parsed.options);
+const minifier = createMinifier(cwd, rootFileNames, targets, parsed.options, undefined, true);
 
 minifier.process();
 

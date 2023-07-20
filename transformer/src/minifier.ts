@@ -12,10 +12,10 @@ export function createMinifier(
   rootFileNames: string[],
   targetFileNames: string[],
   compilerOptions: ts.CompilerOptions = {},
-  overrideCompilerOptions: Partial<ts.CompilerOptions> = {},
+  overrideCompilerOptions: ts.CompilerOptions = {},
+  withOriginalComment: boolean = false,
 ): Minifier {
   const registory = ts.createDocumentRegistry();
-
   const mergedCompilerOptions: ts.CompilerOptions = {
     ...compilerOptions,
     ...overrideCompilerOptions,
@@ -58,7 +58,10 @@ export function createMinifier(
     // TODO: handle all
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     // const fileNames = options.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
+
     const checker = service.getProgram()!.getTypeChecker();
+
+    // const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(rootFiles[0])!);
 
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProject(checker, rootFiles, targetsFiles);
@@ -68,8 +71,13 @@ export function createMinifier(
     // for (const type of visited.visitedTypes) {
     //   console.log("[minifier:type]", checker.typeToString(type));
     // }
-    const actions = targetsFiles.flatMap<MangleAction>((file) => getActionsForFile(checker, visited, file));
-    // console.log("[minifier:actions]", actions);
+    const actions = targetsFiles.flatMap<MangleAction>((file) =>
+      getActionsForFile(checker, visited, file, withOriginalComment),
+    );
+    // console.log(
+    //   "[minifier:actions]",
+    //   actions.filter((x) => x.original === "extensions"),
+    // );
     const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
     const changes: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {

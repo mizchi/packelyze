@@ -4,11 +4,11 @@ import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors, toReadableNode, toReadableSymbol } from "../typescript/utils";
+import { composeVisitors, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/utils";
 import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
 import { type MangleAction, MangleTargetNode as MangleRelatedNode, SymbolBuilder } from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
-import { findRelatedNodes, getBindingsForFile, isMangleBinding } from "./relation";
+import { findRootRelatedNodes, findFileBindings, isMangleBinding } from "./relation";
 
 export function walkProject(
   checker: ts.TypeChecker,
@@ -30,10 +30,23 @@ export function walkProject(
     const exportedSymbols = checker.getExportsOfModule(fileSymbol);
     for (const exported of exportedSymbols) {
       symbolWalker.walkSymbol(exported);
+
       const type = checker.getTypeOfSymbol(exported);
       symbolWalker.walkType(type);
       if (type.symbol) {
         symbolWalker.walkSymbol(type.symbol);
+      }
+
+      // check exported
+      // if it is any type and export type, typescript was lost type tracing
+      // ex. export type { MyType } from "./types";
+      const exportedSymbol = checker.getExportSymbolOfSymbol(exported);
+      // if (exportedSymbol === exported) continue;
+      const maybeExportSpecifier = exportedSymbol?.declarations?.[0];
+      if (maybeExportSpecifier && ts.isExportSpecifier(maybeExportSpecifier)) {
+        const exportSpecifierType = checker.getTypeAtLocation(maybeExportSpecifier);
+        symbolWalker.walkType(exportSpecifierType);
+        symbolWalker.walkSymbol(exportSpecifierType.symbol!);
       }
     }
   }
@@ -61,10 +74,11 @@ export function getActionsForFile(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   file: ts.SourceFile,
+  withOriginalComment: boolean = false,
 ): MangleAction[] {
   const symbolBuilder = createSymbolBuilder();
 
-  const relatedNodes = findRelatedNodes(checker, visited);
+  const relatedNodes = findRootRelatedNodes(checker, visited);
 
   // console.log(
   //   "[getActionsForFile] relatedNodes",
@@ -75,20 +89,38 @@ export function getActionsForFile(
   const mangleNodes = getMangleNodesForFile(file);
 
   return mangleNodes.flatMap((node) => {
-    const action = getMangleActionForNode(symbolBuilder, node);
+    const action = getMangleActionForNode(symbolBuilder, node, withOriginalComment);
     return action ?? [];
   });
 
   function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
-    const bindings = getBindingsForFile(checker, file);
+    const bindings = findFileBindings(checker, file);
     const fileSymbol = checker.getSymbolAtLocation(file);
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {
-      return isMangleBinding(checker, identifier, relatedNodes, exportSymbols, [...visited.types]);
+      const [result, reason] = isMangleBinding(checker, identifier, relatedNodes, exportSymbols, [...visited.types]);
+      if (identifier.getText() === "extensions") {
+        // TODO: check why extensions is not mangled
+        // console.log("[mangle:try]", identifier.getText(), result, reason);
+        // console.log(
+        //   "visited:symbols",
+        //   visited.symbols
+        //     .filter((x) => x.getName() === "extensions")
+        //     .map((x) => toReadableSymbol(x)),
+        //   // "visited:types",
+        //   // visited.types.filter((x) => x.symbol?.getName() === "extensions"),
+        // );
+        // throw "stop";
+      }
+      return result;
     });
   }
 
-  function getMangleActionForNode(symbolBuilder: SymbolBuilder, node: ts.Node): MangleAction | undefined {
+  function getMangleActionForNode(
+    symbolBuilder: SymbolBuilder,
+    node: ts.Node,
+    withOriginalComment: boolean = false,
+  ): MangleAction | undefined {
     const validate = createNameValidator(checker, node);
     if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
       throw new Error("unexpected node type " + node.kind);
@@ -108,11 +140,14 @@ export function getActionsForFile(
 
     // FIXME: should consume converted name for usedNames check
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
+    const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
     const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
     return {
+      parentKind: node.parent.kind,
+      actionType: "rename",
       fileName: node.getSourceFile().fileName,
       original: originalName,
-      to: newName,
+      to,
       start: node.getStart(),
       isAssignment: isPropertyAssignment,
     };

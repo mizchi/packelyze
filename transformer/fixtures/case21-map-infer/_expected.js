@@ -12,5 +12,11 @@ const q = j.map((d) => {
   };
 });
 const starts = q.map((r) => r.start);
+const mapped = q.map((r) => {
+  return {
+    start: r.start,
+    end: r.end,
+  };
+});
 
-export { starts };
+export { mapped, starts };

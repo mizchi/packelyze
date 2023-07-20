@@ -24,3 +24,9 @@ const internals: Internal[] = inputs.map<Internal>((d) => {
 });
 
 export const starts = internals.map((r) => r.start);
+export const mapped = internals.map((r) => {
+  return {
+    start: r.start,
+    end: r.end,
+  };
+});

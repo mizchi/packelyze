@@ -1,4 +1,6 @@
 export {
   type Obj,
-  createObj,
-} from "./minifier";
+  type Result,
+} from "./types";
+
+export { createObj } from "./obj";

@@ -2,7 +2,7 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { findRelatedNodes } from "./relation";
+import { findRootRelatedNodes } from "./relation";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, formatCode } from "../typescript/utils";
 
@@ -43,18 +43,18 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodes(checker, visited);
+  const collected = findRootRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
     //
+    "(TypeLiteral){ local: number }",
     "(PropertySignature)local: number",
     "(NumberKeyword)number",
     "(PropertySignature)yyy: number",
     "(NumberKeyword)number",
-    "(TypeLiteral){ local: number }",
     "(TypeLiteral){ yyy: number }",
   ]);
 });
@@ -91,16 +91,16 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodes(checker, visited);
+  const collected = findRootRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
     //
+    `(TypeLiteral){ x: number; }`,
     "(PropertySignature)x: number;",
     "(NumberKeyword)number",
-    `(TypeLiteral){ x: number; }`,
   ]);
 });
 
@@ -139,10 +139,10 @@ test("detect object rest spread", () => {
     }
   }
   const visited = walker.getVisited();
-  const collected = findRelatedNodes(checker, visited);
+  const collected = findRootRelatedNodes(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
-  ).toEqual(["(PropertySignature)x: number;", "(NumberKeyword)number", "(TypeLiteral){ x: number; }"]);
+  ).toEqual(["(TypeLiteral){ x: number; }", "(PropertySignature)x: number;", "(NumberKeyword)number"]);
 });

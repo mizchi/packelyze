@@ -4,6 +4,7 @@ import { formatTs } from "./testUtils";
 const stripEmptyLines = (code: string) => {
   return code
     .split("\n")
+    .filter((line) => !line.match(/\s*\/\/.*$/))
     .filter((line) => line.trim() !== "")
     .join("\n");
 };

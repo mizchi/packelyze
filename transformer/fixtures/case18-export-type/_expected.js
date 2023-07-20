@@ -1,11 +1,14 @@
 function createObj() {
   return {
     xxx: x,
-    yyy() {
+    yyy(input) {
       const k = {
-        value: "hello",
+        v1: input.k ?? "hello",
+        v2: input.x ?? "world",
       };
-      return k;
+      return {
+        ...k,
+      };
     },
   };
   function x() {}
