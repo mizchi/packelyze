@@ -19,15 +19,18 @@ export { getPlugin as tsMinify } from "./rollup";
 // ---- to keep internal interfaces ---
 export type { ReadableSymbol, ReadbleNode } from "./typescript/utils";
 export type {
+  // TODO: Remove internal type exports
+  // SymbolWalker,
+  // SymbolWalkerResult,
   MappedType,
   AnonymousType,
   TypeWithId,
   SymbolWithId,
-  BatchRenameLocation,
-  // TODO: Remove it
-  SymbolWalker,
-  SymbolWalkerResult,
 } from "./typescript/types";
-
-// TODO: Remove these
-export type { FileChangeResult } from "./transformer/types";
+// TODO: Remove internal type exports
+export type {
+  // TODO: Remove internal type exports
+  FileChangeResult,
+  // TODO: Remove internal type exports
+  BatchRenameLocationWithSource,
+} from "./transformer/types";

@@ -6,7 +6,12 @@ import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/utils";
 import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
-import { type MangleAction, MangleTargetNode as MangleRelatedNode, SymbolBuilder } from "./types";
+import {
+  type CodeAction,
+  MangleTargetNode as MangleRelatedNode,
+  SymbolBuilder,
+  BatchRenameLocationWithSource,
+} from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
 import { findRootRelatedNodes, findFileBindings, isMangleBinding } from "./relation";
 
@@ -75,7 +80,7 @@ export function getActionsForFile(
   visited: SymbolWalkerResult,
   file: ts.SourceFile,
   withOriginalComment: boolean = false,
-): MangleAction[] {
+): CodeAction[] {
   const symbolBuilder = createSymbolBuilder();
 
   const relatedNodes = findRootRelatedNodes(checker, visited);
@@ -89,7 +94,7 @@ export function getActionsForFile(
   const mangleNodes = getMangleNodesForFile(file);
 
   return mangleNodes.flatMap((node) => {
-    const action = getMangleActionForNode(symbolBuilder, node, withOriginalComment);
+    const action = getCodeActionForNode(symbolBuilder, node, withOriginalComment);
     return action ?? [];
   });
 
@@ -99,28 +104,28 @@ export function getActionsForFile(
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {
       const [result, reason] = isMangleBinding(checker, identifier, relatedNodes, exportSymbols, [...visited.types]);
-      if (identifier.getText() === "extensions") {
-        // TODO: check why extensions is not mangled
-        // console.log("[mangle:try]", identifier.getText(), result, reason);
-        // console.log(
-        //   "visited:symbols",
-        //   visited.symbols
-        //     .filter((x) => x.getName() === "extensions")
-        //     .map((x) => toReadableSymbol(x)),
-        //   // "visited:types",
-        //   // visited.types.filter((x) => x.symbol?.getName() === "extensions"),
-        // );
-        // throw "stop";
-      }
+      // if (identifier.getText() === "extensions") {
+      //   // TODO: check why extensions is not mangled
+      //   // console.log("[mangle:try]", identifier.getText(), result, reason);
+      //   // console.log(
+      //   //   "visited:symbols",
+      //   //   visited.symbols
+      //   //     .filter((x) => x.getName() === "extensions")
+      //   //     .map((x) => toReadableSymbol(x)),
+      //   //   // "visited:types",
+      //   //   // visited.types.filter((x) => x.symbol?.getName() === "extensions"),
+      //   // );
+      //   // throw "stop";
+      // }
       return result;
     });
   }
 
-  function getMangleActionForNode(
+  function getCodeActionForNode(
     symbolBuilder: SymbolBuilder,
     node: ts.Node,
     withOriginalComment: boolean = false,
-  ): MangleAction | undefined {
+  ): CodeAction | undefined {
     const validate = createNameValidator(checker, node);
     if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
       throw new Error("unexpected node type " + node.kind);
@@ -142,15 +147,16 @@ export function getActionsForFile(
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
     const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
-    return {
+    const action: CodeAction = {
       parentKind: node.parent.kind,
-      actionType: "rename",
+      actionType: "replace",
       fileName: node.getSourceFile().fileName,
       original: originalName,
       to,
       start: node.getStart(),
       isAssignment: isPropertyAssignment,
     };
+    return action;
     function isComponentFunctionName(name: string) {
       return !/[a-z]/.test(name[0]);
     }
@@ -173,7 +179,10 @@ export function getActionsForFile(
 }
 
 // exclude duplicated rename locations
-export function expandToSafeRenameLocations(findRenameLocations: FindRenameLocations, actions: MangleAction[]) {
+export function expandToSafeRenameLocations(
+  findRenameLocations: FindRenameLocations,
+  actions: CodeAction[],
+): BatchRenameLocationWithSource[] {
   // propertyAssingment causes duplicated rename with propertySignature
   const preActions = actions.filter((x) => !x.isAssignment);
   const postActions = actions.filter((x) => x.isAssignment);
@@ -182,7 +191,7 @@ export function expandToSafeRenameLocations(findRenameLocations: FindRenameLocat
 
   return [...preActions.flatMap(toSafeRenameLocations), ...postActions.flatMap(toSafeRenameLocations)];
 
-  function toSafeRenameLocations(action: MangleAction) {
+  function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
     if (touchingLocations.has(touchKey)) return [];
     const renames = findBatchRenameLocations(
@@ -197,18 +206,22 @@ export function expandToSafeRenameLocations(findRenameLocations: FindRenameLocat
     // stop by conflict
     const renameKeys = renames.map(renameLocationToKey);
     if (renameKeys.some((key) => touchingLocations.has(key))) {
+      const conflicts = renameKeys.filter((key) => touchingLocations.has(key));
+      console.warn("[mangle:action-stop-by-conflict]", action, "by", conflicts);
       return [];
     }
     for (const renameKey of renameKeys) {
       touchingLocations.add(renameKey);
     }
-    return renames;
+    // return with source  action
+    return renames.map((rename) => ({ ...rename, by: action }) satisfies BatchRenameLocationWithSource);
   }
 
-  function actionToKey(action: MangleAction) {
+  function actionToKey(action: CodeAction): string {
     return `${action.fileName}:${action.start}`;
   }
-  function renameLocationToKey(rename: BatchRenameLocation) {
+
+  function renameLocationToKey(rename: BatchRenameLocation): string {
     return `${rename.fileName}:${rename.textSpan.start}`;
   }
 }

@@ -11,4 +11,5 @@ export type Result = {
 export interface Obj {
   xxx(): void;
   yyy(input: Partial<Input>): Result;
+  zzz(): Array<Result>;
 }

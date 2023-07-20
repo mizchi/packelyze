@@ -1,11 +1,12 @@
-import { getRenamedFileChanges } from "./typescript/renamer";
+import type { Minifier } from "./types";
+import type { BatchRenameLocation } from "./typescript/types";
+import type { CodeAction, FileChangeResult } from "./transformer/types";
+
 import ts from "typescript";
 import path from "node:path";
 import { expandToSafeRenameLocations, walkProject, getActionsForFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
-import { FileChangeResult, MangleAction } from "./transformer/types";
-import { BatchRenameLocation } from "./typescript/types";
-import { type Minifier } from "./types";
+import { getRenamedFileChanges } from "./typescript/renamer";
 
 export function createMinifier(
   projectPath: string,
@@ -27,7 +28,7 @@ export function createMinifier(
     if (fname.startsWith("/")) {
       return fname;
     }
-    return path.join(projectPath, fname); //
+    return path.join(projectPath, fname);
   };
 
   const sourceMaps = new Map<string, string>();
@@ -55,43 +56,26 @@ export function createMinifier(
   };
 
   function process() {
-    // TODO: handle all
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    // const fileNames = options.fileNames.filter((fname) => !fname.endsWith(".d.ts"));
-
     const checker = service.getProgram()!.getTypeChecker();
-
-    // const exportedSymbols = checker.getExportsOfModule(checker.getSymbolAtLocation(rootFiles[0])!);
-
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProject(checker, rootFiles, targetsFiles);
-    // for (const sym of visited.visitedSymbols) {
-    //   console.log("[minifier:symbol]", sym.getName());
-    // }
-    // for (const type of visited.visitedTypes) {
-    //   console.log("[minifier:type]", checker.typeToString(type));
-    // }
-    const actions = targetsFiles.flatMap<MangleAction>((file) =>
+    const actions = targetsFiles.flatMap<CodeAction>((file) =>
       getActionsForFile(checker, visited, file, withOriginalComment),
     );
+    const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
     // console.log(
     //   "[minifier:actions]",
-    //   actions.filter((x) => x.original === "extensions"),
+    //   actions.filter((x) => x.original === "start"),
+    //   "-----------------",
+    //   renames.filter((x) => x.original === "start"),
     // );
-    const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
+
     const changes: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
     for (const change of changes) {
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);
     }
-
-    // const diagnostics = targetFileNames
-    //   .filter((t) => !t.endsWith(".d.ts") && !t.includes("__experimental") && !t.endsWith("index.ts"))
-    //   .flatMap((fname) => service.getSemanticDiagnostics(fname));
-
-    // // const diagnostics = targetFileNames
-    // //   .filter((t) => !t.endsWith(".d.ts") && !t.includes("__experimental"))
-    // //   .flatMap((fname) => service.getSemanticDiagnostics(fname));
     // console.log(
     //   "[minifier:diagnostics]",
     //   diagnostics.map((d) => {
@@ -101,9 +85,5 @@ export function createMinifier(
     //     };
     //   }),
     // );
-    // for (const target of targetFileNames) {
-    //   const diagnostics =  service.getSemanticDiagnostics(target);
-
-    // }
   }
 }

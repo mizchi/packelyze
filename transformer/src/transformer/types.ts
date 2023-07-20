@@ -1,3 +1,4 @@
+import type { BatchRenameLocation } from "../typescript/types";
 import ts from "typescript";
 
 export type ChangeResult = {
@@ -13,17 +14,6 @@ export type ChangeResult = {
 export interface FileChangeResult extends ChangeResult {
   fileName: string;
 }
-
-export type MangleAction = {
-  actionType: "rename" | "remove";
-  parentKind: ts.SyntaxKind;
-  fileName: string;
-  original: string;
-  to: string;
-  start: number;
-  // TODO: now assigment is ignored
-  isAssignment: boolean;
-};
 
 export type MangleTargetNode =
   | ts.TypeLiteralNode
@@ -47,4 +37,22 @@ export type MangleTargetNode =
 export type SymbolBuilder = {
   create: (validate?: (char: string) => boolean) => string;
   reset: (next?: number) => void;
+};
+
+export type CodeAction = {
+  actionType: "replace" | "remove" | "add";
+  parentKind: ts.SyntaxKind;
+  fileName: string;
+  original: string;
+  to: string;
+  start: number;
+  // TODO: now assigment is ignored
+  isAssignment: boolean;
+};
+
+/**
+ * to batch rename, we need to know the original text and the new text.
+ */
+export type BatchRenameLocationWithSource = BatchRenameLocation & {
+  by: CodeAction;
 };

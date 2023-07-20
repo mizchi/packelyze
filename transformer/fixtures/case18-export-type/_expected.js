@@ -10,6 +10,14 @@ function createObj() {
         ...k,
       };
     },
+    zzz() {
+      return [1, 2, 3].map((i) => {
+        return {
+          v1: i.toString(),
+          v2: i.toString(),
+        };
+      });
+    },
   };
   function x() {}
 }

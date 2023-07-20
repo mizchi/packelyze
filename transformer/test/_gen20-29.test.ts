@@ -12,3 +12,6 @@ test("rollup #case21-map-infer", async () => {
 test("rollup #case22-export-types", async () => {
   await assertRollupWithFixture(path.join(__dirname, "../fixtures/case22-export-types"));
 });
+test("rollup #case23-higher-chain", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "../fixtures/case23-higher-chain"));
+});

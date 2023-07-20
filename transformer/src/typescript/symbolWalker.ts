@@ -21,8 +21,8 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
         clear(visitedTypes);
         clear(visitedSymbols);
       },
-      getVisited: () => {
-        return { types: getOwnValues(visitedTypes), symbols: getOwnValues(visitedSymbols) };
+      getVisited: (): SymbolWalkerResult => {
+        return { types: getOwnValues(visitedTypes), symbols: getOwnValues(visitedSymbols) } as SymbolWalkerResult;
       },
       walkType: (type) => {
         visitType(type);
