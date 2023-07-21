@@ -61,7 +61,8 @@ Internal Steps.
 - [ ] Delete unused class members with treeshake
 - [x] Mangle
 - [x] Bundle
-
+- [x] annotation: `@external`
+- [ ] annotation: `@internal`
 
 ## Resctriction
 
