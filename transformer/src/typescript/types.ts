@@ -44,21 +44,12 @@ export interface AnonymousType extends ts.ObjectType {
   // instantiations?: Mapz<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
 }
 export interface MappedType extends AnonymousType {
-  /** @external */ declaration: ts.MappedTypeNode;
+  // /** @external */ declaration: ts.MappedTypeNode;
   /** @external */ typeParameter?: ts.TypeParameter;
   /** @external */ constraintType?: ts.Type;
-  /** @external */ nameType?: ts.Type;
+  // /** @external */ nameType?: ts.Type;
   /** @external */ templateType?: ts.Type;
   /** @external */ modifiersType?: ts.Type;
-  /** @external */ resolvedApparentType?: ts.Type;
-  /** @external */ containsError?: boolean;
-}
-
-export interface TypeWithId extends ts.Type {
-  // original hidden member
-  /** @external */ id: number;
-}
-export interface SymbolWithId extends ts.Symbol {
-  // original hidden member
-  /** @external */ id: number;
+  // /** @external */ resolvedApparentType?: ts.Type;
+  // /** @external */ containsError?: boolean;
 }

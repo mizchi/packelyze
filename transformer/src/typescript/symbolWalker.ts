@@ -2,9 +2,19 @@
 
 import ts from "typescript";
 import { getOwnValues } from "../utils";
-import type { MappedType, SymbolWithId, TypeWithId, SymbolWalkerResult, SymbolWalker } from "./types";
-// import { toReadableSymbol } from "../nodeUtils";
+import type { MappedType, SymbolWalkerResult, SymbolWalker } from "./types";
 
+// original hidden member
+interface TypeWithId extends ts.Type {
+  /** @external */ id: number;
+}
+
+// original hidden member
+interface SymbolWithId extends ts.Symbol {
+  /** @external */ id: number;
+}
+
+// import { toReadableSymbol } from "../nodeUtils";
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
 // added: skip private/hard-private declaration in class

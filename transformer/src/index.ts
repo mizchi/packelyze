@@ -20,12 +20,12 @@ export { getPlugin as tsMinify } from "./rollup";
 export type { ReadableSymbol, ReadbleNode } from "./typescript/utils";
 export type {
   // TODO: Remove internal type exports
+  // TypeWithId,
+  // SymbolWithId,
   // SymbolWalker,
   // SymbolWalkerResult,
-  MappedType,
+  // MappedType,
   AnonymousType,
-  TypeWithId,
-  SymbolWithId,
 } from "./typescript/types";
 // TODO: Remove internal type exports
 export type {
