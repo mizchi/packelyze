@@ -6,14 +6,10 @@ import { findBatchRenameLocations } from "../typescript/renamer";
 import { getEffectDetectorEnter } from "./effects";
 import { composeVisitors, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/utils";
 import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
-import {
-  type CodeAction,
-  MangleTargetNode as MangleRelatedNode,
-  SymbolBuilder,
-  BatchRenameLocationWithSource,
-} from "./types";
+import { type CodeAction, SymbolBuilder, BatchRenameLocationWithSource } from "./types";
 import { type BatchRenameLocation } from "../typescript/types";
 import { findRootRelatedNodes, findFileBindings, isMangleBinding } from "./relation";
+import { getAnnotationsAtNode } from "../typescript/comment";
 
 export function walkProject(
   checker: ts.TypeChecker,
@@ -75,7 +71,7 @@ export function walkProject(
   }
 }
 
-export function getActionsForFile(
+export function getCodeActionsAtFile(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   file: ts.SourceFile,
@@ -91,14 +87,14 @@ export function getActionsForFile(
   //   relatedNodes.map((x) => toReadableNode(x)),
   // );
 
-  const mangleNodes = getMangleNodesForFile(file);
+  const mangleNodes = getMangleNodesAtFile(file);
 
   return mangleNodes.flatMap((node) => {
     const action = getCodeActionForNode(symbolBuilder, node, withOriginalComment);
     return action ?? [];
   });
 
-  function getMangleNodesForFile(file: ts.SourceFile): ts.Node[] {
+  function getMangleNodesAtFile(file: ts.SourceFile): ts.Node[] {
     const bindings = findFileBindings(checker, file);
     const fileSymbol = checker.getSymbolAtLocation(file);
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
@@ -147,12 +143,15 @@ export function getActionsForFile(
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
     const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
+
+    const annotations = getAnnotationsAtNode(node);
     const action: CodeAction = {
       parentKind: node.parent.kind,
       actionType: "replace",
       fileName: node.getSourceFile().fileName,
       original: originalName,
       to,
+      annotations,
       start: node.getStart(),
       isAssignment: isPropertyAssignment,
     };
@@ -194,17 +193,17 @@ export function expandToSafeRenameLocations(
   function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
     if (touchingLocations.has(touchKey)) return [];
-    const renames = findBatchRenameLocations(
+    const locations = findBatchRenameLocations(
       findRenameLocations,
       action.fileName,
       action.start,
       action.original,
       action.to,
     );
-    if (!renames) return [];
+    if (!locations) return [];
 
     // stop by conflict
-    const renameKeys = renames.map(renameLocationToKey);
+    const renameKeys = locations.map(renameLocationToKey);
     if (renameKeys.some((key) => touchingLocations.has(key))) {
       const conflicts = renameKeys.filter((key) => touchingLocations.has(key));
       console.warn("[mangle:action-stop-by-conflict]", action, "by", conflicts);
@@ -213,8 +212,14 @@ export function expandToSafeRenameLocations(
     for (const renameKey of renameKeys) {
       touchingLocations.add(renameKey);
     }
+
+    // only touching if node is anotated by @external
+    if (action.annotations?.external) {
+      console.warn("[mangle:action-stop-by-external]", action);
+      return [];
+    }
     // return with source  action
-    return renames.map((rename) => ({ ...rename, by: action }) satisfies BatchRenameLocationWithSource);
+    return locations.map((rename) => ({ ...rename, by: action }) satisfies BatchRenameLocationWithSource);
   }
 
   function actionToKey(action: CodeAction): string {

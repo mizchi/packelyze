@@ -4,7 +4,7 @@ import type { CodeAction, FileChangeResult } from "./transformer/types";
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, walkProject, getActionsForFile } from "./transformer/mangler";
+import { expandToSafeRenameLocations, walkProject, getCodeActionsAtFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 import { getRenamedFileChanges } from "./typescript/renamer";
 
@@ -61,7 +61,7 @@ export function createMinifier(
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProject(checker, rootFiles, targetsFiles);
     const actions = targetsFiles.flatMap<CodeAction>((file) =>
-      getActionsForFile(checker, visited, file, withOriginalComment),
+      getCodeActionsAtFile(checker, visited, file, withOriginalComment),
     );
     const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
     // console.log(

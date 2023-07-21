@@ -15,3 +15,6 @@ test("rollup #case22-export-types", async () => {
 test("rollup #case23-higher-chain", async () => {
   await assertRollupWithFixture(path.join(__dirname, "../fixtures/case23-higher-chain"));
 });
+test("rollup #case24-annotations", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "../fixtures/case24-annotations"));
+});

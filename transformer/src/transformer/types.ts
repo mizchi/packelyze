@@ -1,4 +1,4 @@
-import type { BatchRenameLocation } from "../typescript/types";
+import type { BatchRenameLocation, BindingAnnotations } from "../typescript/types";
 import ts from "typescript";
 
 export type ChangeResult = {
@@ -48,6 +48,7 @@ export type CodeAction = {
   start: number;
   // TODO: now assigment is ignored
   isAssignment: boolean;
+  annotations: BindingAnnotations | undefined;
 };
 
 /**
