@@ -1,8 +1,11 @@
 import ts from "typescript";
+import { SymbolWalkerResult } from "./typescript/types";
+import { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/types";
 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
   process(): void;
+  createProcess(): MinifierProcessGenerator;
   readFile(fileName: string): string | undefined;
   notifyChange(fileName: string, content: string): void;
   getSourceMapForFile(id: string): string | undefined;
@@ -26,3 +29,59 @@ export type TsMinifyOptions = {
   // load transformed code only to use with other plugins (e.g. rollup-plugin-ts)
   preTransformOnly?: boolean;
 };
+
+export const enum MinifierProcessStep {
+  PreDiagnostic,
+  Analyze,
+  CreateActionsForFile,
+  AllActionsCreated,
+  ExpandRenameLocations,
+  ApplyFileChanges,
+  PostDiagnostic,
+}
+
+type PreDiagnosticStep = {
+  stepName: MinifierProcessStep.PreDiagnostic;
+  diagnostics: ReadonlyArray<ts.Diagnostic>;
+};
+
+type AnalyzeStep = {
+  stepName: MinifierProcessStep.Analyze;
+  visited: SymbolWalkerResult;
+};
+
+type CreateActionsForFileStep = {
+  stepName: MinifierProcessStep.CreateActionsForFile;
+  actions: CodeAction[];
+  fileName: string;
+};
+
+type AllActionsCreatedStep = {
+  stepName: MinifierProcessStep.AllActionsCreated;
+  actions: CodeAction[];
+};
+
+type ExpandRenamesStep = {
+  stepName: MinifierProcessStep.ExpandRenameLocations;
+  renames: BatchRenameLocationWithSource[];
+};
+
+type ApplyFileChangesStep = {
+  stepName: MinifierProcessStep.ApplyFileChanges;
+  changes: FileChangeResult[];
+};
+
+type PostDiagnosticStep = {
+  stepName: MinifierProcessStep.PostDiagnostic;
+  diagnostics: ReadonlyArray<ts.Diagnostic>;
+};
+
+export type MinifierProcessGenerator = Generator<
+  | PreDiagnosticStep
+  | AnalyzeStep
+  | CreateActionsForFileStep
+  | AllActionsCreatedStep
+  | ExpandRenamesStep
+  | ApplyFileChangesStep
+  | PostDiagnosticStep
+>;

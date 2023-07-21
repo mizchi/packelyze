@@ -15,34 +15,10 @@ export const AT_EXTERNAL_TAG = "@external";
 export const SIDE_EFFECT_TAG = "__SIDE_EFFECT__";
 export const NO_SIDE_EFFECT_TAG = "__NO_SIDE_EFFECT__";
 export const PURE_TAG = "__PURE__";
-export const INLINE_TAG = "__INLINE__";
-export const NOINLINE_TAG = "__NOINLINE__";
-export const KEY_TAG = "__KEY__";
-export const MANGLE_PROP_TAG = "__MANGLE_PROP__";
-
-export type CommentTag =
-  | typeof SIDE_EFFECT_TAG
-  | typeof NO_SIDE_EFFECT_TAG
-  | typeof PURE_TAG
-  | typeof INTERNAL_TAG
-  | typeof INLINE_TAG
-  | typeof NOINLINE_TAG
-  | typeof KEY_TAG
-  | typeof MANGLE_PROP_TAG;
-
-const SEARCHING_COMMENT_TAGS = new Set([
-  AT_EXTERNAL_TAG,
-  AT_INTERNAL_TAG,
-  // NOINLINE_TAG,
-  // INLINE_TAG,
-  // PURE_TAG,
-  // SIDE_EFFECT_TAG,
-  // NO_SIDE_EFFECT_TAG,
-  // INTERNAL_TAG,
-  // EXTERNAL_TAG,
-  // KEY_TAG,
-  // MANGLE_PROP_TAG,
-]);
+// export const INLINE_TAG = "__INLINE__";
+// export const NOINLINE_TAG = "__NOINLINE__";
+// export const KEY_TAG = "__KEY__";
+// export const MANGLE_PROP_TAG = "__MANGLE_PROP__";
 
 export function getLeadingComments(stmt: ts.Node, code: string): string[] | undefined {
   const nodeFullStart = stmt.getFullStart();

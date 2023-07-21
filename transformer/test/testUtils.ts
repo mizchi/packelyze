@@ -1,8 +1,8 @@
 import { expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { rollup } from "rollup";
-import { tsMinify } from "../src";
+import { Plugin, rollup } from "rollup";
+import { TsMinifyOptions, tsMinify } from "../src";
 import ts from "typescript";
 import prettier from "prettier";
 
@@ -15,6 +15,20 @@ export function formatTs(code: string) {
 }
 
 export async function assertRollupWithFixture(projectPath: string) {
+  let tsMinifyPlugin: (options?: TsMinifyOptions) => Plugin;
+
+  // USE SELFHOST MODE
+  if (!!process.env.SELFHOST) {
+    try {
+      // @ts-ignore
+      tsMinifyPlugin = ((await import("../lib/index.js")) as any).tsMinify;
+    } catch (err) {
+      throw err;
+    }
+  } else {
+    tsMinifyPlugin = tsMinify;
+  }
+
   const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
 
@@ -28,7 +42,7 @@ export async function assertRollupWithFixture(projectPath: string) {
     },
     external: ["node:path", "react", "react/jsx-runtime", "myModule", "external-xxx", "ext-a", "ext-b"],
     plugins: [
-      tsMinify({
+      tsMinifyPlugin({
         cwd: projectPath,
         compilerOptions: {
           target: ts.ScriptTarget.ESNext,

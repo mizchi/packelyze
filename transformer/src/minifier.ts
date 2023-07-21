@@ -1,6 +1,5 @@
-import type { Minifier } from "./types";
-import type { BatchRenameLocation } from "./typescript/types";
-import type { CodeAction, FileChangeResult } from "./transformer/types";
+import { MinifierProcessStep, type Minifier, MinifierProcessGenerator } from "./types";
+import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/types";
 
 import ts from "typescript";
 import path from "node:path";
@@ -34,9 +33,9 @@ export function createMinifier(
   const sourceMaps = new Map<string, string>();
   return {
     process,
+    createProcess,
     exists: host.fileExists,
     notifyChange(id, content) {
-      // service.writeFileSnapshot(id, content);
       service.writeSnapshotContent(id, content);
       // TODO: update only changed files
       process();
@@ -56,34 +55,86 @@ export function createMinifier(
   };
 
   function process() {
+    const processor = createProcess();
+    // for debug step
+    for (const step of processor) {
+      switch (step.stepName) {
+        case MinifierProcessStep.PreDiagnostic: {
+          break;
+        }
+        case MinifierProcessStep.Analyze: {
+          break;
+        }
+        case MinifierProcessStep.CreateActionsForFile: {
+          break;
+        }
+        case MinifierProcessStep.AllActionsCreated: {
+          // console.log(
+          //   "[minifier:actions]",
+          //   step.actions.filter((x) => x.original === "start"),
+          //   "-----------------",
+          //   step.actions.filter((x) => x.original === "start"),
+          // );
+          break;
+        }
+        case MinifierProcessStep.ExpandRenameLocations: {
+          break;
+        }
+        case MinifierProcessStep.ApplyFileChanges: {
+          break;
+        }
+        case MinifierProcessStep.PostDiagnostic: {
+          break;
+        }
+      }
+    }
+  }
+
+  function* createProcess(): MinifierProcessGenerator {
+    // {
+    //   const program = service.getProgram()!;
+    //   const preDiagnostics = program.getSemanticDiagnostics();
+    //   yield { name: "pre-diagnostic", diagnostics: preDiagnostics };
+    // }
+
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProject(checker, rootFiles, targetsFiles);
-    const actions = targetsFiles.flatMap<CodeAction>((file) =>
-      getCodeActionsAtFile(checker, visited, file, withOriginalComment),
-    );
-    const renames: BatchRenameLocation[] = expandToSafeRenameLocations(service.findRenameLocations, actions);
-    // console.log(
-    //   "[minifier:actions]",
-    //   actions.filter((x) => x.original === "start"),
-    //   "-----------------",
-    //   renames.filter((x) => x.original === "start"),
-    // );
 
-    const changes: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
-    for (const change of changes) {
+    yield { stepName: MinifierProcessStep.Analyze, visited };
+
+    const allActions: CodeAction[] = [];
+    for (const targetFile of targetsFiles) {
+      const actions = getCodeActionsAtFile(checker, visited, targetFile, withOriginalComment);
+      yield {
+        stepName: MinifierProcessStep.CreateActionsForFile,
+        actions,
+        fileName: targetFile.fileName,
+      };
+      allActions.push(...actions);
+    }
+
+    yield { stepName: MinifierProcessStep.AllActionsCreated, actions: allActions };
+
+    const renames: BatchRenameLocationWithSource[] = expandToSafeRenameLocations(
+      service.findRenameLocations,
+      allActions,
+    );
+
+    yield { stepName: MinifierProcessStep.ExpandRenameLocations, renames };
+
+    const fileChanges: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
+
+    yield { stepName: MinifierProcessStep.ApplyFileChanges, changes: fileChanges };
+    for (const change of fileChanges) {
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);
     }
-    // console.log(
-    //   "[minifier:diagnostics]",
-    //   diagnostics.map((d) => {
-    //     return {
-    //       file: d.file?.fileName.replace(projectPath + "/", ""),
-    //       messageText: d.messageText,
-    //     };
-    //   }),
-    // );
+    // {
+    //   const postProgram = service.getProgram()!;
+    //   const postDiagnostics = postProgram.getSemanticDiagnostics();
+    //   yield { name: "post-diagnostic", diagnostics: postDiagnostics };
+    // }
   }
 }

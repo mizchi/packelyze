@@ -51,62 +51,42 @@ const result = minifier.readFile(filePath);
 - Collect mangleable nodes that has no relations to symbols and types for exported symbol, external import or builtin access.
 - Apply batch renaming to files
 
-Internal Steps.
-
-- [ ] Analyze function side-effects
-- [ ] Analyze class-member references
-- [ ] Replace constants
-- [ ] Delete dead code like `if (false)`
-- [x] Delete unusedLocals / unusedParameters
-- [ ] Delete unused class members with treeshake
-- [x] Mangle
-- [x] Bundle
-- [x] annotation: `@external`
-- [ ] annotation: `@internal`
 
 ## Resctriction
 
 - Types consumed as object rest spread (`{...v}`) can not mangle because typescript compiler is unsafe for it.
 
-## TODO
+## TODO for 0.1.0 (publish)
 
-- IncrementalLanguageService
-  - ranged snapshot create/update
-  - with project references
-- Mangle
-  - Mangle with `@internal` leading comments
-  - Skip mangle with `/* packelyze-ignore */` leading-trivia comments
-  - dynamic import and worker (multiple rootFiles)
-  - Add alert for inferred object initialization without type: `const obj = { v: 1 }`
-  - Mangle inferred object members with safe
-- Dead Code Elimination
-  - Delete unused class methods
-  - Delete unused import
-  - Disassemble import as star
-  - Replace `import.meta.env.*`
-  - Replace practically uniquely determined constants: `const Constants = { VALUE: 1 };` or `readonly VALUE: 1`
-  - Delete unreachable nodes: `if (false) {...}`
-- Side-effect detector
-  - find object member mutation
-  - mark pure function as `#__NO_SIDE_EFFECTS__`
-- Plugin
-  - Delegate to other transformer
-  - SourceMap
+- [ ] Mangle skip with `@internal` leading comments
+- [ ] Linter or Checker for mangle
+- [ ] Self hosting
+- [ ] Transform kind whitelist
+- [ ] Safe symbol builder by SyntaxKind
+- [ ] Readable intermediate `CodeAction` for debug
+- [ ] Add broken pattern tests
+- [ ] object initialization without type: `const obj = { v: 1 }`
+- [ ] pure: jsx
+- [ ] pure: Promise.resolve
+- [ ] test for `typeof`
+- [ ] Bug: TypeScript clushed with typescript internal assertings
 
-## Internal
+## Icebox
 
-- typeof v
-- Pure detection
-  - Promise resolve/rejectwm
-  - React jsxs
-- Use vitest local snapshot and update
-- Filter mangle AST pattern by explicit config
-- Self hosting
-- Support rollup watch mode
-- Support sourceMap
-- Additional upcast assigning: `const v = {...} as Additional; v.additional = 1`;
-- Assert inferred returnType to explicit returnType relation
-- Support rollup/vite watch mode
+
+- [ ] Alert detecting duplicated keys for object type intersection
+- [ ] DCE: Delete unused class methods
+- [ ] DCE: Delete unused import
+- [ ] DCE: Disassemble import as star
+- [ ] DCE: Replace `import.meta.env.*`
+- [ ] DCE: Replace practically uniquely determined constants: `const Constants = { VALUE: 1 };` or `readonly VALUE: 1`
+- [ ] DCE: Delete unreachable nodes: `if (false) {...}`
+- [ ] SideEffect: mark pure function as `#__NO_SIDE_EFFECT__`
+- [ ] SourceMap
+- [ ] Watch Mode with vite
+- [ ] IncrementalLanguageSevice: ranged snapshot create/update (perf)
+- [ ] IncrementalLanguageSevice: with project references
+- [ ] Fix: `const v = {...} as Additional; v.additional = 1`;
 
 ## Related
 
