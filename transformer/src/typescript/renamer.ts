@@ -35,7 +35,7 @@ export function getRenamedFileChanges(
 ): FileChangeResult[] {
   // rewire renames by each files
   const fileNames = [...new Set(renames.map((r) => normalizePath(r.fileName)))];
-  return fileNames.map<FileChangeResult>((targetFile) => {
+  return fileNames.map((targetFile) => {
     const current = readCurrentFile(targetFile)!;
     const renames = findRenamesForFile(targetFile);
     const result = applyBatchRenameLocations(current, renames);
@@ -45,7 +45,7 @@ export function getRenamedFileChanges(
       start: result.start,
       end: result.end,
       map: result.map,
-    } as FileChangeResult;
+    };
   });
 
   function findRenamesForFile(fileName: string) {
@@ -95,11 +95,10 @@ export function applyBatchRenameLocations(
     };
   }
 
-  const result: ChangeResult = {
+  return {
     content: magicString.toString(),
     start: changedStart,
     end: changedEnd,
     map: magicString.generateMap({ includeContent: true, hires: true }).toString(),
   };
-  return result;
 }

@@ -3,7 +3,6 @@ import type { MangleTargetNode as MangleRelatedNode } from "./types";
 import { SymbolWalkerResult } from "../typescript/types";
 import { formatCode, toReadableSymbol, toReadableType } from "../typescript/utils";
 
-// get local rename candidates
 type BindingNode = ts.Identifier | ts.PrivateIdentifier;
 
 export function findFileBindings(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
@@ -42,30 +41,15 @@ export function findFileBindings(checker: ts.TypeChecker, file: ts.SourceFile): 
       ts.isInterfaceDeclaration(node) ||
       ts.isPropertySignature(node) ||
       ts.isGetAccessorDeclaration(node) ||
-      ts.isSetAccessorDeclaration(node)
+      ts.isSetAccessorDeclaration(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isClassExpression(node)
     ) {
-      visitNamedBinding(node.name);
-    }
-    // nameable node
-    if (ts.isFunctionExpression(node) || ts.isClassExpression(node)) {
       if (node.name) {
         visitNamedBinding(node.name);
       }
     }
-    // TODO: activate for infered nodes
     if (ts.isPropertyAssignment(node)) {
-      // const parent = node.parent;
-      // const parentType = checker.getTypeAtLocation(parent);
-      // console.log("<Assignment>", parentType.symbol?.name, parentType && checker.typeToString(parentType));
-      // Skip infered type
-
-      // TODO: skip by type.symbol
-      // if (parentType.symbol?.name === "__object" || parentType.symbol?.name === "__function") {
-      //   visitNamedBinding(node.name);
-      // }
-      // const type = checker.getTypeAtLocation(node.name);
-      // console.log("<Assignment>", type && checker.typeToString(type));
-      // throw "stop";
       visitNamedBinding(node.name);
     }
     ts.forEachChild(node, visit);
@@ -156,6 +140,7 @@ export function findRootRelatedNodes(
   }
 
   return [...relatedNodes];
+
   function isRelatedNode(node: ts.Node): node is MangleRelatedNode {
     return (
       // types
@@ -180,13 +165,6 @@ export function findRootRelatedNodes(
       ts.isUnionTypeNode(node)
     );
   }
-  // function visitRelatedNodeFromInferredType(type: ts.Type, depth: number) {
-  //   if (type.symbol) {
-  //     for (const declaration of type.symbol.getDeclarations() ?? []) {
-  //       visitRelatedNode(declaration, depth);
-  //     }
-  //   }
-  // }
   function visitRelatedNode(node: ts.Node, depth: number) {
     log(
       "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
@@ -281,18 +259,12 @@ export function findRootRelatedNodes(
       }
     }
     if (ts.isObjectLiteralExpression(node)) {
-      // const type = checker.getTypeAtLocation(node);
-      // console.log("<ObjectLiteral>", checker.typeToString(type), type.symbol.valueDeclaration?.getFullText());
-      // throw "stop";
       // TODO: check type
       for (const prop of node.properties) {
         visitRelatedNode(prop, depth + 1);
       }
     }
     if (ts.isPropertyAssignment(node)) {
-      // const type = checker.getTypeAtLocation(node.name);
-      // console.log("<Assignment>", { ...type, checker: null });
-      // throw "stop";
       visitRelatedNode(node.name, depth + 1);
     }
 
@@ -334,15 +306,11 @@ export function isMangleBinding(
       return [false, "ExportRelated"];
     }
 
-    // inferred object type member will skip mangle
-    // ex. const x = {vvv: 1};
+    // inferred object type member will skip mangle: ex. const x = {vvv: 1};
     const objectType = checker.getTypeAtLocation(binding.parent.parent);
     if (objectType.symbol?.name === "__object") {
       return [false, "Inferred"];
     }
-    // if (objectType.symbol?.name && exportedSymbols.includes(objectType.symbol)) {
-    //   return false;
-    // }
   }
   const symbol = checker.getSymbolAtLocation(binding);
 

@@ -2,50 +2,19 @@
 // export type { TS };
 import ts from "typescript";
 
-// ---- TypeScript internal types ----
-
-// An instantiated anonymous type has a target and a mapper
-export interface AnonymousType extends ts.ObjectType {
-  target?: AnonymousType; // Instantiation target
-  // mapper?: ts.TypeMapper;     // Instantiation mapper
-  // instantiations?: Mapz<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
-}
-export interface MappedType extends AnonymousType {
-  declaration: ts.MappedTypeNode;
-  typeParameter?: ts.TypeParameter;
-  constraintType?: ts.Type;
-  nameType?: ts.Type;
-  templateType?: ts.Type;
-  modifiersType?: ts.Type;
-  resolvedApparentType?: ts.Type;
-  containsError?: boolean;
-}
-
-export interface TypeWithId extends ts.Type {
-  // original hidden member
-  id: number;
-}
-export interface SymbolWithId extends ts.Symbol {
-  // original hidden member
-  id: number;
-}
-
 export type SymbolWalkerResult = {
   types: ReadonlyArray<ts.Type>;
   symbols: ReadonlyArray<ts.Symbol>;
 };
 
 export interface SymbolWalker {
-  /** Note: Return values are not ordered. */
   walkType(root: ts.Type): void;
-  /** Note: Return values are not ordered. */
   walkSymbol(root: ts.Symbol): void;
   getVisited(): SymbolWalkerResult;
   clear(): void;
 }
 
 // local types
-
 export type FindRenameLocations = ts.LanguageService["findRenameLocations"];
 
 /**
@@ -55,3 +24,41 @@ export type BatchRenameLocation = ts.RenameLocation & {
   original: string;
   to: string;
 };
+
+/**
+ * Node annotation with comments
+ * ex. internal or external
+ */
+export type BindingAnnotations = {
+  internal?: boolean;
+  external?: boolean;
+};
+
+// ---- TypeScript internal types ----
+// annotated by external for mangle safe
+
+// An instantiated anonymous type has a target and a mapper
+export interface AnonymousType extends ts.ObjectType {
+  /** @external */ target?: AnonymousType; // Instantiation target
+  // mapper?: ts.TypeMapper;     // Instantiation mapper
+  // instantiations?: Mapz<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
+}
+export interface MappedType extends AnonymousType {
+  /** @external */ declaration: ts.MappedTypeNode;
+  /** @external */ typeParameter?: ts.TypeParameter;
+  /** @external */ constraintType?: ts.Type;
+  /** @external */ nameType?: ts.Type;
+  /** @external */ templateType?: ts.Type;
+  /** @external */ modifiersType?: ts.Type;
+  /** @external */ resolvedApparentType?: ts.Type;
+  /** @external */ containsError?: boolean;
+}
+
+export interface TypeWithId extends ts.Type {
+  // original hidden member
+  /** @external */ id: number;
+}
+export interface SymbolWithId extends ts.Symbol {
+  // original hidden member
+  /** @external */ id: number;
+}
