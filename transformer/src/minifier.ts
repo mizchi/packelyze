@@ -1,9 +1,9 @@
 import { MinifierProcessStep, type Minifier, MinifierProcessGenerator } from "./types";
-import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/types";
+import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/transformTypes";
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, walkProject, getCodeActionsAtFile } from "./transformer/mangler";
+import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./transformer/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
 import { getRenamedFileChanges } from "./typescript/renamer";
 
@@ -106,7 +106,7 @@ export function createMinifier(
 
     const allActions: CodeAction[] = [];
     for (const targetFile of targetsFiles) {
-      const actions = getCodeActionsAtFile(checker, visited, targetFile, withOriginalComment);
+      const actions = getCodeActionsInFile(checker, visited, targetFile, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
         actions,

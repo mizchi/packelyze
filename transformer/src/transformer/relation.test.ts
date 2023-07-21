@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { findRootRelatedNodes, findFileBindings } from "./relation";
+import { findRelatedNodesOnProject, findBindingsInFile } from "./relation";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../typescript/utils";
+import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../typescript/tsUtils";
 
 test("findFileBindings # complex", () => {
   const { file, checker } = createOneshotTestProgram(`
@@ -37,7 +37,7 @@ test("findFileBindings # complex", () => {
   }
   module M {}
   `);
-  const idents = findFileBindings(checker, file);
+  const idents = findBindingsInFile(checker, file);
 
   const expected = new Set([
     "X",
@@ -79,7 +79,7 @@ test("findFileBindings # PropertyAssignment", () => {
     }
   };
   `);
-  const bindings = findFileBindings(checker, file);
+  const bindings = findBindingsInFile(checker, file);
   const expected = new Set(["obj", "foo", "nested", "bar"]);
   for (const ident of bindings) {
     expect(expected).includes(ident.getText());
@@ -253,7 +253,7 @@ test("detect mangle nodes", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const nodes = findRootRelatedNodes(checker, visited);
+  const nodes = findRelatedNodesOnProject(checker, visited);
   // const result = findRootRelatedNodesForTest(checker, file);
   const result = nodes.map((node) => {
     return {
@@ -327,7 +327,7 @@ function findRootRelatedNodesForTest(checker: ts.TypeChecker, root: ts.SourceFil
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const nodes = findRootRelatedNodes(checker, visited);
+  const nodes = findRelatedNodesOnProject(checker, visited);
   return {
     nodes: nodes.map((node) => {
       return {

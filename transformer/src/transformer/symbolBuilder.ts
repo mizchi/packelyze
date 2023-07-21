@@ -1,6 +1,6 @@
 // sort alphabet by usage rate https://tex2e.github.io/blog/crypto/letter-frequency
 
-import { SymbolBuilder } from "./types";
+import { SymbolBuilder } from "./transformTypes";
 
 // const FIRST_CHARS = [..."_$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
 const FIRST_CHARS = [..."kxjqzpfywgbvdlucmtaonirshe_$KXJQZPFYWGBVDLUCMTAONIRSHE"] as const;

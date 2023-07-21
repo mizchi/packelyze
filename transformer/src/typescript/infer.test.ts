@@ -7,7 +7,7 @@ import {
   toReadableNode,
   toReadableSymbol,
   toReadableType,
-} from "./utils";
+} from "./tsUtils";
 import { createGetSymbolWalker } from "./symbolWalker";
 
 test("infer # 1", () => {

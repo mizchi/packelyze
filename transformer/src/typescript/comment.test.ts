@@ -1,6 +1,6 @@
 import ts, { getJSDocTags } from "typescript";
 import { expect, test } from "vitest";
-import { getFirstNodeFromMatcher } from "./utils";
+import { getFirstNodeFromMatcher } from "./tsUtils";
 import { getLeadingComments, getTrailingComments, getCommentsFromIdentifier, getAnnotationsAtNode } from "./comment";
 import { createOneshotTestProgram } from "../../test/testHarness";
 

@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { BatchRenameLocation, FindRenameLocations } from "./types";
-import { ChangeResult, FileChangeResult } from "../transformer/types";
+import { ChangeResult, FileChangeResult } from "../transformer/transformTypes";
 import MagicString from "magic-string";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map";
 

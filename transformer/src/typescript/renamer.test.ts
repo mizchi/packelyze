@@ -3,7 +3,7 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { applyBatchRenameLocations, findBatchRenameLocations, getRenamedFileChanges } from "./renamer";
 import { createTestLanguageService } from "../../test/testHarness";
-import { findFirstNode } from "./utils";
+import { findFirstNode } from "./tsUtils";
 import { type BatchRenameLocation } from "./types";
 
 test("batch renaming", () => {

@@ -17,7 +17,7 @@ export { createMinifier } from "./minifier";
 export { getPlugin as tsMinify } from "./rollup";
 
 // ---- to keep internal interfaces ---
-export type { ReadableSymbol, ReadbleNode } from "./typescript/utils";
+export type { ReadableSymbol, ReadbleNode } from "./typescript/tsUtils";
 export type {
   // TODO: Remove internal type exports
   // TypeWithId,
@@ -33,4 +33,4 @@ export type {
   FileChangeResult,
   // TODO: Remove internal type exports
   BatchRenameLocationWithSource,
-} from "./transformer/types";
+} from "./transformer/transformTypes";

@@ -65,18 +65,15 @@ export const findFirstNode = (program: ts.Program, fileName: string, matcher: st
   }
 };
 
-export type Visitor = (node: ts.Node, depth?: number) => boolean | void;
-export function composeVisitors(...visitors: Visitor[]): Visitor {
-  const visit = (node: ts.Node, depth = 0) => {
-    for (const visitor of visitors) {
-      const ret = visitor(node, depth);
-      if (ret === false) {
-        break;
-      }
+export type NodeWalker = (node: ts.Node, depth?: number) => boolean | void;
+export function composeWalkers(...visitors: NodeWalker[]): NodeWalker {
+  const visit = (node: ts.Node, depth = 0, visitors: NodeWalker[]) => {
+    const nextVisitors = visitors.filter((visitor) => visitor(node, depth) !== false);
+    if (nextVisitors.length > 0) {
+      ts.forEachChild(node, (node) => visit(node, depth + 1, nextVisitors));
     }
-    ts.forEachChild(node, (node) => visit(node, depth + 1));
   };
-  return visit;
+  return (node: ts.Node) => visit(node, 0, visitors);
 }
 
 export function findClosestBlock(node: ts.Node) {

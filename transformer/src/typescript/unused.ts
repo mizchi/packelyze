@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { IncrementalLanguageService } from "./services";
-import { getNodeAtRange } from "./utils";
+import { getNodeAtRange } from "./tsUtils";
 
 const MAX_UNCHANGED_COUNT = 10;
 

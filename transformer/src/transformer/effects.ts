@@ -1,7 +1,7 @@
 import ts from "typescript";
 
 // for composeVisitors
-export function getEffectDetectorEnter(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
+export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
   return (node: ts.Node) => {
     if (ts.isBinaryExpression(node)) {
       // TODO: modifing node

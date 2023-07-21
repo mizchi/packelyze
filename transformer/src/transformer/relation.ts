@@ -1,11 +1,11 @@
 import ts from "typescript";
-import type { MangleTargetNode as MangleRelatedNode } from "./types";
+import type { MangleTargetNode as MangleRelatedNode } from "./transformTypes";
 import { SymbolWalkerResult } from "../typescript/types";
-import { formatCode, toReadableSymbol, toReadableType } from "../typescript/utils";
+import { formatCode, toReadableSymbol, toReadableType } from "../typescript/tsUtils";
 
 type BindingNode = ts.Identifier | ts.PrivateIdentifier;
 
-export function findFileBindings(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
+export function findBindingsInFile(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
@@ -106,7 +106,7 @@ export function findFileBindings(checker: ts.TypeChecker, file: ts.SourceFile): 
   }
 }
 
-export function findRootRelatedNodes(
+export function findRelatedNodesOnProject(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,

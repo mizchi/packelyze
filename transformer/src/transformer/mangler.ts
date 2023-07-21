@@ -3,12 +3,12 @@ import ts from "typescript";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../typescript/renamer";
-import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/utils";
+import { getEffectDetectorWalker } from "./effects";
+import { composeWalkers, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/tsUtils";
 import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
-import { type CodeAction, SymbolBuilder, BatchRenameLocationWithSource } from "./types";
+import { type CodeAction, SymbolBuilder, BatchRenameLocationWithSource } from "./transformTypes";
 import { type BatchRenameLocation } from "../typescript/types";
-import { findRootRelatedNodes, findFileBindings, isMangleBinding } from "./relation";
+import { findRelatedNodesOnProject, findBindingsInFile, isMangleBinding } from "./relation";
 import { getAnnotationsAtNode } from "../typescript/comment";
 
 export function walkProject(
@@ -54,9 +54,9 @@ export function walkProject(
 
   function walkTargetFile(file: ts.SourceFile) {
     const effectNodes: Set<ts.Node> = new Set();
-    const composed = composeVisitors(
+    const composed = composeWalkers(
       // collect effect nodes
-      getEffectDetectorEnter(checker, (node) => {
+      getEffectDetectorWalker(checker, (node) => {
         effectNodes.add(node);
       }),
     );
@@ -71,7 +71,7 @@ export function walkProject(
   }
 }
 
-export function getCodeActionsAtFile(
+export function getCodeActionsInFile(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   file: ts.SourceFile,
@@ -79,7 +79,7 @@ export function getCodeActionsAtFile(
 ): CodeAction[] {
   const symbolBuilder = createSymbolBuilder();
 
-  const relatedNodes = findRootRelatedNodes(checker, visited);
+  const relatedNodes = findRelatedNodesOnProject(checker, visited);
 
   // console.log(
   //   "[getActionsForFile] relatedNodes",
@@ -95,7 +95,7 @@ export function getCodeActionsAtFile(
   });
 
   function getMangleNodesAtFile(file: ts.SourceFile): ts.Node[] {
-    const bindings = findFileBindings(checker, file);
+    const bindings = findBindingsInFile(checker, file);
     const fileSymbol = checker.getSymbolAtLocation(file);
     const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
     return bindings.filter((identifier) => {

@@ -2,16 +2,16 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { createGetSymbolWalker } from "../typescript/symbolWalker";
 import ts from "typescript";
-import { findRootRelatedNodes } from "./relation";
-import { getEffectDetectorEnter } from "./effects";
-import { composeVisitors, formatCode } from "../typescript/utils";
+import { findRelatedNodesOnProject } from "./relation";
+import { getEffectDetectorWalker } from "./effects";
+import { composeWalkers, formatCode } from "../typescript/tsUtils";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();
-  const enter = getEffectDetectorEnter(checker, (node) => {
+  const enter = getEffectDetectorWalker(checker, (node) => {
     nodes.add(node);
   });
-  const composed = composeVisitors(enter);
+  const composed = composeWalkers(enter);
   composed(node);
   return nodes;
 }
@@ -43,7 +43,7 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRootRelatedNodes(checker, visited);
+  const collected = findRelatedNodesOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -91,7 +91,7 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRootRelatedNodes(checker, visited);
+  const collected = findRelatedNodesOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -139,7 +139,7 @@ test("detect object rest spread", () => {
     }
   }
   const visited = walker.getVisited();
-  const collected = findRootRelatedNodes(checker, visited);
+  const collected = findRelatedNodesOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
