@@ -6,18 +6,18 @@ export type {
 export type {
   IncrementalLanguageService,
   IncrementalLanguageServiceHost,
-} from "./typescript/services";
+} from "./ts/services";
 
 // instances
 export {
   createIncrementalLanguageServiceHost,
   createIncrementalLanguageService,
-} from "./typescript/services";
+} from "./ts/services";
 export { createMinifier } from "./minifier";
 export { getPlugin as tsMinify } from "./rollup";
 
 // ---- to keep internal interfaces ---
-export type { ReadableSymbol, ReadbleNode } from "./typescript/tsUtils";
+export type { ReadableSymbol, ReadbleNode } from "./ts/tsUtils";
 export type {
   // TODO: Remove internal type exports
   // TypeWithId,
@@ -26,11 +26,11 @@ export type {
   // SymbolWalkerResult,
   // MappedType,
   AnonymousType,
-} from "./typescript/types";
+} from "./ts/types";
 // TODO: Remove internal type exports
 export type {
   // TODO: Remove internal type exports
   FileChangeResult,
   // TODO: Remove internal type exports
   BatchRenameLocationWithSource,
-} from "./transformer/transformTypes";
+} from "./transform/transformTypes";

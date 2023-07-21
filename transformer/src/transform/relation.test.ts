@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
 import { findRelatedNodesOnProject, findBindingsInFile } from "./relation";
-import { createGetSymbolWalker } from "../typescript/symbolWalker";
+import { createGetSymbolWalker } from "../ts/symbolWalker";
 import ts from "typescript";
-import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../typescript/tsUtils";
+import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
 
 test("findFileBindings # complex", () => {
   const { file, checker } = createOneshotTestProgram(`

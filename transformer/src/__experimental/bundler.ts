@@ -1,5 +1,5 @@
 // import { TS } from "../types";
-import { IncrementalLanguageService } from "../typescript/services";
+import { IncrementalLanguageService } from "../ts/services";
 import ts, { ClassDeclaration, FunctionDeclaration, FunctionExpression, VariableStatement, factory } from "typescript";
 import { cloneNode } from "ts-clone-node";
 import { getAccessesFromExpression, getUnscopedAccesses } from "./scope";

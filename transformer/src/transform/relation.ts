@@ -1,7 +1,7 @@
 import ts from "typescript";
 import type { MangleTargetNode as MangleRelatedNode } from "./transformTypes";
-import { SymbolWalkerResult } from "../typescript/types";
-import { formatCode, toReadableSymbol, toReadableType } from "../typescript/tsUtils";
+import { SymbolWalkerResult } from "../ts/types";
+import { formatCode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
 
 type BindingNode = ts.Identifier | ts.PrivateIdentifier;
 

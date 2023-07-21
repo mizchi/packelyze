@@ -1,10 +1,10 @@
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
-import { createGetSymbolWalker } from "../typescript/symbolWalker";
+import { createGetSymbolWalker } from "../ts/symbolWalker";
 import ts from "typescript";
 import { findRelatedNodesOnProject } from "./relation";
 import { getEffectDetectorWalker } from "./effects";
-import { composeWalkers, formatCode } from "../typescript/tsUtils";
+import { composeWalkers, formatCode } from "../ts/tsUtils";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();

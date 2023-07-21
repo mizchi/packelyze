@@ -1,6 +1,6 @@
 import ts from "typescript";
-import { SymbolWalkerResult } from "./typescript/types";
-import { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/transformTypes";
+import { SymbolWalkerResult } from "./ts/types";
+import { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transform/transformTypes";
 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {

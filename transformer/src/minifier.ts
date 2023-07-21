@@ -1,11 +1,11 @@
 import { MinifierProcessStep, type Minifier, MinifierProcessGenerator } from "./types";
-import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transformer/transformTypes";
+import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transform/transformTypes";
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./transformer/mangler";
-import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./typescript/services";
-import { getRenamedFileChanges } from "./typescript/renamer";
+import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./transform/mangler";
+import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
+import { getRenamedFileChanges } from "./ts/renamer";
 
 export function createMinifier(
   projectPath: string,

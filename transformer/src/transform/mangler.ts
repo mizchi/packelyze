@@ -1,15 +1,15 @@
 // import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
-import { createGetSymbolWalker } from "../typescript/symbolWalker";
+import { createGetSymbolWalker } from "../ts/symbolWalker";
 import { createSymbolBuilder } from "./symbolBuilder";
-import { findBatchRenameLocations } from "../typescript/renamer";
+import { findBatchRenameLocations } from "../ts/renamer";
 import { getEffectDetectorWalker } from "./effects";
-import { composeWalkers, toReadableNode, toReadableSymbol, toReadableType } from "../typescript/tsUtils";
-import { FindRenameLocations, SymbolWalkerResult } from "../typescript/types";
+import { composeWalkers, toReadableNode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
+import { FindRenameLocations, SymbolWalkerResult } from "../ts/types";
 import { type CodeAction, SymbolBuilder, BatchRenameLocationWithSource } from "./transformTypes";
-import { type BatchRenameLocation } from "../typescript/types";
+import { type BatchRenameLocation } from "../ts/types";
 import { findRelatedNodesOnProject, findBindingsInFile, isMangleBinding } from "./relation";
-import { getAnnotationsAtNode } from "../typescript/comment";
+import { getAnnotationsAtNode } from "../ts/comment";
 
 export function walkProject(
   checker: ts.TypeChecker,

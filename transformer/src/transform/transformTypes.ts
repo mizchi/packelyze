@@ -1,4 +1,4 @@
-import type { BatchRenameLocation, BindingAnnotations } from "../typescript/types";
+import type { BatchRenameLocation, BindingAnnotations } from "../ts/types";
 import ts from "typescript";
 
 export type ChangeResult = {
