@@ -3,16 +3,11 @@ import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from
 
 import ts from "typescript";
 import path from "node:path";
-import {
-  expandToSafeRenameLocations,
-  walkProject,
-  getCodeActionsFromTrials,
-  getMangleTrialsInFile,
-} from "./transform/mangler";
+import { expandToSafeRenameLocations, getCodeActionsFromTrials, getMangleTrialsInFile } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
-import { visitedToNodes } from "./transform/relation";
+import { walkProjectExported } from "./transform/relation";
 
 export function createMinifier(
   projectPath: string,
@@ -107,15 +102,14 @@ export function createMinifier(
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const visited = walkProject(checker, rootFiles, targetsFiles);
-    const exportRelatedNodes = visitedToNodes(checker, visited);
+    const visited = walkProjectExported(checker, rootFiles, targetsFiles);
 
     yield { stepName: MinifierProcessStep.Analyze, visited };
 
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const trials = getMangleTrialsInFile(checker, [...visited.types], file, exportRelatedNodes);
+      const trials = getMangleTrialsInFile(checker, [...visited.types], file, visited.nodes);
       const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,

@@ -1,10 +1,9 @@
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
-import { createGetSymbolWalker } from "../ts/symbolWalker";
 import ts from "typescript";
-import { visitedToNodes } from "./relation";
-import { getEffectDetectorWalker } from "./effects";
+import { getEffectDetectorWalker } from "./detector";
 import { composeWalkers, formatCode } from "../ts/tsUtils";
+import { walkProjectExported } from "./relation";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();
@@ -31,21 +30,9 @@ test("effect with builtins", () => {
   export {}
 `);
 
-  const walker = createGetSymbolWalker(checker)();
-  const nodes = findEffectNodes(checker, file);
-  for (const node of nodes) {
-    const symbol = checker.getSymbolAtLocation(node);
-    if (symbol) {
-      walker.walkSymbol(symbol);
-      const type = checker.getTypeOfSymbolAtLocation(symbol, node);
-      walker.walkType(type);
-    }
-  }
-  const visited = walker.getVisited();
-
-  const collected = visitedToNodes(checker, visited);
+  const visited = walkProjectExported(checker, [file], [file]);
   expect(
-    [...collected].map((node) => {
+    visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
@@ -78,22 +65,9 @@ test("effect to global assign", () => {
   });
   const checker = service.getProgram()!.getTypeChecker();
   const file = service.getProgram()!.getSourceFile("src/index.ts")!;
-
-  const walker = createGetSymbolWalker(checker)();
-  const nodes = findEffectNodes(checker, file);
-  for (const node of nodes) {
-    const symbol = checker.getSymbolAtLocation(node);
-    if (symbol) {
-      walker.walkSymbol(symbol);
-      const type = checker.getTypeOfSymbolAtLocation(symbol, node);
-      walker.walkType(type);
-    }
-  }
-  const visited = walker.getVisited();
-
-  const collected = visitedToNodes(checker, visited);
+  const visited = walkProjectExported(checker, [file], [file]);
   expect(
-    [...collected].map((node) => {
+    visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
@@ -126,23 +100,19 @@ test("detect object rest spread", () => {
   const checker = service.getProgram()!.getTypeChecker();
   const file = service.getProgram()!.getSourceFile("src/index.ts")!;
 
-  const walker = createGetSymbolWalker(checker)();
-  const nodes = findEffectNodes(checker, file);
-  expect(nodes.size).toEqual(1);
-  // console.log("nodes", nodes.size);
-  for (const node of nodes) {
-    const symbol = checker.getSymbolAtLocation(node);
-    if (symbol) {
-      walker.walkSymbol(symbol);
-      const type = checker.getTypeOfSymbolAtLocation(symbol, node);
-      walker.walkType(type);
-    }
-  }
-  const visited = walker.getVisited();
-  const collected = visitedToNodes(checker, visited);
+  const visited = walkProjectExported(checker, [file], [file]);
   expect(
-    [...collected].map((node) => {
+    visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
-  ).toEqual(["(TypeLiteral){ x: number; }", "(PropertySignature)x: number;", "(NumberKeyword)number"]);
+  ).toEqual([
+    "(TypeLiteral){ x: number; y: number; }",
+    "(PropertySignature)x: number;",
+    "(NumberKeyword)number",
+    "(PropertySignature)y: number;",
+    "(NumberKeyword)number",
+    "(TypeLiteral){ x: number; }",
+    "(PropertySignature)x: number;",
+    "(NumberKeyword)number",
+  ]);
 });

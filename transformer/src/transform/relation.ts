@@ -1,7 +1,9 @@
 import ts from "typescript";
-import type { BindingNode, MangleTargetNode as MangleRelatedNode } from "./transformTypes";
+import type { BindingNode, MangleTargetNode, ProjectExported } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
-import { formatCode } from "../ts/tsUtils";
+import { composeWalkers, formatCode } from "../ts/tsUtils";
+import { getEffectDetectorWalker } from "./detector";
+import { createGetSymbolWalker } from "../ts/symbolWalker";
 
 export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
@@ -79,13 +81,118 @@ export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
   }
 }
 
-export function visitedToNodes(
+export function createIsBindingExported(
+  checker: ts.TypeChecker,
+  exportedNodes: ReadonlyArray<ts.Node>,
+  exportedSymbols: ReadonlyArray<ts.Symbol>,
+  exportedTypes: ReadonlyArray<ts.Type>,
+) {
+  return (binding: BindingNode) => {
+    // special case for property assignment
+    if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
+      const type = checker.getTypeAtLocation(binding.parent);
+      if (exportedTypes.includes(type)) {
+        return true;
+      }
+
+      if (type.symbol && exportedSymbols.includes(type.symbol)) {
+        return true;
+      }
+
+      // inferred object type member will skip mangle: ex. const x = {vvv: 1};
+      const objectType = checker.getTypeAtLocation(binding.parent.parent);
+      if (objectType.symbol?.name === "__object") {
+        return true;
+      }
+    }
+
+    if (exportedNodes.includes(binding.parent)) {
+      return true;
+    }
+    const symbol = checker.getSymbolAtLocation(binding);
+    if (symbol && exportedSymbols.includes(symbol)) {
+      return true;
+    }
+    // const type = checker.getTypeAtLocation(binding.parent);
+    // if (exportedTypes.includes(type)) {
+    //   return true;
+    // }
+    return false;
+  };
+}
+
+export function walkProjectExported(
+  checker: ts.TypeChecker,
+  rootFiles: ts.SourceFile[],
+  files: ts.SourceFile[],
+): ProjectExported {
+  const symbolWalker = createGetSymbolWalker(checker)();
+  for (const root of rootFiles) {
+    walkRootFile(root);
+  }
+  for (const file of files) {
+    walkTargetFile(file);
+  }
+  const visited = symbolWalker.getVisited();
+  return {
+    symbols: visited.symbols,
+    types: visited.types,
+    nodes: visitedToNodes(checker, visited),
+  };
+
+  function walkRootFile(root: ts.SourceFile) {
+    const fileSymbol = checker.getSymbolAtLocation(root);
+    if (!fileSymbol) return;
+    const exportedSymbols = checker.getExportsOfModule(fileSymbol);
+    for (const exported of exportedSymbols) {
+      symbolWalker.walkSymbol(exported);
+
+      const type = checker.getTypeOfSymbol(exported);
+      symbolWalker.walkType(type);
+      if (type.symbol) {
+        symbolWalker.walkSymbol(type.symbol);
+      }
+
+      // check exported
+      // if it is any type and export type, typescript was lost type tracing
+      // ex. export type { MyType } from "./types";
+      const exportedSymbol = checker.getExportSymbolOfSymbol(exported);
+      // if (exportedSymbol === exported) continue;
+      const maybeExportSpecifier = exportedSymbol?.declarations?.[0];
+      if (maybeExportSpecifier && ts.isExportSpecifier(maybeExportSpecifier)) {
+        const exportSpecifierType = checker.getTypeAtLocation(maybeExportSpecifier);
+        symbolWalker.walkType(exportSpecifierType);
+        symbolWalker.walkSymbol(exportSpecifierType.symbol!);
+      }
+    }
+  }
+
+  function walkTargetFile(file: ts.SourceFile) {
+    const effectNodes: Set<ts.Node> = new Set();
+    const walk = composeWalkers(
+      // collect effect nodes
+      getEffectDetectorWalker(checker, (node) => {
+        effectNodes.add(node);
+      }),
+    );
+    walk(file);
+
+    for (const node of effectNodes) {
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) symbolWalker.walkSymbol(symbol);
+      const type = checker.getTypeAtLocation(node);
+      symbolWalker.walkType(type);
+    }
+  }
+}
+
+function visitedToNodes(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,
-): MangleRelatedNode[] {
+): MangleTargetNode[] {
   const log = debug ? console.log : () => {};
-  const relatedNodes = new Set<MangleRelatedNode>();
+  const relatedNodes = new Set<MangleTargetNode>();
   for (const symbol of visited.symbols) {
     // register symbol declaration
     for (const declaration of symbol.getDeclarations() ?? []) {
@@ -114,7 +221,7 @@ export function visitedToNodes(
 
   return [...relatedNodes];
 
-  function isRelatedNode(node: ts.Node): node is MangleRelatedNode {
+  function isRelatedNode(node: ts.Node): node is MangleTargetNode {
     return (
       // types
       ts.isTypeNode(node) ||
@@ -231,45 +338,4 @@ export function visitedToNodes(
       }
     }
   }
-}
-
-export function createIsBindingRelatedToExport(
-  checker: ts.TypeChecker,
-  exportedNodes: ts.Node[],
-  exportedSymbols: ts.Symbol[],
-  exportedTypes: ts.Type[],
-) {
-  return (binding: BindingNode) => {
-    // special case for property assignment
-    if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
-      const type = checker.getTypeAtLocation(binding.parent);
-      if (exportedTypes.includes(type)) {
-        return true;
-      }
-
-      if (type.symbol && exportedSymbols.includes(type.symbol)) {
-        return true;
-      }
-
-      // inferred object type member will skip mangle: ex. const x = {vvv: 1};
-      const objectType = checker.getTypeAtLocation(binding.parent.parent);
-      if (objectType.symbol?.name === "__object") {
-        return true;
-      }
-    }
-
-    if (exportedNodes.includes(binding.parent)) {
-      return true;
-    }
-    const symbol = checker.getSymbolAtLocation(binding);
-    if (symbol && exportedSymbols.includes(symbol)) {
-      return true;
-    }
-
-    // const type = checker.getTypeAtLocation(binding.parent);
-    // if (exportedTypes.includes(type)) {
-    //   return true;
-    // }
-    return false;
-  };
 }

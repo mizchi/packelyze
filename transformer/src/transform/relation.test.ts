@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { visitedToNodes, findBindingsInFile } from "./relation";
-import { createGetSymbolWalker } from "../ts/symbolWalker";
+import { findBindingsInFile, walkProjectExported } from "./relation";
 import ts from "typescript";
 import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
 
@@ -247,15 +246,16 @@ test("detect mangle nodes", () => {
   };
   `);
 
-  const walker = createGetSymbolWalker(checker)();
-  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  for (const symbol of symbols) {
-    walker.walkSymbol(symbol);
-  }
-  const visited = walker.getVisited();
-  const nodes = visitedToNodes(checker, visited);
+  const visited = walkProjectExported(checker, [file], [file]);
+  // const walker = createGetSymbolWalker(checker)();
+  // const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
+  // for (const symbol of symbols) {
+  //   walker.walkSymbol(symbol);
+  // }
+  // const visited = walker.getVisited();
+  // const nodes = visitedToNodes(checker, visited);
   // const result = findRootRelatedNodesForTest(checker, file);
-  const result = nodes.map((node) => {
+  const result = visited.nodes.map((node) => {
     return {
       kind: ts.SyntaxKind[node.kind],
       text: formatCode(node.getText()),
@@ -287,7 +287,7 @@ test("detect mangle nodes", () => {
   //   }),
   // );
   expect(
-    nodes.map((node) => {
+    visited.nodes.map((node) => {
       const type = checker.getTypeAtLocation(node);
       return {
         typeName: checker.typeToString(type),
@@ -321,15 +321,16 @@ test("detect mangle nodes", () => {
 });
 
 function findRootRelatedNodesForTest(checker: ts.TypeChecker, root: ts.SourceFile) {
-  const walker = createGetSymbolWalker(checker)();
-  const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
-  for (const symbol of symbols) {
-    walker.walkSymbol(symbol);
-  }
-  const visited = walker.getVisited();
-  const nodes = visitedToNodes(checker, visited);
+  const visited = walkProjectExported(checker, [root], [root]);
+  // const walker = createGetSymbolWalker(checker)();
+  // const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
+  // for (const symbol of symbols) {
+  //   walker.walkSymbol(symbol);
+  // }
+  // const visited = walker.getVisited();
+  // const nodes = visitedToNodes(checker, visited);
   return {
-    nodes: nodes.map((node) => {
+    nodes: visited.nodes.map((node) => {
       return {
         kind: ts.SyntaxKind[node.kind],
         text: formatCode(node.getText()),

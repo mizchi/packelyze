@@ -1,6 +1,11 @@
 import type { BatchRenameLocation, BindingAnnotation } from "../ts/types";
 import ts from "typescript";
 
+export type ProjectExported = {
+  symbols: ReadonlyArray<ts.Symbol>;
+  types: ReadonlyArray<ts.Type>;
+  nodes: ReadonlyArray<MangleTargetNode>;
+};
 export type ChangeResult = {
   content: string;
   start?: number;

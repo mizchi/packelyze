@@ -75,3 +75,7 @@ export function getOwnValues<T>(collection: MapLike<T> | T[]): T[] {
   }
   return values;
 }
+
+export function sortBy<T>(array: T[], comparer: (t: T) => number): T[] {
+  return array.slice().sort((a, b) => comparer(a) - comparer(b));
+}

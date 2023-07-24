@@ -2,10 +2,10 @@ import "../../test/globals";
 import { initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "../ts/renamer";
 import { expect, test } from "vitest";
-import { expandToSafeRenameLocations, walkProject, getCodeActionsFromTrials, getMangleTrialsInFile } from "./mangler";
+import { expandToSafeRenameLocations, getCodeActionsFromTrials, getMangleTrialsInFile } from "./mangler";
 import { toReadableSymbol, toReadableType } from "../ts/tsUtils";
 import { SymbolWalkerResult } from "../ts/types";
-import { visitedToNodes } from "./relation";
+import { walkProjectExported } from "./relation";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -20,17 +20,14 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const targetFiles = fileNames.map((fname) => service.getCurrentSourceFile(fname)!);
 
   const checker = service.getProgram()!.getTypeChecker();
-  const visited = walkProject(
+  const visited = walkProjectExported(
     checker,
     [root],
     fileNames.map((fname) => service.getCurrentSourceFile(fname)!),
   );
 
-  // debugVisitResult(visited);
-  const exportRelatedNodes = visitedToNodes(checker, visited);
-
   const actions = targetFiles.flatMap((target) => {
-    const trials = getMangleTrialsInFile(checker, [...visited.types], target, exportRelatedNodes);
+    const trials = getMangleTrialsInFile(checker, visited.types, target, visited.nodes);
     return getCodeActionsFromTrials(checker, trials).actions;
   });
 

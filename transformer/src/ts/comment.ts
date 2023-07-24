@@ -11,14 +11,9 @@ export const AT_INTERNAL_TAG = "@internal";
 // original annotation for stop mangle
 export const EXTERNAL_TAG = "external";
 export const AT_EXTERNAL_TAG = "@external";
-
 export const SIDE_EFFECT_TAG = "__SIDE_EFFECT__";
 export const NO_SIDE_EFFECT_TAG = "__NO_SIDE_EFFECT__";
 export const PURE_TAG = "__PURE__";
-// export const INLINE_TAG = "__INLINE__";
-// export const NOINLINE_TAG = "__NOINLINE__";
-// export const KEY_TAG = "__KEY__";
-// export const MANGLE_PROP_TAG = "__MANGLE_PROP__";
 
 export function getLeadingComments(stmt: ts.Node, code: string): string[] | undefined {
   const nodeFullStart = stmt.getFullStart();

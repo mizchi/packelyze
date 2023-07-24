@@ -1,12 +1,9 @@
+import type { FindRenameLocations, BatchRenameLocation } from "../ts/types";
 import { WarningCode, type OnWarning } from "./../types";
-// import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
+
 import ts from "typescript";
-import { createGetSymbolWalker } from "../ts/symbolWalker";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../ts/renamer";
-import { getEffectDetectorWalker } from "./effects";
-import { composeWalkers, toReadableNode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
-import { FindRenameLocations, SymbolWalkerResult } from "../ts/types";
 import {
   type CodeAction,
   SymbolBuilder,
@@ -15,10 +12,11 @@ import {
   MangleStopReason,
   MangleTrial,
   MangleReason,
+  MangleTargetNode,
 } from "./transformTypes";
-import { type BatchRenameLocation } from "../ts/types";
-import { findBindingsInFile, createIsBindingRelatedToExport } from "./relation";
+import { findBindingsInFile, createIsBindingExported } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
+import { sortBy } from "../utils";
 
 export function getMangleTrial(checker: ts.TypeChecker, binding: BindingNode, isExported: boolean): MangleTrial {
   // skip: type <Foo> = { ... }
@@ -102,76 +100,16 @@ export function getMangleTrial(checker: ts.TypeChecker, binding: BindingNode, is
   };
 }
 
-export function walkProject(
-  checker: ts.TypeChecker,
-  rootFiles: ts.SourceFile[],
-  files: ts.SourceFile[],
-): SymbolWalkerResult {
-  const symbolWalker = createGetSymbolWalker(checker)();
-  for (const root of rootFiles) {
-    walkRootFile(root);
-  }
-  for (const file of files) {
-    walkTargetFile(file);
-  }
-  return symbolWalker.getVisited();
-
-  function walkRootFile(root: ts.SourceFile) {
-    const fileSymbol = checker.getSymbolAtLocation(root);
-    if (!fileSymbol) return;
-    const exportedSymbols = checker.getExportsOfModule(fileSymbol);
-    for (const exported of exportedSymbols) {
-      symbolWalker.walkSymbol(exported);
-
-      const type = checker.getTypeOfSymbol(exported);
-      symbolWalker.walkType(type);
-      if (type.symbol) {
-        symbolWalker.walkSymbol(type.symbol);
-      }
-
-      // check exported
-      // if it is any type and export type, typescript was lost type tracing
-      // ex. export type { MyType } from "./types";
-      const exportedSymbol = checker.getExportSymbolOfSymbol(exported);
-      // if (exportedSymbol === exported) continue;
-      const maybeExportSpecifier = exportedSymbol?.declarations?.[0];
-      if (maybeExportSpecifier && ts.isExportSpecifier(maybeExportSpecifier)) {
-        const exportSpecifierType = checker.getTypeAtLocation(maybeExportSpecifier);
-        symbolWalker.walkType(exportSpecifierType);
-        symbolWalker.walkSymbol(exportSpecifierType.symbol!);
-      }
-    }
-  }
-
-  function walkTargetFile(file: ts.SourceFile) {
-    const effectNodes: Set<ts.Node> = new Set();
-    const walk = composeWalkers(
-      // collect effect nodes
-      getEffectDetectorWalker(checker, (node) => {
-        effectNodes.add(node);
-      }),
-    );
-    walk(file);
-
-    for (const node of effectNodes) {
-      const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) symbolWalker.walkSymbol(symbol);
-      const type = checker.getTypeAtLocation(node);
-      symbolWalker.walkType(type);
-    }
-  }
-}
-
 export function getMangleTrialsInFile(
   checker: ts.TypeChecker,
-  visitedTypes: ts.Type[],
+  visitedTypes: ReadonlyArray<ts.Type>,
   file: ts.SourceFile,
-  exportRelatedNodes: ts.Node[],
+  exportRelatedNodes: ReadonlyArray<MangleTargetNode>,
 ): MangleTrial[] {
   const bindings = findBindingsInFile(file);
   const fileSymbol = checker.getSymbolAtLocation(file);
   const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-  const isExported = createIsBindingRelatedToExport(checker, exportRelatedNodes, localExportSymbols, visitedTypes);
+  const isExported = createIsBindingExported(checker, exportRelatedNodes, localExportSymbols, visitedTypes);
   return bindings.map((binding) => {
     return getMangleTrial(checker, binding, isExported(binding));
   });
@@ -264,13 +202,12 @@ export function expandToSafeRenameLocations(
   actions: CodeAction[],
   onWarning?: OnWarning,
 ): BatchRenameLocationWithSource[] {
-  const sortedActions = actions.sort((a, b) => {
+  const sortedActions = sortBy(actions, (a) => {
     if (a.parentKind === ts.SyntaxKind.PropertyAssignment) {
       return -1;
     } else {
       return 1;
     }
-    // return a.start - b.start;
   });
   // stop rename for same position
   const touchingLocations = new Set<string>();

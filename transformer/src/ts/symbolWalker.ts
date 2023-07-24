@@ -14,7 +14,6 @@ interface SymbolWithId extends ts.Symbol {
   /** @external */ id: number;
 }
 
-// import { toReadableSymbol } from "../nodeUtils";
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
 // added: skip private/hard-private declaration in class
