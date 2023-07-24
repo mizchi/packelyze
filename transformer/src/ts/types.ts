@@ -29,7 +29,7 @@ export type BatchRenameLocation = ts.RenameLocation & {
  * Node annotation with comments
  * ex. internal or external
  */
-export type BindingAnnotations = {
+export type BindingAnnotation = {
   internal?: boolean;
   external?: boolean;
 };

@@ -6,10 +6,134 @@ import { findBatchRenameLocations } from "../ts/renamer";
 import { getEffectDetectorWalker } from "./effects";
 import { composeWalkers, toReadableNode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
 import { FindRenameLocations, SymbolWalkerResult } from "../ts/types";
-import { type CodeAction, SymbolBuilder, BatchRenameLocationWithSource } from "./transformTypes";
+import {
+  type CodeAction,
+  SymbolBuilder,
+  BatchRenameLocationWithSource,
+  BindingNode,
+  MangleStopReason,
+  MangleTrial,
+  MangleReason,
+} from "./transformTypes";
 import { type BatchRenameLocation } from "../ts/types";
-import { findRelatedNodesOnProject, findBindingsInFile, isMangleBinding } from "./relation";
-import { getAnnotationsAtNode } from "../ts/comment";
+import { findExportRelationsOnProject, findBindingsInFile } from "./relation";
+import { getAnnotationAtNode } from "../ts/comment";
+
+// TODO: return reason
+export function getMangleTrial(
+  checker: ts.TypeChecker,
+  binding: BindingNode,
+  exportedNodes: ts.Node[],
+  exportedSymbols: ts.Symbol[],
+  exportedTypes: ts.Type[],
+): MangleTrial {
+  // skip: type <Foo> = { ... }
+  if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
+    return {
+      mangle: false,
+      node: binding,
+      reason: MangleStopReason.TypeOnly,
+    };
+  }
+  // skip: interface <Foo>{ ... }
+  if (ts.isInterfaceDeclaration(binding.parent) && binding.parent.name === binding) {
+    return {
+      mangle: false,
+      node: binding,
+      reason: MangleStopReason.TypeOnly,
+    };
+  }
+
+  // skip inferred type
+  if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
+    const type = checker.getTypeAtLocation(binding.parent);
+    if (exportedTypes.includes(type)) {
+      return {
+        mangle: false,
+        node: binding,
+        reason: MangleStopReason.External,
+      };
+    }
+
+    if (type.symbol && exportedSymbols.includes(type.symbol)) {
+      return {
+        mangle: false,
+        node: binding,
+        reason: MangleStopReason.Exported,
+        relatedSymbol: type.symbol,
+      };
+    }
+
+    // inferred object type member will skip mangle: ex. const x = {vvv: 1};
+    const objectType = checker.getTypeAtLocation(binding.parent.parent);
+    if (objectType.symbol?.name === "__object") {
+      return {
+        mangle: false,
+        node: binding,
+        reason: MangleStopReason.UnsupportedInference,
+      };
+    }
+  }
+  // force mangle by internal annotation
+  if (
+    // parent is declaration
+    (ts.isPropertyDeclaration(binding.parent) ||
+      ts.isMethodDeclaration(binding.parent) ||
+      ts.isPropertyAssignment(binding.parent)) &&
+    // under class/interface/typeAlias
+    (ts.isObjectLiteralExpression(binding.parent.parent) ||
+      ts.isClassDeclaration(binding.parent.parent) ||
+      ts.isClassExpression(binding.parent.parent) ||
+      ts.isInterfaceDeclaration(binding.parent.parent) ||
+      ts.isTypeNode(binding.parent.parent))
+  ) {
+    const annotation = getAnnotationAtNode(binding);
+
+    if (annotation?.internal)
+      return {
+        mangle: true,
+        node: binding,
+        reason: MangleReason.Internal,
+      };
+  }
+  // node is related to export
+  if (exportedNodes.includes(binding.parent)) {
+    const annotation = getAnnotationAtNode(binding);
+    if (!annotation?.internal) {
+      // return [false, "ExportRelated"];
+      return {
+        mangle: false,
+        node: binding,
+        reason: MangleStopReason.Exported,
+        relatedNode: binding.parent,
+      };
+    } else {
+      return {
+        mangle: true,
+        node: binding,
+        reason: MangleReason.Internal,
+      };
+    }
+  }
+
+  // FIXME
+  // node is exported
+  const symbol = checker.getSymbolAtLocation(binding);
+  if (symbol && exportedSymbols.includes(symbol)) {
+    // return [false, "ExportRelated"];
+    return {
+      mangle: false,
+      node: binding,
+      reason: MangleStopReason.Exported,
+      relatedSymbol: symbol,
+    };
+  }
+  return {
+    mangle: true,
+    node: binding,
+    reason: MangleReason.Local,
+  };
+}
 
 export function walkProject(
   checker: ts.TypeChecker,
@@ -54,13 +178,13 @@ export function walkProject(
 
   function walkTargetFile(file: ts.SourceFile) {
     const effectNodes: Set<ts.Node> = new Set();
-    const composed = composeWalkers(
+    const walk = composeWalkers(
       // collect effect nodes
       getEffectDetectorWalker(checker, (node) => {
         effectNodes.add(node);
       }),
     );
-    composed(file);
+    walk(file);
 
     for (const node of effectNodes) {
       const symbol = checker.getSymbolAtLocation(node);
@@ -71,67 +195,74 @@ export function walkProject(
   }
 }
 
+export function getMangleTrialsInFile(
+  checker: ts.TypeChecker,
+  visited: SymbolWalkerResult,
+  file: ts.SourceFile,
+): MangleTrial[] {
+  const exportRelatedNodes = findExportRelationsOnProject(checker, visited);
+  const bindings = findBindingsInFile(file);
+  const fileSymbol = checker.getSymbolAtLocation(file);
+  // TODO: remove this
+  const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
+  return bindings.map((binder) => {
+    return getMangleTrial(checker, binder, exportRelatedNodes, localExportSymbols, [...visited.types]);
+  });
+}
+
 export function getCodeActionsInFile(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   file: ts.SourceFile,
   withOriginalComment: boolean = false,
-): CodeAction[] {
+): {
+  actions: CodeAction[];
+  trials: MangleTrial[];
+  invalidated: MangleTrial[];
+} {
   const symbolBuilder = createSymbolBuilder();
-
-  const relatedNodes = findRelatedNodesOnProject(checker, visited);
-
-  // console.log(
-  //   "[getActionsForFile] relatedNodes",
-  //   visited.symbols.map((x) => toReadableSymbol(x)),
-  //   relatedNodes.map((x) => toReadableNode(x)),
-  // );
-
-  const mangleNodes = getMangleNodesAtFile(file);
-
-  return mangleNodes.flatMap((node) => {
-    const action = getCodeActionForNode(symbolBuilder, node, withOriginalComment);
-    return action ?? [];
+  const trials = getMangleTrialsInFile(checker, visited, file);
+  const actions = trials.flatMap((trial) => {
+    if (trial.mangle) {
+      return getCodeActionForTrial(symbolBuilder, trial, withOriginalComment) ?? [];
+    }
+    return [];
   });
 
-  function getMangleNodesAtFile(file: ts.SourceFile): ts.Node[] {
-    const bindings = findBindingsInFile(checker, file);
-    const fileSymbol = checker.getSymbolAtLocation(file);
-    const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-    return bindings.filter((identifier) => {
-      const [result, reason] = isMangleBinding(checker, identifier, relatedNodes, exportSymbols, [...visited.types]);
-      // if (identifier.getText() === "extensions") {
-      //   // TODO: check why extensions is not mangled
-      //   // console.log("[mangle:try]", identifier.getText(), result, reason);
-      //   // console.log(
-      //   //   "visited:symbols",
-      //   //   visited.symbols
-      //   //     .filter((x) => x.getName() === "extensions")
-      //   //     .map((x) => toReadableSymbol(x)),
-      //   //   // "visited:types",
-      //   //   // visited.types.filter((x) => x.symbol?.getName() === "extensions"),
-      //   // );
-      //   // throw "stop";
-      // }
-      return result;
-    });
-  }
+  const invalidated = trials.filter((x) => !x.mangle);
+  return {
+    actions,
+    trials,
+    invalidated: invalidated,
+  };
 
-  function getCodeActionForNode(
+  // function getMangleTrialsAtFile(file: ts.SourceFile): MangleTrial[] {
+  //   const bindings = findBindingsInFile(file);
+  //   const fileSymbol = checker.getSymbolAtLocation(file);
+  //   const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
+  //   return bindings.map((identifier) => {
+  //     const trial = getMangleTrial(checker, identifier, exportRelatedNodes, exportSymbols, [...visited.types]);
+  //     // return trial.mangle;
+  //     return trial;
+  //   });
+  // }
+
+  function getCodeActionForTrial(
     symbolBuilder: SymbolBuilder,
-    node: ts.Node,
+    // node: ts.Node,
+    trial: MangleTrial,
     withOriginalComment: boolean = false,
   ): CodeAction | undefined {
-    const validate = createNameValidator(checker, node);
-    if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
-      throw new Error("unexpected node type " + node.kind);
+    const validate = createNameValidator(checker, trial.node);
+    if (!(ts.isIdentifier(trial.node) || ts.isPrivateIdentifier(trial.node))) {
+      throw new Error("unexpected node type " + trial.node.kind);
     }
-    const originalName = node.text;
+    const originalName = trial.node.text;
 
     // maybe react component name
     // TODO: const Foo = ...;
     const maybeFunctionComponentNode =
-      (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
+      (ts.isFunctionDeclaration(trial.node.parent) || ts.isFunctionExpression(trial.node.parent)) &&
       isComponentFunctionName(originalName);
     if (maybeFunctionComponentNode) {
       // console.log("[mangle] maybe react component", originalName);
@@ -142,18 +273,16 @@ export function getCodeActionsInFile(
     // FIXME: should consume converted name for usedNames check
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
-    const isPropertyAssignment = ts.isPropertyAssignment(node.parent);
-
-    const annotations = getAnnotationsAtNode(node);
+    const annotation = getAnnotationAtNode(trial.node);
     const action: CodeAction = {
-      parentKind: node.parent.kind,
+      parentKind: trial.node.parent.kind,
       actionType: "replace",
-      fileName: node.getSourceFile().fileName,
+      fileName: trial.node.getSourceFile().fileName,
       original: originalName,
       to,
-      annotations,
-      start: node.getStart(),
-      isAssignment: isPropertyAssignment,
+      annotation: annotation,
+      start: trial.node.getStart(),
+      originalTrial: trial,
     };
     return action;
     function isComponentFunctionName(name: string) {
@@ -183,12 +312,21 @@ export function expandToSafeRenameLocations(
   actions: CodeAction[],
 ): BatchRenameLocationWithSource[] {
   // propertyAssingment causes duplicated rename with propertySignature
-  const preActions = actions.filter((x) => !x.isAssignment);
-  const postActions = actions.filter((x) => x.isAssignment);
+  // const preActions = actions.filter((x) => !x.isAssignment);
+  // const postActions = actions.filter((x) => x.isAssignment);
+
+  const sorted = actions.sort((a, b) => {
+    if (a.parentKind === ts.SyntaxKind.PropertyAssignment) {
+      return -1;
+    } else {
+      return 1;
+    }
+    // return a.start - b.start;
+  });
   // stop rename for same position
   const touchingLocations = new Set<string>();
 
-  return [...preActions.flatMap(toSafeRenameLocations), ...postActions.flatMap(toSafeRenameLocations)];
+  return [...sorted.flatMap(toSafeRenameLocations)];
 
   function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
@@ -214,7 +352,7 @@ export function expandToSafeRenameLocations(
     }
 
     // only touching if node is anotated by @external
-    if (action.annotations?.external) {
+    if (action.annotation?.external) {
       console.warn("[mangle:action-stop-by-external]", action);
       return [];
     }

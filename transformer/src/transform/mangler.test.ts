@@ -1,9 +1,9 @@
 import "../../test/globals";
-import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
+import { initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "../ts/renamer";
 import { expect, test } from "vitest";
 import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./mangler";
-import { toReadableNode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
+import { toReadableSymbol, toReadableType } from "../ts/tsUtils";
 import { SymbolWalkerResult } from "../ts/types";
 
 // assert expected mangle results
@@ -27,7 +27,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 
   // debugVisitResult(visited);
 
-  const actions = targetFiles.flatMap((target) => getCodeActionsInFile(checker, visited, target));
+  const actions = targetFiles.flatMap((target) => getCodeActionsInFile(checker, visited, target).actions);
 
   const items = expandToSafeRenameLocations(service.findRenameLocations, actions);
   const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);

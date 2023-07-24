@@ -2,7 +2,7 @@ import { test, expect } from "vitest";
 import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
 import ts from "typescript";
-import { findRelatedNodesOnProject } from "./relation";
+import { findExportRelationsOnProject } from "./relation";
 import { getEffectDetectorWalker } from "./effects";
 import { composeWalkers, formatCode } from "../ts/tsUtils";
 
@@ -43,7 +43,7 @@ test("effect with builtins", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodesOnProject(checker, visited);
+  const collected = findExportRelationsOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -91,7 +91,7 @@ test("effect to global assign", () => {
   }
   const visited = walker.getVisited();
 
-  const collected = findRelatedNodesOnProject(checker, visited);
+  const collected = findExportRelationsOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -139,7 +139,7 @@ test("detect object rest spread", () => {
     }
   }
   const visited = walker.getVisited();
-  const collected = findRelatedNodesOnProject(checker, visited);
+  const collected = findExportRelationsOnProject(checker, visited);
   expect(
     [...collected].map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());

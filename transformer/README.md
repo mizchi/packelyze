@@ -59,7 +59,6 @@ const result = minifier.readFile(filePath);
 ## TODO for 0.1.0 (publish)
 
 - [ ] Mangle skip with `@internal` leading comments
-- [ ] Linter or Checker for mangle
 - [ ] Self hosting
 - [ ] Transform kind whitelist
 - [ ] Safe symbol builder by SyntaxKind
@@ -70,6 +69,7 @@ const result = minifier.readFile(filePath);
 - [ ] pure: Promise.resolve
 - [ ] test for `typeof`
 - [ ] Bug: TypeScript clushed with typescript internal assertings
+- [ ] Linter or Checker for mangle
 
 ## Icebox
 

@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { getAnnotationAtNode } from "../ts/comment";
 
 // for composeVisitors
 export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
@@ -32,6 +33,18 @@ export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node:
     // FIXME object spread is unsafe for typescript renamer: like {...obj}
     if (ts.isSpreadAssignment(node) && ts.isObjectLiteralExpression(node.parent)) {
       onEnter(node.expression);
+    }
+  };
+}
+
+// for composeVisitors
+export function getAnnotationDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
+  return (node: ts.Node) => {
+    if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
+      const comments = getAnnotationAtNode(node);
+      if (comments?.internal) {
+        onEnter(node);
+      }
     }
   };
 }

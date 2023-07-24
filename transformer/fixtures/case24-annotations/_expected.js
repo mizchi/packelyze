@@ -1,6 +1,6 @@
 const pub = {
   pub: 1,
-  hidden: 1,
+  k: 1,
 };
 const k = {
   dontmangle: "str",

@@ -1,4 +1,4 @@
-import type { BatchRenameLocation, BindingAnnotations } from "../ts/types";
+import type { BatchRenameLocation, BindingAnnotation } from "../ts/types";
 import ts from "typescript";
 
 export type ChangeResult = {
@@ -46,9 +46,8 @@ export type CodeAction = {
   original: string;
   to: string;
   start: number;
-  // TODO: now assigment is ignored
-  isAssignment: boolean;
-  annotations: BindingAnnotations | undefined;
+  annotation: BindingAnnotation | undefined;
+  originalTrial: MangleTrial;
 };
 
 /**
@@ -57,3 +56,37 @@ export type CodeAction = {
 export type BatchRenameLocationWithSource = BatchRenameLocation & {
   by: CodeAction;
 };
+
+export type BindingNode = ts.Identifier | ts.PrivateIdentifier;
+
+export enum MangleReason {
+  Local = "Local",
+  Inferred = "Inferred",
+  Internal = "Internal",
+}
+
+export enum MangleStopReason {
+  TypeOnly = "TypeOnly",
+  External = "External",
+  Exported = "Exported",
+  UnsupportedInference = "UnsupportedInference",
+}
+
+export type MangleTrial =
+  | {
+      mangle: true;
+      node: ts.Node;
+      reason: MangleReason;
+    }
+  | {
+      mangle: false;
+      node: ts.Node;
+      reason: MangleStopReason;
+    }
+  | {
+      mangle: false;
+      node: ts.Node;
+      relatedSymbol?: ts.Symbol;
+      relatedNode?: ts.Node;
+      reason: MangleStopReason.Exported;
+    };

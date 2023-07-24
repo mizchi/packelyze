@@ -1,7 +1,7 @@
 import ts, { getJSDocTags } from "typescript";
 import { expect, test } from "vitest";
 import { getFirstNodeFromMatcher } from "./tsUtils";
-import { getLeadingComments, getTrailingComments, getCommentsFromIdentifier, getAnnotationsAtNode } from "./comment";
+import { getLeadingComments, getTrailingComments, getCommentsFromIdentifier, getAnnotationAtNode } from "./comment";
 import { createOneshotTestProgram } from "../../test/testHarness";
 
 test("TS: comments", () => {
@@ -170,7 +170,7 @@ test("getAnnotationsAtBinding # 1", () => {
   for (const matcher of matchers) {
     const node = getFirstNodeFromMatcher(file, matcher)!;
     expect(node.kind).toBe(ts.SyntaxKind.Identifier);
-    expect(getAnnotationsAtNode(node as ts.Identifier)).toEqual({
+    expect(getAnnotationAtNode(node as ts.Identifier)).toEqual({
       internal: true,
     });
   }

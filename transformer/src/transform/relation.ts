@@ -1,41 +1,32 @@
 import ts from "typescript";
-import type { MangleTargetNode as MangleRelatedNode } from "./transformTypes";
+import type { BindingNode, MangleTargetNode as MangleRelatedNode } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
-import { formatCode, toReadableSymbol, toReadableType } from "../ts/tsUtils";
+import { formatCode } from "../ts/tsUtils";
 
-type BindingNode = ts.Identifier | ts.PrivateIdentifier;
-
-export function findBindingsInFile(checker: ts.TypeChecker, file: ts.SourceFile): BindingNode[] {
+export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
   function visit(node: ts.Node) {
     // console.log("[bindings]", ts.SyntaxKind[node.kind], "\n" + node.getText());
-    if (ts.isVariableStatement(node) && hasDeclareOrAbstract(node)) {
-      // stop if declare const ...
+    // stop if declare const ...
+    if (ts.isVariableStatement(node) && hasDeclareOrAbstractModifier(node)) {
       return;
     }
+
     // only for classes
     // ObjectLiteral's methodDeclaration will be broken
     const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
     if (isClassMember && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
-      if (hasDeclareOrAbstract(node)) return;
+      if (hasDeclareOrAbstractModifier(node)) return;
       visitNamedBinding(node.name);
     }
+    // Supported named declarations
     if (
       ts.isFunctionDeclaration(node) ||
       ts.isClassDeclaration(node) ||
       ts.isEnumDeclaration(node) ||
-      ts.isModuleDeclaration(node)
-    ) {
-      if (hasDeclareOrAbstract(node)) return;
-      if (node.name) {
-        visitNamedBinding(node.name);
-      }
-    }
-
-    // named binding
-    if (
+      ts.isModuleDeclaration(node) ||
       ts.isVariableDeclaration(node) ||
       ts.isTypeAliasDeclaration(node) ||
       ts.isInterfaceDeclaration(node) ||
@@ -43,32 +34,21 @@ export function findBindingsInFile(checker: ts.TypeChecker, file: ts.SourceFile)
       ts.isGetAccessorDeclaration(node) ||
       ts.isSetAccessorDeclaration(node) ||
       ts.isFunctionExpression(node) ||
-      ts.isClassExpression(node)
+      ts.isClassExpression(node) ||
+      ts.isPropertyAssignment(node)
     ) {
-      if (node.name) {
-        visitNamedBinding(node.name);
-      }
-    }
-    if (ts.isPropertyAssignment(node)) {
-      visitNamedBinding(node.name);
+      if (hasDeclareOrAbstractModifier(node)) return;
+      if (node.name) visitNamedBinding(node.name);
     }
     ts.forEachChild(node, visit);
   }
-  function visitNamedBinding(
-    node:
-      | ts.BindingPattern
-      | ts.BindingElement
-      | ts.Identifier
-      | ts.PrivateIdentifier
-      | ts.ArrayBindingElement
-      | ts.ObjectBindingPattern
-      | ts.PropertyName,
-  ) {
+  function visitNamedBinding(node: ts.DeclarationName | ts.BindingElement | ts.ArrayBindingElement) {
     if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
       identifiers.push(node);
     }
     // TODO: consider computed property
     if (ts.isComputedPropertyName(node)) {
+      // expect string or symbol literal
       // visitBinding(node.expression);
     }
     if (ts.isBindingElement(node)) {
@@ -77,26 +57,19 @@ export function findBindingsInFile(checker: ts.TypeChecker, file: ts.SourceFile)
         visitNamedBinding(node.propertyName);
       }
     }
-    if (ts.isObjectBindingPattern(node)) {
-      for (const element of node.elements) {
-        visitNamedBinding(element);
-      }
-    }
-    if (ts.isArrayBindingPattern(node)) {
+    if (ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node)) {
       for (const element of node.elements) {
         visitNamedBinding(element);
       }
     }
   }
-  function hasDeclareOrAbstract(
-    node:
-      | ts.VariableStatement
-      | ts.FunctionDeclaration
-      | ts.ClassDeclaration
-      | ts.ModuleDeclaration
-      | ts.EnumDeclaration
-      | ts.MethodDeclaration
-      | ts.PropertyDeclaration,
+
+  type NamedDeclarationWithModifiers = ts.NamedDeclaration & {
+    /**@external*/
+    modifiers?: ts.NodeArray<ts.ModifierLike>;
+  };
+  function hasDeclareOrAbstractModifier<T extends NamedDeclarationWithModifiers | ts.VariableStatement,>(
+    node: T,
   ): boolean {
     return (
       node.modifiers?.some(
@@ -106,7 +79,7 @@ export function findBindingsInFile(checker: ts.TypeChecker, file: ts.SourceFile)
   }
 }
 
-export function findRelatedNodesOnProject(
+export function findExportRelationsOnProject(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,
@@ -116,17 +89,17 @@ export function findRelatedNodesOnProject(
   for (const symbol of visited.symbols) {
     // register symbol declaration
     for (const declaration of symbol.getDeclarations() ?? []) {
-      visitRelatedNode(declaration, 0);
+      walkRelatedNode(declaration, 0);
     }
 
     // type inferred nodes
     const type = checker.getTypeOfSymbol(symbol);
     if (type.symbol) {
       for (const declaration of type.symbol.getDeclarations() ?? []) {
-        visitRelatedNode(declaration, 0);
+        walkRelatedNode(declaration, 0);
       }
       if (type.symbol.valueDeclaration) {
-        visitRelatedNode(type.symbol.valueDeclaration, 0);
+        walkRelatedNode(type.symbol.valueDeclaration, 0);
       }
     }
   }
@@ -134,7 +107,7 @@ export function findRelatedNodesOnProject(
   for (const type of visited.types) {
     if (type.symbol) {
       for (const declaration of type.symbol.getDeclarations() ?? []) {
-        visitRelatedNode(declaration, 0);
+        walkRelatedNode(declaration, 0);
       }
     }
   }
@@ -165,7 +138,7 @@ export function findRelatedNodesOnProject(
       ts.isUnionTypeNode(node)
     );
   }
-  function visitRelatedNode(node: ts.Node, depth: number) {
+  function walkRelatedNode(node: ts.Node, depth: number) {
     log(
       "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
       formatCode(node.getText()).slice(0, 20) + "...",
@@ -179,151 +152,83 @@ export function findRelatedNodesOnProject(
     const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
     if (ts.isPropertyDeclaration(node) && isClassMember) {
       if (node.type) {
-        visitRelatedNode(node.type, depth + 1);
+        walkRelatedNode(node.type, depth + 1);
       }
     }
     // now only for classes
-    if (isClassMember && ts.isMethodDeclaration(node)) {
+    if (ts.isMethodDeclaration(node) && isClassMember) {
       for (const param of node.parameters) {
-        visitRelatedNode(param, depth + 1);
+        walkRelatedNode(param, depth + 1);
       }
       for (const typeParams of node.typeParameters ?? []) {
-        visitRelatedNode(typeParams, depth + 1);
+        walkRelatedNode(typeParams, depth + 1);
       }
     }
-
     if (ts.isTypeAliasDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
-        visitRelatedNode(typeParam, depth + 1);
+        walkRelatedNode(typeParam, depth + 1);
       }
       if (node.type) {
-        visitRelatedNode(node.type, depth + 1);
+        walkRelatedNode(node.type, depth + 1);
       }
     }
     if (ts.isInterfaceDeclaration(node)) {
       // TODO
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          visitRelatedNode(type.expression, depth + 1);
+          walkRelatedNode(type.expression, depth + 1);
         }
       }
       for (const typeParam of node.typeParameters ?? []) {
-        visitRelatedNode(typeParam, depth + 1);
+        walkRelatedNode(typeParam, depth + 1);
       }
       for (const member of node.members) {
-        visitRelatedNode(member, depth + 1);
+        walkRelatedNode(member, depth + 1);
       }
     }
 
     if (ts.isClassDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
-        visitRelatedNode(typeParam, depth + 1);
+        walkRelatedNode(typeParam, depth + 1);
       }
       // for (const member of node.members) {
       //   visitNode(member, depth + 1);
       // }
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          visitRelatedNode(type.expression, depth + 1);
+          walkRelatedNode(type.expression, depth + 1);
         }
       }
     }
     if (ts.isTypeLiteralNode(node)) {
       for (const member of node.members) {
-        visitRelatedNode(member, depth + 1);
+        walkRelatedNode(member, depth + 1);
       }
     }
-    if (ts.isParameter(node)) {
+    if (ts.isParameter(node) || ts.isPropertySignature(node)) {
       if (node.type) {
-        visitRelatedNode(node.type, depth + 1);
+        walkRelatedNode(node.type, depth + 1);
       }
     }
-    if (ts.isPropertySignature(node)) {
-      if (node.type) {
-        visitRelatedNode(node.type, depth + 1);
-      }
-    }
-    if (ts.isMethodSignature(node)) {
+    if (ts.isMethodSignature(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) {
       for (const param of node.parameters) {
-        visitRelatedNode(param, depth + 1);
-      }
-    }
-    if (ts.isGetAccessor(node)) {
-      for (const param of node.parameters) {
-        visitRelatedNode(param, depth + 1);
-      }
-    }
-    if (ts.isSetAccessor(node)) {
-      for (const param of node.parameters) {
-        visitRelatedNode(param, depth + 1);
+        walkRelatedNode(param, depth + 1);
       }
     }
     if (ts.isObjectLiteralExpression(node)) {
-      // TODO: check type
       for (const prop of node.properties) {
-        visitRelatedNode(prop, depth + 1);
+        walkRelatedNode(prop, depth + 1);
       }
     }
     if (ts.isPropertyAssignment(node)) {
-      visitRelatedNode(node.name, depth + 1);
+      walkRelatedNode(node.name, depth + 1);
     }
 
     // walk types
     if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
       for (const type of node.types) {
-        visitRelatedNode(type, depth + 1);
+        walkRelatedNode(type, depth + 1);
       }
     }
   }
-}
-
-type MangleBindingReason = "TypeDeclaration" | "ExportRelated" | "Inferred" | "Local";
-// TODO: return reason
-export function isMangleBinding(
-  checker: ts.TypeChecker,
-  binding: BindingNode,
-  exportedNodes: ts.Node[],
-  exportedSymbols: ts.Symbol[],
-  exportedTypes: ts.Type[],
-): [result: boolean, reason: MangleBindingReason] {
-  // skip: type <Foo> = { ... }
-  if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
-    return [false, "TypeDeclaration"];
-  }
-  // skip: interface <Foo>{ ... }
-  if (ts.isInterfaceDeclaration(binding.parent) && binding.parent.name === binding) {
-    return [false, "TypeDeclaration"];
-  }
-
-  // skip inferred type
-  if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
-    const type = checker.getTypeAtLocation(binding.parent);
-    if (exportedTypes.includes(type)) {
-      return [false, "ExportRelated"];
-    }
-
-    if (type.symbol && exportedSymbols.includes(type.symbol)) {
-      return [false, "ExportRelated"];
-    }
-
-    // inferred object type member will skip mangle: ex. const x = {vvv: 1};
-    const objectType = checker.getTypeAtLocation(binding.parent.parent);
-    if (objectType.symbol?.name === "__object") {
-      return [false, "Inferred"];
-    }
-  }
-  const symbol = checker.getSymbolAtLocation(binding);
-
-  // node is related to export
-  if (exportedNodes.includes(binding.parent)) {
-    // console.log("skip: exported", identifier.text);
-    return [false, "ExportRelated"];
-  }
-
-  // FIXME
-  // node is exported
-  if (symbol && exportedSymbols.includes(symbol)) {
-    return [false, "ExportRelated"];
-  }
-  return [true, "Local"];
 }

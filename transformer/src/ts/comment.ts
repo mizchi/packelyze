@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { BindingAnnotations } from "./types";
+import { BindingAnnotation } from "./types";
 
 // special comment tags for bundler and terser
 // https://github.com/terser/terser#annotations
@@ -71,13 +71,13 @@ export function getCommentsFromIdentifier(node: ts.Node, code?: string): string[
   return [...(getTrailingComments(node, code) ?? []), ...(getLeadingComments(node, code) ?? [])];
 }
 
-export function getAnnotationsAtNode(
+export function getAnnotationAtNode(
   binding: ts.Identifier | ts.PrivateIdentifier,
   code?: string,
-): BindingAnnotations | undefined {
+): BindingAnnotation | undefined {
   const comments = getCommentsFromIdentifier(binding, code);
   if (!comments) return;
-  const ann: BindingAnnotations = {};
+  const ann: BindingAnnotation = {};
   for (const commentText of comments ?? []) {
     if (commentText.includes(AT_INTERNAL_TAG)) {
       ann.internal = true;

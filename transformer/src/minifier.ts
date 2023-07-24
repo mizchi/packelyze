@@ -109,10 +109,12 @@ export function createMinifier(
       const actions = getCodeActionsInFile(checker, visited, targetFile, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
-        actions,
+        actions: actions.actions,
         fileName: targetFile.fileName,
+        trials: actions.trials,
+        invalidatedTrials: actions.invalidated,
       };
-      allActions.push(...actions);
+      allActions.push(...actions.actions);
     }
 
     yield { stepName: MinifierProcessStep.AllActionsCreated, actions: allActions };

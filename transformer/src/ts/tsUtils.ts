@@ -1,4 +1,3 @@
-// import { SymbolFlags, isBlock, forEachChild, Node, SourceFile, SyntaxKind, Symbol, TypeChecker, Type, TypeFlags, Program, Block, isSourceFile, isPropertyDeclaration, isClassDeclaration, ClassDeclaration, isMethodDeclaration, VariableStatement, TypeAliasDeclaration, InterfaceDeclaration, FunctionDeclaration, EnumDeclaration, ModuleDeclaration, isVariableStatement, isInterfaceDeclaration, isTypeAliasDeclaration, isFunctionDeclaration, isEnumDeclaration, isModuleDeclaration, NamedDeclaration, VariableDeclaration } from "typescript";
 import ts from "typescript";
 
 // from typescript: https://github.com/microsoft/TypeScript/blob/d79ec186d6a4e39f57af6143761d453466a32e0c/src/compiler/program.ts#L3384-L3399
@@ -252,4 +251,52 @@ export function formatCode(code: string) {
 
 function toDefinedObject(obj: Record<string, any>) {
   return Object.fromEntries(Object.entries(obj).filter(([, val]) => val != null));
+}
+
+// from typescript/src/compiler/utilitiesPublic.ts
+export function isNamedDeclaration(node: ts.Node): node is ts.NamedDeclaration {
+  if (node.kind === ts.SyntaxKind.TypeParameter) {
+    return node.parent && node.parent.kind !== ts.SyntaxKind.JSDocTemplateTag; // || isInJSFile(node);
+  }
+
+  return isDeclarationKind(node.kind);
+  function isDeclarationKind(kind: ts.SyntaxKind) {
+    return (
+      kind === ts.SyntaxKind.ArrowFunction ||
+      kind === ts.SyntaxKind.BindingElement ||
+      kind === ts.SyntaxKind.ClassDeclaration ||
+      kind === ts.SyntaxKind.ClassExpression ||
+      kind === ts.SyntaxKind.ClassStaticBlockDeclaration ||
+      kind === ts.SyntaxKind.Constructor ||
+      kind === ts.SyntaxKind.EnumDeclaration ||
+      kind === ts.SyntaxKind.EnumMember ||
+      kind === ts.SyntaxKind.ExportSpecifier ||
+      kind === ts.SyntaxKind.FunctionDeclaration ||
+      kind === ts.SyntaxKind.FunctionExpression ||
+      kind === ts.SyntaxKind.GetAccessor ||
+      kind === ts.SyntaxKind.ImportClause ||
+      kind === ts.SyntaxKind.ImportEqualsDeclaration ||
+      kind === ts.SyntaxKind.ImportSpecifier ||
+      kind === ts.SyntaxKind.InterfaceDeclaration ||
+      kind === ts.SyntaxKind.JsxAttribute ||
+      kind === ts.SyntaxKind.MethodDeclaration ||
+      kind === ts.SyntaxKind.MethodSignature ||
+      kind === ts.SyntaxKind.ModuleDeclaration ||
+      kind === ts.SyntaxKind.NamespaceExportDeclaration ||
+      kind === ts.SyntaxKind.NamespaceImport ||
+      kind === ts.SyntaxKind.NamespaceExport ||
+      kind === ts.SyntaxKind.Parameter ||
+      kind === ts.SyntaxKind.PropertyAssignment ||
+      kind === ts.SyntaxKind.PropertyDeclaration ||
+      kind === ts.SyntaxKind.PropertySignature ||
+      kind === ts.SyntaxKind.SetAccessor ||
+      kind === ts.SyntaxKind.ShorthandPropertyAssignment ||
+      kind === ts.SyntaxKind.TypeAliasDeclaration ||
+      kind === ts.SyntaxKind.TypeParameter ||
+      kind === ts.SyntaxKind.VariableDeclaration ||
+      kind === ts.SyntaxKind.JSDocTypedefTag ||
+      kind === ts.SyntaxKind.JSDocCallbackTag ||
+      kind === ts.SyntaxKind.JSDocPropertyTag
+    );
+  }
 }

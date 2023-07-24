@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { SymbolWalkerResult } from "./ts/types";
-import { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transform/transformTypes";
+import { BatchRenameLocationWithSource, CodeAction, FileChangeResult, MangleTrial } from "./transform/transformTypes";
 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
@@ -53,6 +53,8 @@ type AnalyzeStep = {
 type CreateActionsForFileStep = {
   stepName: MinifierProcessStep.CreateActionsForFile;
   actions: CodeAction[];
+  trials: MangleTrial[];
+  invalidatedTrials: MangleTrial[];
   fileName: string;
 };
 
