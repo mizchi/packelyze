@@ -3,7 +3,12 @@ import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./transform/mangler";
+import {
+  expandToSafeRenameLocations,
+  walkProject,
+  getCodeActionsFromTrials,
+  getMangleTrialsInFile,
+} from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
 
@@ -106,19 +111,18 @@ export function createMinifier(
 
     const allActions: CodeAction[] = [];
     for (const targetFile of targetsFiles) {
-      const actions = getCodeActionsInFile(checker, visited, targetFile, withOriginalComment);
+      const trials = getMangleTrialsInFile(checker, visited, targetFile);
+      const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
         actions: actions.actions,
         fileName: targetFile.fileName,
-        trials: actions.trials,
-        invalidatedTrials: actions.invalidated,
+        invalidated: actions.invalidated,
       };
       allActions.push(...actions.actions);
     }
 
     yield { stepName: MinifierProcessStep.AllActionsCreated, actions: allActions };
-
     const renames: BatchRenameLocationWithSource[] = expandToSafeRenameLocations(
       service.findRenameLocations,
       allActions,

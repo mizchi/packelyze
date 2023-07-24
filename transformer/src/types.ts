@@ -53,8 +53,7 @@ type AnalyzeStep = {
 type CreateActionsForFileStep = {
   stepName: MinifierProcessStep.CreateActionsForFile;
   actions: CodeAction[];
-  trials: MangleTrial[];
-  invalidatedTrials: MangleTrial[];
+  invalidated: MangleTrial[];
   fileName: string;
 };
 

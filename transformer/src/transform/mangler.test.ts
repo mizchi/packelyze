@@ -2,7 +2,7 @@ import "../../test/globals";
 import { initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "../ts/renamer";
 import { expect, test } from "vitest";
-import { expandToSafeRenameLocations, walkProject, getCodeActionsInFile } from "./mangler";
+import { expandToSafeRenameLocations, walkProject, getCodeActionsFromTrials, getMangleTrialsInFile } from "./mangler";
 import { toReadableSymbol, toReadableType } from "../ts/tsUtils";
 import { SymbolWalkerResult } from "../ts/types";
 
@@ -27,10 +27,13 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 
   // debugVisitResult(visited);
 
-  const actions = targetFiles.flatMap((target) => getCodeActionsInFile(checker, visited, target).actions);
+  const actions = targetFiles.flatMap((target) => {
+    const trials = getMangleTrialsInFile(checker, visited, target);
+    return getCodeActionsFromTrials(checker, trials).actions;
+  });
 
-  const items = expandToSafeRenameLocations(service.findRenameLocations, actions);
-  const rawChanges = getRenamedFileChanges(items, service.readSnapshotContent, normalizePath);
+  const renames = expandToSafeRenameLocations(service.findRenameLocations, actions);
+  const rawChanges = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
 
   // rename for assert
   const changes = rawChanges.map((x) => {

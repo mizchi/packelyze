@@ -210,18 +210,16 @@ export function getMangleTrialsInFile(
   });
 }
 
-export function getCodeActionsInFile(
+export function getCodeActionsFromTrials(
   checker: ts.TypeChecker,
-  visited: SymbolWalkerResult,
-  file: ts.SourceFile,
+  trials: MangleTrial[],
   withOriginalComment: boolean = false,
 ): {
   actions: CodeAction[];
-  trials: MangleTrial[];
   invalidated: MangleTrial[];
 } {
   const symbolBuilder = createSymbolBuilder();
-  const trials = getMangleTrialsInFile(checker, visited, file);
+  // const trials = getMangleTrialsInFile(checker, visited, file);
   const actions = trials.flatMap((trial) => {
     if (trial.mangle) {
       return getCodeActionForTrial(symbolBuilder, trial, withOriginalComment) ?? [];
@@ -232,20 +230,8 @@ export function getCodeActionsInFile(
   const invalidated = trials.filter((x) => !x.mangle);
   return {
     actions,
-    trials,
     invalidated: invalidated,
   };
-
-  // function getMangleTrialsAtFile(file: ts.SourceFile): MangleTrial[] {
-  //   const bindings = findBindingsInFile(file);
-  //   const fileSymbol = checker.getSymbolAtLocation(file);
-  //   const exportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-  //   return bindings.map((identifier) => {
-  //     const trial = getMangleTrial(checker, identifier, exportRelatedNodes, exportSymbols, [...visited.types]);
-  //     // return trial.mangle;
-  //     return trial;
-  //   });
-  // }
 
   function getCodeActionForTrial(
     symbolBuilder: SymbolBuilder,
