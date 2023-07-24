@@ -27,7 +27,7 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   );
 
   const actions = targetFiles.flatMap((target) => {
-    const trials = getMangleTrialsInFile(checker, visited.types, target, visited.nodes);
+    const trials = getMangleTrialsInFile(checker, visited, target);
     return getCodeActionsFromTrials(checker, trials).actions;
   });
 

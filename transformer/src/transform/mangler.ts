@@ -1,5 +1,5 @@
 import type { FindRenameLocations, BatchRenameLocation } from "../ts/types";
-import { WarningCode, type OnWarning } from "./../types";
+import { WarningCode, type OnWarning, MangleValidator } from "./../types";
 
 import ts from "typescript";
 import { createSymbolBuilder } from "./symbolBuilder";
@@ -12,14 +12,27 @@ import {
   MangleStopReason,
   MangleTrial,
   MangleReason,
-  MangleTargetNode,
+  ProjectExported,
 } from "./transformTypes";
 import { findBindingsInFile, createIsBindingExported } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
 import { sortBy } from "../utils";
 
-export function getMangleTrial(checker: ts.TypeChecker, binding: BindingNode, isExported: boolean): MangleTrial {
+export function getMangleTrial(
+  checker: ts.TypeChecker,
+  binding: BindingNode,
+  isExported: boolean,
+  validator?: MangleValidator,
+): MangleTrial {
   // skip: type <Foo> = { ... }
+  const validatedResult = validator?.(binding);
+  if (validatedResult === false) {
+    return {
+      mangle: false,
+      node: binding,
+      reason: MangleStopReason.CustomValidatorResult,
+    };
+  }
   if (
     (ts.isTypeAliasDeclaration(binding.parent) || ts.isInterfaceDeclaration(binding.parent)) &&
     binding.parent.name === binding
@@ -102,14 +115,16 @@ export function getMangleTrial(checker: ts.TypeChecker, binding: BindingNode, is
 
 export function getMangleTrialsInFile(
   checker: ts.TypeChecker,
-  visitedTypes: ReadonlyArray<ts.Type>,
+  projectExported: ProjectExported,
   file: ts.SourceFile,
-  exportRelatedNodes: ReadonlyArray<MangleTargetNode>,
+  // exportRelatedNodes: ReadonlyArray<MangleTargetNode>,
 ): MangleTrial[] {
   const bindings = findBindingsInFile(file);
   const fileSymbol = checker.getSymbolAtLocation(file);
+
+  // TODO: remove this
   const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-  const isExported = createIsBindingExported(checker, exportRelatedNodes, localExportSymbols, visitedTypes);
+  const isExported = createIsBindingExported(checker, projectExported, localExportSymbols);
   return bindings.map((binding) => {
     return getMangleTrial(checker, binding, isExported(binding));
   });

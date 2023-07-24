@@ -6,6 +6,13 @@ export type ProjectExported = {
   types: ReadonlyArray<ts.Type>;
   nodes: ReadonlyArray<MangleTargetNode>;
 };
+
+export type LocalExported = {
+  symbols: ReadonlyArray<ts.Symbol>;
+  // types: ReadonlyArray<ts.Type>;
+  // nodes: ReadonlyArray<MangleTargetNode>;
+};
+
 export type ChangeResult = {
   content: string;
   start?: number;
@@ -75,6 +82,7 @@ export enum MangleStopReason {
   External = "External",
   Exported = "Exported",
   UnsupportedInference = "UnsupportedInference",
+  CustomValidatorResult = "CustomValidatorResult",
 }
 
 export type MangleTrial =
@@ -94,4 +102,10 @@ export type MangleTrial =
       relatedSymbol?: ts.Symbol;
       relatedNode?: ts.Node;
       reason: MangleStopReason.Exported;
+    }
+  | {
+      mangle: false;
+      node: ts.Node;
+      reason: MangleStopReason.CustomValidatorResult;
+      message?: string;
     };

@@ -83,19 +83,18 @@ export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
 
 export function createIsBindingExported(
   checker: ts.TypeChecker,
-  exportedNodes: ReadonlyArray<ts.Node>,
-  exportedSymbols: ReadonlyArray<ts.Symbol>,
-  exportedTypes: ReadonlyArray<ts.Type>,
+  projectExported: ProjectExported,
+  localExported: ReadonlyArray<ts.Symbol>,
 ) {
   return (binding: BindingNode) => {
     // special case for property assignment
     if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
       const type = checker.getTypeAtLocation(binding.parent);
-      if (exportedTypes.includes(type)) {
+      if (projectExported.types.includes(type)) {
         return true;
       }
 
-      if (type.symbol && exportedSymbols.includes(type.symbol)) {
+      if (type.symbol && localExported.includes(type.symbol)) {
         return true;
       }
 
@@ -106,11 +105,11 @@ export function createIsBindingExported(
       }
     }
 
-    if (exportedNodes.includes(binding.parent)) {
+    if (projectExported.nodes.includes(binding.parent as MangleTargetNode)) {
       return true;
     }
     const symbol = checker.getSymbolAtLocation(binding);
-    if (symbol && exportedSymbols.includes(symbol)) {
+    if (symbol && localExported.includes(symbol)) {
       return true;
     }
     // const type = checker.getTypeAtLocation(binding.parent);

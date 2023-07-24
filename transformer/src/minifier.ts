@@ -109,7 +109,7 @@ export function createMinifier(
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const trials = getMangleTrialsInFile(checker, [...visited.types], file, visited.nodes);
+      const trials = getMangleTrialsInFile(checker, visited, file);
       const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,

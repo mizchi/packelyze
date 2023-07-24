@@ -1,6 +1,12 @@
 import ts from "typescript";
 import { SymbolWalkerResult } from "./ts/types";
-import { BatchRenameLocationWithSource, CodeAction, FileChangeResult, MangleTrial } from "./transform/transformTypes";
+import {
+  BatchRenameLocationWithSource,
+  BindingNode,
+  CodeAction,
+  FileChangeResult,
+  MangleTrial,
+} from "./transform/transformTypes";
 
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
@@ -98,3 +104,5 @@ export type Warning = {
 };
 
 export type OnWarning = (warning: Warning) => void;
+
+export type MangleValidator = (biding: BindingNode) => boolean;
