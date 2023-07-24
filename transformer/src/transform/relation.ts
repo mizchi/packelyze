@@ -104,11 +104,9 @@ export function createIsBindingExported(
       if (projectExported.types.includes(type)) {
         return true;
       }
-
       if (type.symbol && localExported.symbols.includes(type.symbol)) {
         return true;
       }
-
       // inferred object type member will skip mangle: ex. const x = {vvv: 1};
       const objectType = checker.getTypeAtLocation(binding.parent.parent);
       if (objectType.symbol?.name === "__object") {
@@ -123,8 +121,13 @@ export function createIsBindingExported(
     if (symbol && localExported.symbols.includes(symbol)) {
       return true;
     }
-    // const type = checker.getTypeAtLocation(binding.parent);
-    // if (exportedTypes.includes(type)) {
+
+    // from type symbol
+    const type = checker.getTypeAtLocation(binding);
+    if (type.symbol && localExported.symbols.includes(type.symbol)) {
+      return true;
+    }
+    // if (type.symbol && projectExported.symbols.includes(type.symbol)) {
     //   return true;
     // }
     return false;

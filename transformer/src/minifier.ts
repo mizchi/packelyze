@@ -1,4 +1,4 @@
-import type { MangleValidator, Minifier, MinifierProcessGenerator } from "./types";
+import type { MangleValidator, Minifier, MinifierStep, OnWarning } from "./types";
 import type {
   BatchRenameLocationWithSource,
   BindingNode,
@@ -57,6 +57,7 @@ export function createMinifier(
   overrideCompilerOptions: ts.CompilerOptions = {},
   withOriginalComment: boolean = false,
   validator: MangleValidator = aggressiveMangleValidator,
+  onwarn: OnWarning = () => {},
 ): Minifier {
   const registory = ts.createDocumentRegistry();
   const mergedCompilerOptions: ts.CompilerOptions = {
@@ -112,12 +113,6 @@ export function createMinifier(
           break;
         }
         case MinifierProcessStep.AllActionsCreated: {
-          // console.log(
-          //   "[minifier:actions]",
-          //   step.actions.filter((x) => x.original === "start"),
-          //   "-----------------",
-          //   step.actions.filter((x) => x.original === "start"),
-          // );
           break;
         }
         case MinifierProcessStep.ExpandRenameLocations: {
@@ -133,7 +128,7 @@ export function createMinifier(
     }
   }
 
-  function* createProcess(): MinifierProcessGenerator {
+  function* createProcess(): Generator<MinifierStep> {
     // {
     //   const program = service.getProgram()!;
     //   const preDiagnostics = program.getSemanticDiagnostics();
@@ -165,7 +160,7 @@ export function createMinifier(
     const renames: BatchRenameLocationWithSource[] = expandToSafeRenameLocations(
       service.findRenameLocations,
       allActions,
-      console.warn,
+      onwarn,
     );
 
     yield { stepName: MinifierProcessStep.ExpandRenameLocations, renames };

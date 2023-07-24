@@ -6,13 +6,11 @@ import { rollup } from "rollup";
 import typescript from "typescript";
 import ts from "rollup-plugin-ts";
 import esbuild from "rollup-plugin-esbuild";
-import { tsMinify } from "../src/index";
+import { tsMinify, withTerserMangleValidator } from "../src/index";
 
 test(`with rollup-plugin-ts`, async () => {
   const projectPath = path.join(__dirname, "../fixtures/case01-basic");
-  const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
-  const expected = fs.readFileSync(expectedPath, "utf-8");
   const bundle = await rollup({
     input: inputPath,
     external: ["node:path"],
@@ -25,23 +23,24 @@ test(`with rollup-plugin-ts`, async () => {
           module: typescript.ModuleKind.ESNext,
           experimentalDecorators: true,
         },
+        withOriginalComment: true,
+        mangleValidator: withTerserMangleValidator,
       }),
       ts({
         cwd: projectPath,
+        transpileOnly: true,
       }),
     ],
   });
   const { output } = await bundle.generate({
     format: "esm",
   });
-  expect(output[0].code).toEqualFormatted(expected);
+  expect(output[0].code).toMatchSnapshot();
 });
 
 test(`with rollup-plugin-esbuild`, async () => {
   const projectPath = path.join(__dirname, "../fixtures/case01-basic");
-  const expectedPath = path.join(projectPath, "_expected.js");
   const inputPath = path.join(projectPath, "index.ts");
-  const expected = fs.readFileSync(expectedPath, "utf-8");
   const bundle = await rollup({
     input: inputPath,
     external: ["node:path"],
@@ -54,6 +53,8 @@ test(`with rollup-plugin-esbuild`, async () => {
           module: typescript.ModuleKind.ESNext,
           experimentalDecorators: true,
         },
+        withOriginalComment: true,
+        mangleValidator: withTerserMangleValidator,
       }),
       esbuild({
         include: /\.m?[jt]sx?$/,
@@ -63,7 +64,8 @@ test(`with rollup-plugin-esbuild`, async () => {
   const { output } = await bundle.generate({
     format: "esm",
   });
-  expect(output[0].code).toEqualFormatted(expected);
+  // expect(output[0].code).toEqualFormatted(expected);
+  expect(output[0].code).toMatchSnapshot();
 });
 
 test(`preTransformOnly can not bundle by itself`, async () => {

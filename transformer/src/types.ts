@@ -11,7 +11,7 @@ import {
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
   process(): void;
-  createProcess(): MinifierProcessGenerator;
+  createProcess(): Generator<MinifierStep>;
   readFile(fileName: string): string | undefined;
   notifyChange(fileName: string, content: string): void;
   getSourceMapForFile(id: string): string | undefined;
@@ -36,6 +36,7 @@ export type TsMinifyOptions = {
   preTransformOnly?: boolean;
   withOriginalComment?: boolean;
   mangleValidator?: MangleValidator;
+  onwarn?: OnWarning;
 };
 
 export const enum MinifierProcessStep {
@@ -85,15 +86,16 @@ type PostDiagnosticStep = {
   diagnostics: ReadonlyArray<ts.Diagnostic>;
 };
 
-export type MinifierProcessGenerator = Generator<
+export type MinifierStep =
   | PreDiagnosticStep
   | AnalyzeStep
   | CreateActionsForFileStep
   | AllActionsCreatedStep
   | ExpandRenamesStep
   | ApplyFileChangesStep
-  | PostDiagnosticStep
->;
+  | PostDiagnosticStep;
+
+// export type MinifierProcessGenerator = Generator<MinifierStep>;
 
 export enum WarningCode {
   MANGLE_STOP_BY_LOCATION_CONFLICT = 1,

@@ -1,3 +1,4 @@
+import { MangleAction } from "./../../lib/transformer/types.d";
 import type { FindRenameLocations, BatchRenameLocation } from "../ts/types";
 import { WarningCode, type OnWarning, MangleValidator } from "./../types";
 
@@ -13,6 +14,7 @@ import {
   MangleTrial,
   MangleReason,
   ProjectExported,
+  MangleActionsWithInvalidated,
 } from "./transformTypes";
 import { findBindingsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
@@ -49,7 +51,7 @@ function getMangleTrial(
       return {
         mangle: false,
         node: binding,
-        reason: MangleStopReason.External,
+        reason: MangleStopReason.Exported,
       };
     }
   }
@@ -132,10 +134,7 @@ export function getCodeActionsFromTrials(
   checker: ts.TypeChecker,
   trials: MangleTrial[],
   withOriginalComment: boolean = false,
-): {
-  actions: CodeAction[];
-  invalidated: MangleTrial[];
-} {
+): MangleActionsWithInvalidated {
   const symbolBuilder = createSymbolBuilder();
   // const trials = getMangleTrialsInFile(checker, visited, file);
   const actions = trials.flatMap((trial) => {
@@ -262,7 +261,7 @@ export function expandToSafeRenameLocations(
       return [];
     }
     // return with source  action
-    return locations.map((rename) => ({ ...rename, by: action }) satisfies BatchRenameLocationWithSource);
+    return locations.map((rename) => ({ ...rename, action: action }) satisfies BatchRenameLocationWithSource);
   }
 
   function actionToKey(action: CodeAction): string {

@@ -66,7 +66,7 @@ export type CodeAction = {
  * to batch rename, we need to know the original text and the new text.
  */
 export type BatchRenameLocationWithSource = BatchRenameLocation & {
-  by: CodeAction;
+  action: CodeAction;
 };
 
 export type BindingNode = ts.Identifier | ts.PrivateIdentifier;
@@ -109,3 +109,8 @@ export type MangleTrial =
       reason: MangleStopReason.CustomValidatorResult;
       message?: string;
     };
+
+export type MangleActionsWithInvalidated = {
+  actions: CodeAction[];
+  invalidated: MangleTrial[];
+};

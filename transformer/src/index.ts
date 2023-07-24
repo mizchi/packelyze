@@ -1,4 +1,3 @@
-// types
 export type {
   TsMinifyOptions,
   Minifier,
@@ -19,18 +18,8 @@ export { getPlugin as tsMinify } from "./rollup";
 // ---- to keep internal interfaces ---
 export type { ReadableSymbol, ReadbleNode } from "./ts/tsUtils";
 export type {
-  // TODO: Remove internal type exports
-  // TypeWithId,
-  // SymbolWithId,
-  // SymbolWalker,
-  // SymbolWalkerResult,
-  // MappedType,
-  AnonymousType,
-} from "./ts/types";
-// TODO: Remove internal type exports
-export type {
-  // TODO: Remove internal type exports
-  FileChangeResult,
-  // TODO: Remove internal type exports
-  BatchRenameLocationWithSource,
+  LocalExported,
+  ProjectExported,
+  MangleActionsWithInvalidated as MangleActionsFromTrials,
 } from "./transform/transformTypes";
+export type { MinifierStep } from "./types";

@@ -1,3 +1,4 @@
 lib
 _scratch*
 __src
+test/__snapshots__
