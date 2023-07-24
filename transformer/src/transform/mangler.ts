@@ -14,11 +14,11 @@ import {
   MangleReason,
   ProjectExported,
 } from "./transformTypes";
-import { findBindingsInFile, createIsBindingExported } from "./relation";
+import { findBindingsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
 import { sortBy } from "../utils";
 
-export function getMangleTrial(
+function getMangleTrial(
   checker: ts.TypeChecker,
   binding: BindingNode,
   isExported: boolean,
@@ -117,16 +117,14 @@ export function getMangleTrialsInFile(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
   file: ts.SourceFile,
-  // exportRelatedNodes: ReadonlyArray<MangleTargetNode>,
+  validator?: MangleValidator,
 ): MangleTrial[] {
   const bindings = findBindingsInFile(file);
-  const fileSymbol = checker.getSymbolAtLocation(file);
+  const localExported = getLocalExportedSymbols(checker, file);
 
-  // TODO: remove this
-  const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-  const isExported = createIsBindingExported(checker, projectExported, localExportSymbols);
+  const isExportedFn = createIsBindingExported(checker, projectExported, localExported);
   return bindings.map((binding) => {
-    return getMangleTrial(checker, binding, isExported(binding));
+    return getMangleTrial(checker, binding, isExportedFn(binding), validator);
   });
 }
 

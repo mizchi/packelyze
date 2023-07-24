@@ -1,5 +1,5 @@
 import ts from "typescript";
-import type { BindingNode, MangleTargetNode, ProjectExported } from "./transformTypes";
+import type { BindingNode, LocalExported, MangleTargetNode, ProjectExported } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
 import { composeWalkers, formatCode } from "../ts/tsUtils";
 import { getEffectDetectorWalker } from "./detector";
@@ -81,10 +81,21 @@ export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
   }
 }
 
+export function getLocalExportedSymbols(checker: ts.TypeChecker, file: ts.SourceFile): LocalExported {
+  const fileSymbol = checker.getSymbolAtLocation(file);
+  return {
+    symbols: fileSymbol ? checker.getExportsOfModule(fileSymbol) : [],
+  };
+}
+// const fileSymbol = checker.getSymbolAtLocation(file);
+
+// // TODO: remove this
+// const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
+
 export function createIsBindingExported(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
-  localExported: ReadonlyArray<ts.Symbol>,
+  localExported: LocalExported,
 ) {
   return (binding: BindingNode) => {
     // special case for property assignment
@@ -94,7 +105,7 @@ export function createIsBindingExported(
         return true;
       }
 
-      if (type.symbol && localExported.includes(type.symbol)) {
+      if (type.symbol && localExported.symbols.includes(type.symbol)) {
         return true;
       }
 
@@ -109,7 +120,7 @@ export function createIsBindingExported(
       return true;
     }
     const symbol = checker.getSymbolAtLocation(binding);
-    if (symbol && localExported.includes(symbol)) {
+    if (symbol && localExported.symbols.includes(symbol)) {
       return true;
     }
     // const type = checker.getTypeAtLocation(binding.parent);

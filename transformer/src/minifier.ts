@@ -1,5 +1,10 @@
-import type { Minifier, MinifierProcessGenerator } from "./types";
-import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transform/transformTypes";
+import type { MangleValidator, Minifier, MinifierProcessGenerator } from "./types";
+import type {
+  BatchRenameLocationWithSource,
+  BindingNode,
+  CodeAction,
+  FileChangeResult,
+} from "./transform/transformTypes";
 
 import ts from "typescript";
 import path from "node:path";
@@ -9,6 +14,10 @@ import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
 import { walkProjectExported } from "./transform/relation";
 
+const defaultMangleValidator = (_binding: BindingNode) => {
+  return true;
+};
+
 export function createMinifier(
   projectPath: string,
   rootFileNames: string[],
@@ -16,6 +25,7 @@ export function createMinifier(
   compilerOptions: ts.CompilerOptions = {},
   overrideCompilerOptions: ts.CompilerOptions = {},
   withOriginalComment: boolean = false,
+  validator: MangleValidator = defaultMangleValidator,
 ): Minifier {
   const registory = ts.createDocumentRegistry();
   const mergedCompilerOptions: ts.CompilerOptions = {
@@ -109,7 +119,7 @@ export function createMinifier(
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const trials = getMangleTrialsInFile(checker, visited, file);
+      const trials = getMangleTrialsInFile(checker, visited, file, validator);
       const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
