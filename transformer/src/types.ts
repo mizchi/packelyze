@@ -86,3 +86,15 @@ export type MinifierProcessGenerator = Generator<
   | ApplyFileChangesStep
   | PostDiagnosticStep
 >;
+
+export enum WarningCode {
+  MANGLE_STOP_BY_LOCATION_CONFLICT = 1,
+  MANGLE_STOP_BY_EXTERNAL,
+}
+
+export type Warning = {
+  code: WarningCode;
+  message: string;
+};
+
+export type OnWarning = (warning: Warning) => void;

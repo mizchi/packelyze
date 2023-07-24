@@ -1,3 +1,4 @@
+import { WarningCode, type OnWarning } from "./../types";
 // import { SymbolWalker, createGetSymbolWalker } from './../analyzer/symbolWalker';
 import ts from "typescript";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
@@ -16,61 +17,28 @@ import {
   MangleReason,
 } from "./transformTypes";
 import { type BatchRenameLocation } from "../ts/types";
-import { findExportRelationsOnProject, findBindingsInFile } from "./relation";
+import { findBindingsInFile, createIsBindingRelatedToExport } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
 
-// TODO: return reason
-export function getMangleTrial(
-  checker: ts.TypeChecker,
-  binding: BindingNode,
-  exportedNodes: ts.Node[],
-  exportedSymbols: ts.Symbol[],
-  exportedTypes: ts.Type[],
-): MangleTrial {
+export function getMangleTrial(checker: ts.TypeChecker, binding: BindingNode, isExported: boolean): MangleTrial {
   // skip: type <Foo> = { ... }
-  if (ts.isTypeAliasDeclaration(binding.parent) && binding.parent.name === binding) {
+  if (
+    (ts.isTypeAliasDeclaration(binding.parent) || ts.isInterfaceDeclaration(binding.parent)) &&
+    binding.parent.name === binding
+  ) {
     return {
       mangle: false,
       node: binding,
       reason: MangleStopReason.TypeOnly,
     };
   }
-  // skip: interface <Foo>{ ... }
-  if (ts.isInterfaceDeclaration(binding.parent) && binding.parent.name === binding) {
-    return {
-      mangle: false,
-      node: binding,
-      reason: MangleStopReason.TypeOnly,
-    };
-  }
-
   // skip inferred type
   if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
-    const type = checker.getTypeAtLocation(binding.parent);
-    if (exportedTypes.includes(type)) {
+    if (isExported) {
       return {
         mangle: false,
         node: binding,
         reason: MangleStopReason.External,
-      };
-    }
-
-    if (type.symbol && exportedSymbols.includes(type.symbol)) {
-      return {
-        mangle: false,
-        node: binding,
-        reason: MangleStopReason.Exported,
-        relatedSymbol: type.symbol,
-      };
-    }
-
-    // inferred object type member will skip mangle: ex. const x = {vvv: 1};
-    const objectType = checker.getTypeAtLocation(binding.parent.parent);
-    if (objectType.symbol?.name === "__object") {
-      return {
-        mangle: false,
-        node: binding,
-        reason: MangleStopReason.UnsupportedInference,
       };
     }
   }
@@ -88,19 +56,19 @@ export function getMangleTrial(
       ts.isTypeNode(binding.parent.parent))
   ) {
     const annotation = getAnnotationAtNode(binding);
-
-    if (annotation?.internal)
+    if (annotation?.internal) {
       return {
         mangle: true,
         node: binding,
         reason: MangleReason.Internal,
       };
+    }
   }
+
   // node is related to export
-  if (exportedNodes.includes(binding.parent)) {
+  if (isExported) {
     const annotation = getAnnotationAtNode(binding);
     if (!annotation?.internal) {
-      // return [false, "ExportRelated"];
       return {
         mangle: false,
         node: binding,
@@ -118,9 +86,8 @@ export function getMangleTrial(
 
   // FIXME
   // node is exported
-  const symbol = checker.getSymbolAtLocation(binding);
-  if (symbol && exportedSymbols.includes(symbol)) {
-    // return [false, "ExportRelated"];
+  if (isExported) {
+    const symbol = checker.getSymbolAtLocation(binding);
     return {
       mangle: false,
       node: binding,
@@ -197,16 +164,16 @@ export function walkProject(
 
 export function getMangleTrialsInFile(
   checker: ts.TypeChecker,
-  visited: SymbolWalkerResult,
+  visitedTypes: ts.Type[],
   file: ts.SourceFile,
+  exportRelatedNodes: ts.Node[],
 ): MangleTrial[] {
-  const exportRelatedNodes = findExportRelationsOnProject(checker, visited);
   const bindings = findBindingsInFile(file);
   const fileSymbol = checker.getSymbolAtLocation(file);
-  // TODO: remove this
   const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
-  return bindings.map((binder) => {
-    return getMangleTrial(checker, binder, exportRelatedNodes, localExportSymbols, [...visited.types]);
+  const isExported = createIsBindingRelatedToExport(checker, exportRelatedNodes, localExportSymbols, visitedTypes);
+  return bindings.map((binding) => {
+    return getMangleTrial(checker, binding, isExported(binding));
   });
 }
 
@@ -235,7 +202,6 @@ export function getCodeActionsFromTrials(
 
   function getCodeActionForTrial(
     symbolBuilder: SymbolBuilder,
-    // node: ts.Node,
     trial: MangleTrial,
     withOriginalComment: boolean = false,
   ): CodeAction | undefined {
@@ -296,12 +262,9 @@ export function getCodeActionsFromTrials(
 export function expandToSafeRenameLocations(
   findRenameLocations: FindRenameLocations,
   actions: CodeAction[],
+  onWarning?: OnWarning,
 ): BatchRenameLocationWithSource[] {
-  // propertyAssingment causes duplicated rename with propertySignature
-  // const preActions = actions.filter((x) => !x.isAssignment);
-  // const postActions = actions.filter((x) => x.isAssignment);
-
-  const sorted = actions.sort((a, b) => {
+  const sortedActions = actions.sort((a, b) => {
     if (a.parentKind === ts.SyntaxKind.PropertyAssignment) {
       return -1;
     } else {
@@ -312,7 +275,7 @@ export function expandToSafeRenameLocations(
   // stop rename for same position
   const touchingLocations = new Set<string>();
 
-  return [...sorted.flatMap(toSafeRenameLocations)];
+  return [...sortedActions.flatMap(toSafeRenameLocations)];
 
   function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
@@ -330,7 +293,10 @@ export function expandToSafeRenameLocations(
     const renameKeys = locations.map(renameLocationToKey);
     if (renameKeys.some((key) => touchingLocations.has(key))) {
       const conflicts = renameKeys.filter((key) => touchingLocations.has(key));
-      console.warn("[mangle:action-stop-by-conflict]", action, "by", conflicts);
+      onWarning?.({
+        code: WarningCode.MANGLE_STOP_BY_LOCATION_CONFLICT,
+        message: conflicts.join("\n"),
+      });
       return [];
     }
     for (const renameKey of renameKeys) {
@@ -339,7 +305,10 @@ export function expandToSafeRenameLocations(
 
     // only touching if node is anotated by @external
     if (action.annotation?.external) {
-      console.warn("[mangle:action-stop-by-external]", action);
+      onWarning?.({
+        code: WarningCode.MANGLE_STOP_BY_EXTERNAL,
+        message: `${action.original} is annotated by @external`,
+      });
       return [];
     }
     // return with source  action

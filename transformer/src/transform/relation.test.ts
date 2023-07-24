@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { findExportRelationsOnProject, findBindingsInFile } from "./relation";
+import { visitedToNodes, findBindingsInFile } from "./relation";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
 import ts from "typescript";
 import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
@@ -253,7 +253,7 @@ test("detect mangle nodes", () => {
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const nodes = findExportRelationsOnProject(checker, visited);
+  const nodes = visitedToNodes(checker, visited);
   // const result = findRootRelatedNodesForTest(checker, file);
   const result = nodes.map((node) => {
     return {
@@ -327,7 +327,7 @@ function findRootRelatedNodesForTest(checker: ts.TypeChecker, root: ts.SourceFil
     walker.walkSymbol(symbol);
   }
   const visited = walker.getVisited();
-  const nodes = findExportRelationsOnProject(checker, visited);
+  const nodes = visitedToNodes(checker, visited);
   return {
     nodes: nodes.map((node) => {
       return {

@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import { expandToSafeRenameLocations, walkProject, getCodeActionsFromTrials, getMangleTrialsInFile } from "./mangler";
 import { toReadableSymbol, toReadableType } from "../ts/tsUtils";
 import { SymbolWalkerResult } from "../ts/types";
+import { visitedToNodes } from "./relation";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {
@@ -26,9 +27,10 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   );
 
   // debugVisitResult(visited);
+  const exportRelatedNodes = visitedToNodes(checker, visited);
 
   const actions = targetFiles.flatMap((target) => {
-    const trials = getMangleTrialsInFile(checker, visited, target);
+    const trials = getMangleTrialsInFile(checker, [...visited.types], target, exportRelatedNodes);
     return getCodeActionsFromTrials(checker, trials).actions;
   });
 

@@ -79,7 +79,7 @@ export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
   }
 }
 
-export function findExportRelationsOnProject(
+export function visitedToNodes(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,
@@ -231,4 +231,45 @@ export function findExportRelationsOnProject(
       }
     }
   }
+}
+
+export function createIsBindingRelatedToExport(
+  checker: ts.TypeChecker,
+  exportedNodes: ts.Node[],
+  exportedSymbols: ts.Symbol[],
+  exportedTypes: ts.Type[],
+) {
+  return (binding: BindingNode) => {
+    // special case for property assignment
+    if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
+      const type = checker.getTypeAtLocation(binding.parent);
+      if (exportedTypes.includes(type)) {
+        return true;
+      }
+
+      if (type.symbol && exportedSymbols.includes(type.symbol)) {
+        return true;
+      }
+
+      // inferred object type member will skip mangle: ex. const x = {vvv: 1};
+      const objectType = checker.getTypeAtLocation(binding.parent.parent);
+      if (objectType.symbol?.name === "__object") {
+        return true;
+      }
+    }
+
+    if (exportedNodes.includes(binding.parent)) {
+      return true;
+    }
+    const symbol = checker.getSymbolAtLocation(binding);
+    if (symbol && exportedSymbols.includes(symbol)) {
+      return true;
+    }
+
+    // const type = checker.getTypeAtLocation(binding.parent);
+    // if (exportedTypes.includes(type)) {
+    //   return true;
+    // }
+    return false;
+  };
 }

@@ -1,4 +1,4 @@
-import { MinifierProcessStep, type Minifier, MinifierProcessGenerator } from "./types";
+import type { Minifier, MinifierProcessGenerator } from "./types";
 import type { BatchRenameLocationWithSource, CodeAction, FileChangeResult } from "./transform/transformTypes";
 
 import ts from "typescript";
@@ -11,6 +11,8 @@ import {
 } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
+import { MinifierProcessStep } from "./types";
+import { visitedToNodes } from "./transform/relation";
 
 export function createMinifier(
   projectPath: string,
@@ -106,17 +108,19 @@ export function createMinifier(
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const visited = walkProject(checker, rootFiles, targetsFiles);
+    const exportRelatedNodes = visitedToNodes(checker, visited);
 
     yield { stepName: MinifierProcessStep.Analyze, visited };
 
     const allActions: CodeAction[] = [];
-    for (const targetFile of targetsFiles) {
-      const trials = getMangleTrialsInFile(checker, visited, targetFile);
+
+    for (const file of targetsFiles) {
+      const trials = getMangleTrialsInFile(checker, [...visited.types], file, exportRelatedNodes);
       const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
         actions: actions.actions,
-        fileName: targetFile.fileName,
+        fileName: file.fileName,
         invalidated: actions.invalidated,
       };
       allActions.push(...actions.actions);
@@ -126,6 +130,7 @@ export function createMinifier(
     const renames: BatchRenameLocationWithSource[] = expandToSafeRenameLocations(
       service.findRenameLocations,
       allActions,
+      console.warn,
     );
 
     yield { stepName: MinifierProcessStep.ExpandRenameLocations, renames };
