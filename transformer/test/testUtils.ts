@@ -2,7 +2,7 @@ import { expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { Plugin, rollup } from "rollup";
-import { TsMinifyOptions, tsMinify } from "../src";
+import { TsMinifyOptions, tsMinify, withTerserMangleValidator, aggressiveMangleValidator } from "../src";
 import ts from "typescript";
 import prettier from "prettier";
 
@@ -54,6 +54,8 @@ export async function assertRollupWithFixture(projectPath: string) {
           module: ts.ModuleKind.ESNext,
           experimentalDecorators: true,
         },
+        mangleValidator: withTerserMangleValidator,
+        withOriginalComment: true,
       }),
     ],
   });

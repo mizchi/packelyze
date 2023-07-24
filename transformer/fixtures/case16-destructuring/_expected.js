@@ -1,19 +1,19 @@
 function run() {
   // Array destructuring
-  const j = [
+  const arr = [
     { id: 1, value: "one" },
     { id: 2, value: "two" },
     { id: 3, value: "three" },
   ];
-  const [q, ...z] = j;
+  const [/*first*/ j, .../*rest*/ q] = arr;
   // Object destructuring
-  const p = {
-    k: "John",
-    x: 30,
+  const obj = {
+    /*name*/ k: "John",
+    /*age*/ x: 30,
   };
-  const { k: name, x: age } = p;
+  const { /*name*/ k: name, /*age*/ x: age } = obj;
   // Return the results so they can be checked
-  return { first: q, rest: z, name, age };
+  return { first: /*first*/ j, rest: /*rest*/ q, name, age };
 }
 
 export { run };

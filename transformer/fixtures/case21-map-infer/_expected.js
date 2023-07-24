@@ -1,18 +1,18 @@
-const j = [
+const inputs = [
   {
-    k: 0,
-    x: 10,
+    /*start*/ k: 0,
+    /*length*/ x: 10,
   },
 ];
 // TODO: omit type annotations
-const q = j.map((d) => {
+const internals = inputs.map((d) => {
   return {
-    start: d.k,
-    end: d.k + d.x,
+    start: d./*start*/ k,
+    end: d./*start*/ k + d./*length*/ x,
   };
 });
-const starts = q.map((r) => r.start);
-const mapped = q.map((r) => {
+const starts = internals.map((r) => r.start);
+const mapped = internals.map((r) => {
   return {
     start: r.start,
     end: r.end,

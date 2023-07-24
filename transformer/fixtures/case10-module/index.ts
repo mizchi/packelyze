@@ -1,5 +1,5 @@
 module InternalModule {
-  export const internalMessage = "Hello from internal module";
+  const internalMessage = "Hello from internal module";
 
   export function getInternalMessage(): string {
     return internalMessage;

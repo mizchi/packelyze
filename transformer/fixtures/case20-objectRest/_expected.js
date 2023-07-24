@@ -1,4 +1,4 @@
-function k(code) {
+function apply(code) {
   return {
     content: code,
     start: 1,
@@ -7,10 +7,10 @@ function k(code) {
 }
 function getChanges(fileNames) {
   return fileNames.map((targetFile) => {
-    const x = k(targetFile);
+    const result = apply(targetFile);
     return {
       fileName: targetFile,
-      ...x,
+      ...result,
     };
   });
 }

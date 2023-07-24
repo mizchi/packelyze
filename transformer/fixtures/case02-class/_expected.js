@@ -1,28 +1,31 @@
 class C {
   q;
   static sv = 1;
-  #z = 2;
-  static p = 2;
+  /*#hardPriv*/ #z = 2;
+  static /*svp*/ p = 2;
   static sfoo() {
-    return this.f();
+    return this./*spfoo*/ f();
   }
-  static f() {
-    return this.p;
+  static /*spfoo*/ f() {
+    return this./*svp*/ p;
   }
   constructor(v) {
-    this.#z;
-    this.q = { k: { pub: v }, x: { j: v + this.#z } };
+    this./*#hardPriv*/ #z;
+    this./*v*/ q = {
+      /*pubVal*/ k: { pub: v },
+      /*privVal*/ x: { /*pv*/ j: v + this./*#hardPriv*/ #z },
+    };
   }
   foo() {
-    return this.q.k;
+    return this./*v*/ q./*pubVal*/ k;
   }
   y() {
-    return this.q.x;
+    return this./*v*/ q./*privVal*/ x;
   }
 }
 class C2 {
   c2() {
-    return this.w();
+    return this./*c2_internal*/ w();
   }
   w() {
     return 2;
@@ -80,8 +83,8 @@ class Calculator {
     return this.value;
   }
 }
-const g = new Calculator();
-g.add(5).subtract(3);
+const calculator = new Calculator();
+calculator.add(5).subtract(3);
 // Accessors
 class Circle {
   _radius;
@@ -99,8 +102,8 @@ class Circle {
     return Math.PI * Math.pow(this._radius, 2);
   }
 }
-const b = new Circle(5);
-b.radius = 10;
+const circle = new Circle(5);
+circle.radius = 10;
 class OptionalClass {
   requiredMethod() {
     console.log("Required method");

@@ -1,8 +1,8 @@
 function extend(fileNames) {
-  const k = fileNames.map((fileName) => ({
+  const locs = fileNames.map((fileName) => ({
     fileName,
   }));
-  return k.map((loc) => ({
+  return locs.map((loc) => ({
     ...loc,
     original: loc.fileName,
     to: loc.fileName,

@@ -14,8 +14,39 @@ import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
 import { walkProjectExported } from "./transform/relation";
 
-const defaultMangleValidator = (_binding: BindingNode) => {
+export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;
+};
+
+// delegate to terser
+export const withTerserMangleValidator: MangleValidator = (binding: BindingNode) => {
+  // skip if binding is not identifier
+  if (ts.isIdentifier(binding)) {
+    const node = binding.parent;
+    if (!node) return;
+
+    // under module foo { function foo(){} }
+    const underModule = ts.isModuleBlock(node.parent);
+    if (underModule) {
+      return true;
+    }
+    // if (ts.isModuleBody(node.parent)) {
+    //   return true;
+    // }
+
+    if (ts.isVariableDeclaration(node) && !underModule) {
+      return false;
+    }
+    if (ts.isParameter(node)) {
+      return false;
+    }
+    if (ts.isClassDeclaration(node) && !underModule) {
+      return false;
+    }
+    if (ts.isFunctionDeclaration(node) && !underModule) {
+      return false;
+    }
+  }
 };
 
 export function createMinifier(
@@ -25,7 +56,7 @@ export function createMinifier(
   compilerOptions: ts.CompilerOptions = {},
   overrideCompilerOptions: ts.CompilerOptions = {},
   withOriginalComment: boolean = false,
-  validator: MangleValidator = defaultMangleValidator,
+  validator: MangleValidator = aggressiveMangleValidator,
 ): Minifier {
   const registory = ts.createDocumentRegistry();
   const mergedCompilerOptions: ts.CompilerOptions = {

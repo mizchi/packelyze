@@ -9,11 +9,11 @@ function nestedFunction(nested) {
 function publicFunction(pub) {
   return `${pub.id}: ${pub.pubValue}`;
 }
-function k(internal) {
+function internalFunction(internal) {
   return `${internal.name}: ${internal.age}`;
 }
 function allExportedFunction(pub, internal) {
-  return publicFunction(pub) + ", " + k(internal);
+  return publicFunction(pub) + ", " + internalFunction(internal);
 }
 
 export { allExportedFunction, nestedFunction, publicFunction, subFunction };

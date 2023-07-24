@@ -46,7 +46,15 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       if (rootFileNames.length === 0) {
         throw new Error("[tsMinify] input is not specified");
       }
-      minifier = createMinifier(cwd, rootFileNames, targetFileNames, parsed.options, overrideCompilerOptions);
+      minifier = createMinifier(
+        cwd,
+        rootFileNames,
+        targetFileNames,
+        parsed.options,
+        overrideCompilerOptions,
+        opts.withOriginalComment,
+        opts.mangleValidator,
+      );
       minifier.process();
     },
     // WIP

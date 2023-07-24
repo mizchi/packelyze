@@ -1,8 +1,8 @@
 function run() {
-  const k = { body: 1 };
+  const body = { body: 1 };
   fetch("https://example.test", {
     method: "POST",
-    body: JSON.stringify(k),
+    body: JSON.stringify(body),
   });
 }
 

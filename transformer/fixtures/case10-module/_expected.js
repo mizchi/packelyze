@@ -2,28 +2,28 @@ import * as myModule from "myModule";
 
 var k;
 (function (k) {
-  k.x = "Hello from internal module";
-  function j() {
-    return k.x;
+  const internalMessage = "Hello from internal module";
+  function x() {
+    return internalMessage;
   }
-  k.j = j;
+  k.x = x;
 })(k || (k = {}));
 // Namespace
-var q;
-(function (q) {
-  q.z = "Hello from namespace";
-  function p() {
-    return q.z;
+var j;
+(function (j) {
+  j.namespaceMessage = "Hello from namespace";
+  function q() {
+    return j.namespaceMessage;
   }
-  q.p = p;
-})(q || (q = {}));
+  j.q = q;
+})(j || (j = {}));
 window.myCustomFunction = () => "Hello from custom function";
 const messages = {
-  internal: k.j(),
-  namespace: q.p(),
+  internal: /*InternalModule*/ k./*getInternalMessage*/ x(),
+  namespace: /*MyNamespace*/ j./*getNamespaceMessage*/ q(),
   window: window.myCustomFunction ? window.myCustomFunction() : "",
 };
-const f = myModule.myFunction("Hello, TypeScript!");
-console.log(f);
+const result = myModule.myFunction("Hello, TypeScript!");
+console.log(result);
 
 export { messages };

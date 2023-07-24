@@ -1,6 +1,6 @@
 const foo = () => {
-  const k = MyGlobal.f({ x: 1 });
-  return MyGlobal.foo + k.y;
+  const ret = MyGlobal.f({ x: 1 });
+  return MyGlobal.foo + ret.y;
 };
 
 export { foo };

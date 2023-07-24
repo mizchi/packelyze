@@ -1,21 +1,21 @@
 function myfn(input) {
-  const q = {
-    j: 1,
+  const hidden = {
+    /*hidden*/ j: 1,
   };
-  const z = {
-    k: q.j,
-    x: input.input,
+  const internal = {
+    /*internalPub1*/ k: hidden./*hidden*/ j,
+    /*internalPub2*/ x: input.input,
     get() {
-      return this.k + this.x;
+      return this./*internalPub1*/ k + this./*internalPub2*/ x;
     },
   };
-  return q.j + z.get();
+  return hidden./*hidden*/ j + internal.get();
 }
-function p(props) {
-  return props.f + props.y;
+function componentLike1(props) {
+  return props./*prop1*/ q + props./*prop2*/ z;
 }
 function componentLike2() {
-  return p({ f: 1, y: 2 });
+  return componentLike1({ /*prop1*/ q: 1, /*prop2*/ z: 2 });
 }
 
 export { componentLike2, myfn };

@@ -34,6 +34,8 @@ export type TsMinifyOptions = {
   include?: string[];
   // load transformed code only to use with other plugins (e.g. rollup-plugin-ts)
   preTransformOnly?: boolean;
+  withOriginalComment?: boolean;
+  mangleValidator?: MangleValidator;
 };
 
 export const enum MinifierProcessStep {
@@ -105,4 +107,4 @@ export type Warning = {
 
 export type OnWarning = (warning: Warning) => void;
 
-export type MangleValidator = (biding: BindingNode) => boolean;
+export type MangleValidator = (biding: BindingNode) => boolean | void;

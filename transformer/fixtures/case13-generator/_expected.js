@@ -1,22 +1,22 @@
 // Generator function
-function* k() {
-  let j = 0;
+function* objectGenerator() {
+  let i = 0;
   while (true) {
-    yield { x: j };
-    j++;
+    yield { /*foo*/ k: i };
+    i++;
   }
 }
 function run() {
-  for (const q of k()) {
-    console.log(q.x);
+  for (const obj of objectGenerator()) {
+    console.log(obj./*foo*/ k);
   }
 }
 // Async generator function
 async function* asyncObjectGenerator() {
-  let z = 0;
+  let i = 0;
   while (true) {
-    yield { id: z, data: { value: `Value ${z}` } };
-    z++;
+    yield { id: i, data: { value: `Value ${i}` } };
+    i++;
     await new Promise((resolve) => setTimeout(resolve, 1000)); // delay for demonstration
   }
 }

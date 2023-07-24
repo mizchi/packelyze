@@ -1,13 +1,13 @@
 function createObj() {
   return {
-    xxx: x,
+    xxx,
     yyy(input) {
-      const k = {
-        v1: input.k ?? "hello",
-        v2: input.x ?? "world",
+      const ret = {
+        v1: input./*v1*/ k ?? "hello",
+        v2: input./*v2*/ x ?? "world",
       };
       return {
-        ...k,
+        ...ret,
       };
     },
     zzz() {
@@ -19,7 +19,7 @@ function createObj() {
       });
     },
   };
-  function x() {}
+  function xxx() {}
 }
 
 export { createObj };

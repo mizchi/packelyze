@@ -1,11 +1,11 @@
 // Use of the types
-let y = { name: "dog", sound: "bark" };
-let w = { name: "cat", sound: "meow" };
+let myDog = { name: "dog", sound: "bark" };
+let myCat = { name: "cat", sound: "meow" };
 let myBird = { name: "bird", sound: "chirp" };
-let g = {
-  dog: y.sound,
-  cat: w.sound,
+let sounds = {
+  dog: myDog.sound,
+  cat: myCat.sound,
   bird: myBird.sound,
 };
 
-export { myBird, g as sounds };
+export { myBird, sounds };

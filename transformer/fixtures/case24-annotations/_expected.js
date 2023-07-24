@@ -1,10 +1,10 @@
 const pub = {
   pub: 1,
-  k: 1,
+  /*hidden*/ k: 1,
 };
-const k = {
+const keep = {
   dontmangle: "str",
 };
-console.log(k.dontmangle);
+console.log(keep.dontmangle);
 
 export { pub };
