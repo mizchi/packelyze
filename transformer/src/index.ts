@@ -20,6 +20,7 @@ export type { ReadableSymbol, ReadbleNode } from "./ts/tsUtils";
 export type {
   LocalExported,
   ProjectExported,
-  MangleActionsWithInvalidated as MangleActionsFromTrials,
+  MangleActionsWithInvalidated,
 } from "./transform/transformTypes";
 export type { MinifierStep } from "./types";
+export type { SymbolWalkerResult } from "./ts/types";

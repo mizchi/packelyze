@@ -1,11 +1,11 @@
 import ts from "typescript";
-import { SymbolWalkerResult } from "./ts/types";
 import {
   BatchRenameLocationWithSource,
   BindingNode,
   CodeAction,
   FileChangeResult,
   MangleTrial,
+  ProjectExported,
 } from "./transform/transformTypes";
 
 // subset of rollup plugin but not only for rollup
@@ -56,7 +56,7 @@ type PreDiagnosticStep = {
 
 type AnalyzeStep = {
   stepName: MinifierProcessStep.Analyze;
-  visited: SymbolWalkerResult;
+  visited: ProjectExported;
 };
 
 type CreateActionsForFileStep = {

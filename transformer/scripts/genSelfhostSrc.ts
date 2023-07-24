@@ -93,6 +93,31 @@ for (const step of processor) {
       break;
     }
     case MinifierProcessStep.Analyze: {
+      console.log(
+        // types
+        "[symbols]",
+        step.visited.symbols
+          .filter((x) => {
+            const file = x.declarations?.[0].getSourceFile();
+            return !file?.isDeclarationFile;
+          })
+          .map((x) => x.name),
+        "[types]",
+        step.visited.types
+          .filter((x) => {
+            const file = x.symbol?.declarations?.[0].getSourceFile();
+            return !file?.isDeclarationFile;
+          })
+          .map((x) => x.symbol?.name),
+        "[nodes]",
+        step.visited.nodes
+          .filter((x) => {
+            const file = x.getSourceFile();
+            return !file?.isDeclarationFile;
+          })
+          .map((x) => x.getText()),
+      );
+      // throw "stop";
       break;
     }
     case MinifierProcessStep.CreateActionsForFile: {
