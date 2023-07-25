@@ -38,11 +38,11 @@ export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node:
 }
 
 // for composeVisitors
-export function getAnnotationDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
+export function getExternalDetectorWalker(onEnter: (node: ts.Node) => void = () => {}) {
   return (node: ts.Node) => {
     if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
-      const comments = getAnnotationAtNode(node);
-      if (comments?.internal) {
+      const ann = getAnnotationAtNode(node);
+      if (ann?.external) {
         onEnter(node);
       }
     }

@@ -17,9 +17,6 @@ export { getPlugin as tsMinify } from "./rollup";
 
 // ---- to keep internal interfaces ---
 export type { ReadableSymbol } from "./ts/tsUtils";
-export type {
-  LocalExported,
-  ProjectExported,
-} from "./transform/transformTypes";
+export type { SymbolBuilder } from "./transform/transformTypes";
 export type { MinifierStep } from "./types";
 export type { SymbolWalkerResult } from "./ts/types";

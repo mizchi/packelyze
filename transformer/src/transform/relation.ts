@@ -1,9 +1,13 @@
 import ts from "typescript";
 import type { BindingNode, LocalExported, MangleTargetNode, ProjectExported } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
-import { composeWalkers, formatCode } from "../ts/tsUtils";
-import { getEffectDetectorWalker } from "./detector";
+import { composeWalkers, formatCode, isNamedDeclaration } from "../ts/tsUtils";
+import {
+  getEffectDetectorWalker as getEffectDetector,
+  getExternalDetectorWalker as getExternalDetector,
+} from "./detector";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
+import { getAnnotationAtNode } from "../ts/comment";
 
 export function findBindingsInFile(file: ts.Node): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
@@ -147,6 +151,7 @@ function isSymbolExported(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
 }
 
 function isSymbolExportedFromRoot(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
+  // WIP
   const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
   return exportedSymbol !== symbol;
 }
@@ -156,7 +161,23 @@ export function walkProjectExported(
   exportedFiles: ts.SourceFile[],
   localFiles: ts.SourceFile[],
 ): ProjectExported {
-  const symbolWalker = createGetSymbolWalker(checker)();
+  const internalNodes: BindingNode[] = [];
+  const externalNodes: BindingNode[] = [];
+
+  const accept = (symbol: ts.Symbol) => {
+    const decl = symbol.valueDeclaration;
+    if (decl && isNamedDeclaration(decl) && decl.name && ts.isIdentifier(decl.name)) {
+      const annotation = getAnnotationAtNode(decl.name);
+      if (annotation?.internal === true) {
+        console.log("[walker:accept] force internal", decl.name.getText(), annotation);
+        internalNodes.push(decl.name);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const symbolWalker = createGetSymbolWalker(checker)(accept);
   for (const root of exportedFiles) {
     walkRootFile(root);
   }
@@ -173,16 +194,16 @@ export function walkProjectExported(
     types: visited.types,
     nodes,
     bindings,
+    internal: internalNodes,
+    external: externalNodes,
   } satisfies ProjectExported;
 
   function walkSymbol(symbol: ts.Symbol) {
-    {
-      const type = checker.getTypeOfSymbol(symbol);
-      symbolWalker.walkSymbol(symbol);
-      symbolWalker.walkType(type);
-      if (type.symbol) {
-        symbolWalker.walkSymbol(type.symbol);
-      }
+    const type = checker.getTypeOfSymbol(symbol);
+    symbolWalker.walkSymbol(symbol);
+    symbolWalker.walkType(type);
+    if (type.symbol) {
+      symbolWalker.walkSymbol(type.symbol);
     }
   }
 
@@ -210,14 +231,21 @@ export function walkProjectExported(
     const effectNodes: Set<ts.Node> = new Set();
     const walk = composeWalkers(
       // collect effect nodes
-      getEffectDetectorWalker(checker, (node) => {
+      getEffectDetector(checker, (node) => {
         effectNodes.add(node);
+      }),
+      getExternalDetector((node) => {
+        effectNodes.add(node);
+        if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
+          externalNodes.push(node);
+        }
       }),
     );
     walk(file);
 
     for (const node of effectNodes) {
       const symbol = checker.getSymbolAtLocation(node);
+      // if (symbol) walkSymbol(symbol);
       if (symbol) symbolWalker.walkSymbol(symbol);
       const type = checker.getTypeAtLocation(node);
       symbolWalker.walkType(type);

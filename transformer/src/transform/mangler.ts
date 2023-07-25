@@ -12,7 +12,7 @@ import {
   ProjectExported,
 } from "./transformTypes";
 import { findBindingsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
-import { getAnnotationAtNode } from "../ts/comment";
+import { getAnnotationAtNode as getAnnotationAtBinding } from "../ts/comment";
 import { sortBy } from "../utils";
 
 function isTypeDecralation(binding: BindingNode) {
@@ -33,20 +33,22 @@ export function getMangleNodesInFile(
   const localExported = getLocalExportedSymbols(checker, file);
   const isExportedFn = createIsBindingExported(checker, projectExported, localExported);
   return bindings.filter((binding) => {
-    return canMangle(binding, isExportedFn(binding, isRoot), validator);
+    const isExported = isExportedFn(binding, isRoot);
+    return isProjectInternal(binding, isExported, validator);
   });
-  function canMangle(binding: BindingNode, isExported: boolean, validator?: MangleValidator) {
+  function isProjectInternal(binding: BindingNode, isExported: boolean, validator?: MangleValidator) {
     const validatorRejected = validator?.(binding) === false;
-    const annotation = getAnnotationAtNode(binding);
-    const isForceInternal = annotation?.internal === true;
-    // const isForceExternal = annotation?.external === true;
+    // TODO: why first hidden is skipped by case24-annotations
+    // if (binding.getText() === "hidden") {
+    //   console.log("canMangle", projectExported.internal.includes(binding));
+    // }
     if (validatorRejected) {
       return false;
     }
     if (isTypeDecralation(binding)) {
       return false;
     }
-    if (isForceInternal) {
+    if (projectExported.internal.includes(binding)) {
       return true;
     }
     if (isExported) {
@@ -72,9 +74,6 @@ export function getCodeActionsFromBindings(
     withOriginalComment: boolean = false,
   ): CodeAction | undefined {
     const validate = createNameValidator(checker, node);
-    // if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
-    //   throw new Error("unexpected node type " + node.kind);
-    // }
     const originalName = node.text;
 
     // maybe react component name
@@ -83,15 +82,18 @@ export function getCodeActionsFromBindings(
       (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
       isComponentFunctionName(originalName);
     if (maybeFunctionComponentNode) {
-      // console.log("[mangle] maybe react component", originalName);
       return;
     }
-    // create new symbol builder?
 
-    // FIXME: should consume converted name for usedNames check
+    // TODO: renamer by ast kind
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
-    const annotation = getAnnotationAtNode(node);
+    const annotation = getAnnotationAtBinding(node);
+
+    if (annotation?.external) {
+      // stop by external
+      return;
+    }
     const action: CodeAction = {
       parentKind: node.parent.kind,
       actionType: "replace",
@@ -100,8 +102,7 @@ export function getCodeActionsFromBindings(
       to,
       annotation: annotation,
       start: node.getStart(),
-      node: node,
-      // originalTrial: trial,
+      node,
     };
     return action;
     function isComponentFunctionName(name: string) {
@@ -125,27 +126,43 @@ export function getCodeActionsFromBindings(
   }
 }
 
+const enum NodePriority {
+  VeryHigh = 0,
+  High = 1,
+  Normal = 5,
+  Low = 10,
+  VeryLow = 20,
+}
+
+function getActionPriority(action: CodeAction) {
+  // prefer type signature
+  if (ts.isTypeNode(action.node) || ts.isTypeNode(action.node.parent)) {
+    return NodePriority.High;
+  }
+
+  if (action.node.parent.kind === ts.SyntaxKind.ObjectLiteralExpression) {
+    return NodePriority.Low;
+  }
+  // Low priority for property assignment
+  if (action.node.kind === ts.SyntaxKind.PropertyAssignment) {
+    return NodePriority.VeryLow;
+  }
+
+  return NodePriority.Normal;
+}
+
 // exclude duplicated rename locations
 export function expandToSafeRenameLocations(
   findRenameLocations: FindRenameLocations,
   actions: CodeAction[],
   onWarning?: OnWarning,
 ): BatchRenameLocationWithSource[] {
-  const sortedActions = sortBy(actions, (a) => {
-    if (a.parentKind === ts.SyntaxKind.PropertyAssignment) {
-      return -1;
-    } else {
-      return 1;
-    }
-  });
-  // stop rename for same position
-  const touchingLocations = new Set<string>();
-
-  return [...sortedActions.flatMap(toSafeRenameLocations)];
+  const touchings = new Set<string>();
+  return sortBy(actions, getActionPriority).flatMap(toSafeRenameLocations);
 
   function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
-    if (touchingLocations.has(touchKey)) return [];
+    if (touchings.has(touchKey)) return [];
     const locations = findBatchRenameLocations(
       findRenameLocations,
       action.fileName,
@@ -156,36 +173,26 @@ export function expandToSafeRenameLocations(
     if (!locations) return [];
 
     // stop by conflict
-    const renameKeys = locations.map(renameLocationToKey);
-    if (renameKeys.some((key) => touchingLocations.has(key))) {
-      const conflicts = renameKeys.filter((key) => touchingLocations.has(key));
+    const tryingKeys = locations.map(renameToKey);
+    if (tryingKeys.some((key) => touchings.has(key))) {
+      const conflicts = tryingKeys.filter((key) => touchings.has(key));
       onWarning?.({
         code: WarningCode.MANGLE_STOP_BY_LOCATION_CONFLICT,
         message: conflicts.join("\n"),
       });
       return [];
     }
-    for (const renameKey of renameKeys) {
-      touchingLocations.add(renameKey);
+    for (const renameKey of tryingKeys) {
+      touchings.add(renameKey);
     }
-
-    // only touching if node is anotated by @external
-    if (action.annotation?.external) {
-      onWarning?.({
-        code: WarningCode.MANGLE_STOP_BY_EXTERNAL,
-        message: `${action.original} is annotated by @external`,
-      });
-      return [];
-    }
-    // return with source  action
-    return locations.map((rename) => ({ ...rename, action: action }) satisfies BatchRenameLocationWithSource);
+    return locations.map((rename) => ({ ...rename, action }) satisfies BatchRenameLocationWithSource);
   }
 
   function actionToKey(action: CodeAction): string {
-    return `${action.fileName}:${action.start}`;
+    return `${action.fileName}-${action.start}`;
   }
 
-  function renameLocationToKey(rename: BatchRenameLocation): string {
-    return `${rename.fileName}:${rename.textSpan.start}`;
+  function renameToKey(rename: BatchRenameLocation): string {
+    return `${rename.fileName}-${rename.textSpan.start}`;
   }
 }
