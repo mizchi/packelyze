@@ -1,4 +1,3 @@
-import { MangleAction } from "./../../lib/transformer/types.d";
 import type { FindRenameLocations, BatchRenameLocation } from "../ts/types";
 import { WarningCode, type OnWarning, MangleValidator } from "./../types";
 
@@ -10,161 +9,78 @@ import {
   SymbolBuilder,
   BatchRenameLocationWithSource,
   BindingNode,
-  MangleStopReason,
-  MangleTrial,
-  MangleReason,
   ProjectExported,
-  MangleActionsWithInvalidated,
 } from "./transformTypes";
 import { findBindingsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
 import { getAnnotationAtNode } from "../ts/comment";
 import { sortBy } from "../utils";
 
-function getMangleTrial(
-  checker: ts.TypeChecker,
-  binding: BindingNode,
-  isExported: boolean,
-  validator?: MangleValidator,
-): MangleTrial {
-  // skip: type <Foo> = { ... }
-  const validatedResult = validator?.(binding);
-  if (validatedResult === false) {
-    return {
-      mangle: false,
-      node: binding,
-      reason: MangleStopReason.CustomValidatorResult,
-    };
-  }
-  if (
+function isTypeDecralation(binding: BindingNode) {
+  return (
     (ts.isTypeAliasDeclaration(binding.parent) || ts.isInterfaceDeclaration(binding.parent)) &&
     binding.parent.name === binding
-  ) {
-    return {
-      mangle: false,
-      node: binding,
-      reason: MangleStopReason.TypeOnly,
-    };
-  }
-  // skip inferred type
-  if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
-    if (isExported) {
-      return {
-        mangle: false,
-        node: binding,
-        reason: MangleStopReason.Exported,
-      };
-    }
-  }
-  // force mangle by internal annotation
-  if (
-    // parent is declaration
-    (ts.isPropertyDeclaration(binding.parent) ||
-      ts.isMethodDeclaration(binding.parent) ||
-      ts.isPropertyAssignment(binding.parent)) &&
-    // under class/interface/typeAlias
-    (ts.isObjectLiteralExpression(binding.parent.parent) ||
-      ts.isClassDeclaration(binding.parent.parent) ||
-      ts.isClassExpression(binding.parent.parent) ||
-      ts.isInterfaceDeclaration(binding.parent.parent) ||
-      ts.isTypeNode(binding.parent.parent))
-  ) {
-    const annotation = getAnnotationAtNode(binding);
-    if (annotation?.internal) {
-      return {
-        mangle: true,
-        node: binding,
-        reason: MangleReason.Internal,
-      };
-    }
-  }
-
-  // node is related to export
-  if (isExported) {
-    const annotation = getAnnotationAtNode(binding);
-    if (!annotation?.internal) {
-      return {
-        mangle: false,
-        node: binding,
-        reason: MangleStopReason.Exported,
-        relatedNode: binding.parent,
-      };
-    } else {
-      return {
-        mangle: true,
-        node: binding,
-        reason: MangleReason.Internal,
-      };
-    }
-  }
-
-  // FIXME
-  // node is exported
-  if (isExported) {
-    const symbol = checker.getSymbolAtLocation(binding);
-    return {
-      mangle: false,
-      node: binding,
-      reason: MangleStopReason.Exported,
-      relatedSymbol: symbol,
-    };
-  }
-  return {
-    mangle: true,
-    node: binding,
-    reason: MangleReason.Local,
-  };
+  );
 }
 
-export function getMangleTrialsInFile(
+export function getMangleNodesInFile(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
   file: ts.SourceFile,
+  isRoot: boolean,
   validator?: MangleValidator,
-): MangleTrial[] {
+): BindingNode[] {
   const bindings = findBindingsInFile(file);
   const localExported = getLocalExportedSymbols(checker, file);
-
   const isExportedFn = createIsBindingExported(checker, projectExported, localExported);
-  return bindings.map((binding) => {
-    return getMangleTrial(checker, binding, isExportedFn(binding), validator);
+  return bindings.filter((binding) => {
+    return canMangle(binding, isExportedFn(binding, isRoot), validator);
   });
+  function canMangle(binding: BindingNode, isExported: boolean, validator?: MangleValidator) {
+    const validatorRejected = validator?.(binding) === false;
+    const annotation = getAnnotationAtNode(binding);
+    const isForceInternal = annotation?.internal === true;
+    // const isForceExternal = annotation?.external === true;
+    if (validatorRejected) {
+      return false;
+    }
+    if (isTypeDecralation(binding)) {
+      return false;
+    }
+    if (isForceInternal) {
+      return true;
+    }
+    if (isExported) {
+      return false;
+    }
+    return true;
+  }
 }
 
-export function getCodeActionsFromTrials(
+export function getCodeActionsFromBindings(
   checker: ts.TypeChecker,
-  trials: MangleTrial[],
+  bindings: BindingNode[],
   withOriginalComment: boolean = false,
-): MangleActionsWithInvalidated {
+): CodeAction[] {
   const symbolBuilder = createSymbolBuilder();
-  // const trials = getMangleTrialsInFile(checker, visited, file);
-  const actions = trials.flatMap((trial) => {
-    if (trial.mangle) {
-      return getCodeActionForTrial(symbolBuilder, trial, withOriginalComment) ?? [];
-    }
-    return [];
+  return bindings.flatMap((node) => {
+    return getCodeActionForBinding(symbolBuilder, node, withOriginalComment) ?? [];
   });
 
-  const invalidated = trials.filter((x) => !x.mangle);
-  return {
-    actions,
-    invalidated: invalidated,
-  };
-
-  function getCodeActionForTrial(
+  function getCodeActionForBinding(
     symbolBuilder: SymbolBuilder,
-    trial: MangleTrial,
+    node: BindingNode,
     withOriginalComment: boolean = false,
   ): CodeAction | undefined {
-    const validate = createNameValidator(checker, trial.node);
-    if (!(ts.isIdentifier(trial.node) || ts.isPrivateIdentifier(trial.node))) {
-      throw new Error("unexpected node type " + trial.node.kind);
-    }
-    const originalName = trial.node.text;
+    const validate = createNameValidator(checker, node);
+    // if (!(ts.isIdentifier(node) || ts.isPrivateIdentifier(node))) {
+    //   throw new Error("unexpected node type " + node.kind);
+    // }
+    const originalName = node.text;
 
     // maybe react component name
     // TODO: const Foo = ...;
     const maybeFunctionComponentNode =
-      (ts.isFunctionDeclaration(trial.node.parent) || ts.isFunctionExpression(trial.node.parent)) &&
+      (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
       isComponentFunctionName(originalName);
     if (maybeFunctionComponentNode) {
       // console.log("[mangle] maybe react component", originalName);
@@ -175,16 +91,17 @@ export function getCodeActionsFromTrials(
     // FIXME: should consume converted name for usedNames check
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
-    const annotation = getAnnotationAtNode(trial.node);
+    const annotation = getAnnotationAtNode(node);
     const action: CodeAction = {
-      parentKind: trial.node.parent.kind,
+      parentKind: node.parent.kind,
       actionType: "replace",
-      fileName: trial.node.getSourceFile().fileName,
+      fileName: node.getSourceFile().fileName,
       original: originalName,
       to,
       annotation: annotation,
-      start: trial.node.getStart(),
-      originalTrial: trial,
+      start: node.getStart(),
+      node: node,
+      // originalTrial: trial,
     };
     return action;
     function isComponentFunctionName(name: string) {

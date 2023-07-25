@@ -5,7 +5,7 @@ function run() {
     { id: 2, value: "two" },
     { id: 3, value: "three" },
   ];
-  const [/*first*/ j, .../*rest*/ q] = arr;
+  const [/*first*/ j, ...rest] = arr;
   // Object destructuring
   const obj = {
     /*name*/ k: "John",
@@ -13,7 +13,7 @@ function run() {
   };
   const { /*name*/ k: name, /*age*/ x: age } = obj;
   // Return the results so they can be checked
-  return { first: /*first*/ j, rest: /*rest*/ q, name, age };
+  return { first: /*first*/ j, rest, name, age };
 }
 
 export { run };

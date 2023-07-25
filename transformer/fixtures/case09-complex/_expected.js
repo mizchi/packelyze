@@ -36,11 +36,11 @@ var Color;
 })(Color || (Color = {}));
 var MyNamespace;
 (function (MyNamespace) {
-  function k() {}
-  MyNamespace.k = k;
+  function foo() {}
+  MyNamespace.foo = foo;
 })(MyNamespace || (MyNamespace = {}));
 Color.Red;
-MyNamespace./*foo*/ k();
+MyNamespace.foo();
 const mapped = {
   propA: "propA",
   propB: "propB",
@@ -50,9 +50,9 @@ function log(target, propertyName) {
   console.log(`log: ${propertyName.toString()}`);
 }
 class DecoratorTest {
-  x = "property";
+  k = "property";
 }
-__decorate([log], DecoratorTest.prototype, "x", void 0);
+__decorate([log], DecoratorTest.prototype, "k", void 0);
 
 export {
   Color,

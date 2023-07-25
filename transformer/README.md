@@ -58,21 +58,15 @@ const result = minifier.readFile(filePath);
 
 ## TODO for 0.1.0 (publish)
 
-- [ ] Mangle skip with `@internal` leading comments
 - [ ] Self hosting
-- [ ] Transform kind whitelist
+- [ ] refactor: Move external and internal to symbolWalker
 - [ ] Safe symbol builder by SyntaxKind
-- [ ] Readable intermediate `CodeAction` for debug
-- [ ] Add broken pattern tests
-- [ ] object initialization without type: `const obj = { v: 1 }`
 - [ ] pure: jsx
 - [ ] pure: Promise.resolve
 - [ ] test for `typeof`
 - [ ] Bug: TypeScript clushed with typescript internal assertings
-- [ ] Linter or Checker for mangle
 
 ## Icebox
-
 
 - [ ] Alert detecting duplicated keys for object type intersection
 - [ ] DCE: Delete unused class methods

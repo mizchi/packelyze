@@ -5,7 +5,7 @@ import { composeWalkers, formatCode } from "../ts/tsUtils";
 import { getEffectDetectorWalker } from "./detector";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
 
-export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
+export function findBindingsInFile(file: ts.Node): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
   ts.forEachChild(file, visit);
   return identifiers;
@@ -42,6 +42,9 @@ export function findBindingsInFile(file: ts.SourceFile): BindingNode[] {
       if (hasDeclareOrAbstractModifier(node)) return;
       if (node.name) visitNamedBinding(node.name);
     }
+    // if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
+    //   visitNamedBinding(node);
+    // }
     ts.forEachChild(node, visit);
   }
   function visitNamedBinding(node: ts.DeclarationName | ts.BindingElement | ts.ArrayBindingElement) {
@@ -87,24 +90,20 @@ export function getLocalExportedSymbols(checker: ts.TypeChecker, file: ts.Source
     symbols: fileSymbol ? checker.getExportsOfModule(fileSymbol) : [],
   };
 }
-// const fileSymbol = checker.getSymbolAtLocation(file);
-
-// // TODO: remove this
-// const localExportSymbols = fileSymbol ? checker.getExportsOfModule(fileSymbol) : [];
 
 export function createIsBindingExported(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
   localExported: LocalExported,
 ) {
-  return (binding: BindingNode) => {
+  return (binding: BindingNode, isRoot: boolean) => {
     // special case for property assignment
     if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
       const type = checker.getTypeAtLocation(binding.parent);
       if (projectExported.types.includes(type)) {
         return true;
       }
-      if (type.symbol && localExported.symbols.includes(type.symbol)) {
+      if (type.symbol && projectExported.symbols.includes(type.symbol)) {
         return true;
       }
       // inferred object type member will skip mangle: ex. const x = {vvv: 1};
@@ -113,69 +112,96 @@ export function createIsBindingExported(
         return true;
       }
     }
-
-    if (projectExported.nodes.includes(binding.parent as MangleTargetNode)) {
-      return true;
-    }
     const symbol = checker.getSymbolAtLocation(binding);
-    if (symbol && localExported.symbols.includes(symbol)) {
-      return true;
+
+    {
+      const parent = binding.parent as MangleTargetNode;
+      const symbol = checker.getSymbolAtLocation(binding);
+      const type = checker.getTypeAtLocation(binding);
+      if (projectExported.nodes.includes(parent)) {
+        return true;
+      }
+      if (symbol && projectExported.symbols.includes(symbol)) {
+        return true;
+      }
+      if (type.symbol && projectExported.symbols.includes(type.symbol)) {
+        return true;
+      }
     }
 
-    // from type symbol
-    const type = checker.getTypeAtLocation(binding);
-    if (type.symbol && localExported.symbols.includes(type.symbol)) {
-      return true;
+    // TODO: remove this
+    // check local exported
+    {
+      // checker.getExports
+      if (symbol && localExported.symbols.includes(symbol)) {
+        return true;
+      }
     }
-    // if (type.symbol && projectExported.symbols.includes(type.symbol)) {
-    //   return true;
-    // }
     return false;
   };
 }
 
+function isSymbolExported(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
+  const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
+  return exportedSymbol !== symbol;
+}
+
+function isSymbolExportedFromRoot(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
+  const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
+  return exportedSymbol !== symbol;
+}
+
 export function walkProjectExported(
   checker: ts.TypeChecker,
-  rootFiles: ts.SourceFile[],
-  files: ts.SourceFile[],
+  exportedFiles: ts.SourceFile[],
+  localFiles: ts.SourceFile[],
 ): ProjectExported {
   const symbolWalker = createGetSymbolWalker(checker)();
-  for (const root of rootFiles) {
+  for (const root of exportedFiles) {
     walkRootFile(root);
   }
-  for (const file of files) {
+  for (const file of localFiles) {
     walkTargetFile(file);
   }
   const visited = symbolWalker.getVisited();
+  const nodes = visitedToNodes(checker, visited);
+
+  // TODO: check this is correct
+  const bindings = nodes.flatMap((node) => findBindingsInFile(node));
   return {
     symbols: visited.symbols,
     types: visited.types,
-    nodes: visitedToNodes(checker, visited),
-  };
+    nodes,
+    bindings,
+  } satisfies ProjectExported;
+
+  function walkSymbol(symbol: ts.Symbol) {
+    {
+      const type = checker.getTypeOfSymbol(symbol);
+      symbolWalker.walkSymbol(symbol);
+      symbolWalker.walkType(type);
+      if (type.symbol) {
+        symbolWalker.walkSymbol(type.symbol);
+      }
+    }
+  }
 
   function walkRootFile(root: ts.SourceFile) {
     const fileSymbol = checker.getSymbolAtLocation(root);
     if (!fileSymbol) return;
     const exportedSymbols = checker.getExportsOfModule(fileSymbol);
-    for (const exported of exportedSymbols) {
-      symbolWalker.walkSymbol(exported);
-
-      const type = checker.getTypeOfSymbol(exported);
-      symbolWalker.walkType(type);
-      if (type.symbol) {
-        symbolWalker.walkSymbol(type.symbol);
-      }
-
+    for (const symbol of exportedSymbols) {
+      walkSymbol(symbol);
       // check exported
       // if it is any type and export type, typescript was lost type tracing
       // ex. export type { MyType } from "./types";
-      const exportedSymbol = checker.getExportSymbolOfSymbol(exported);
-      // if (exportedSymbol === exported) continue;
-      const maybeExportSpecifier = exportedSymbol?.declarations?.[0];
-      if (maybeExportSpecifier && ts.isExportSpecifier(maybeExportSpecifier)) {
-        const exportSpecifierType = checker.getTypeAtLocation(maybeExportSpecifier);
-        symbolWalker.walkType(exportSpecifierType);
-        symbolWalker.walkSymbol(exportSpecifierType.symbol!);
+      if (isSymbolExported(checker, symbol)) continue;
+      const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
+      const maybeSpecifier = exportedSymbol?.declarations?.[0];
+      if (maybeSpecifier && ts.isExportSpecifier(maybeSpecifier)) {
+        const specifierType = checker.getTypeAtLocation(maybeSpecifier);
+        symbolWalker.walkType(specifierType);
+        specifierType.symbol && symbolWalker.walkSymbol(specifierType.symbol);
       }
     }
   }
@@ -209,17 +235,17 @@ function visitedToNodes(
   for (const symbol of visited.symbols) {
     // register symbol declaration
     for (const declaration of symbol.getDeclarations() ?? []) {
-      walkRelatedNode(declaration, 0);
+      walkExportedNode(declaration, 0);
     }
 
     // type inferred nodes
     const type = checker.getTypeOfSymbol(symbol);
     if (type.symbol) {
       for (const declaration of type.symbol.getDeclarations() ?? []) {
-        walkRelatedNode(declaration, 0);
+        walkExportedNode(declaration, 0);
       }
       if (type.symbol.valueDeclaration) {
-        walkRelatedNode(type.symbol.valueDeclaration, 0);
+        walkExportedNode(type.symbol.valueDeclaration, 0);
       }
     }
   }
@@ -227,7 +253,7 @@ function visitedToNodes(
   for (const type of visited.types) {
     if (type.symbol) {
       for (const declaration of type.symbol.getDeclarations() ?? []) {
-        walkRelatedNode(declaration, 0);
+        walkExportedNode(declaration, 0);
       }
     }
   }
@@ -258,7 +284,7 @@ function visitedToNodes(
       ts.isUnionTypeNode(node)
     );
   }
-  function walkRelatedNode(node: ts.Node, depth: number) {
+  function walkExportedNode(node: ts.Node, depth: number) {
     log(
       "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
       formatCode(node.getText()).slice(0, 20) + "...",
@@ -272,82 +298,82 @@ function visitedToNodes(
     const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
     if (ts.isPropertyDeclaration(node) && isClassMember) {
       if (node.type) {
-        walkRelatedNode(node.type, depth + 1);
+        walkExportedNode(node.type, depth + 1);
       }
     }
     // now only for classes
     if (ts.isMethodDeclaration(node) && isClassMember) {
       for (const param of node.parameters) {
-        walkRelatedNode(param, depth + 1);
+        walkExportedNode(param, depth + 1);
       }
       for (const typeParams of node.typeParameters ?? []) {
-        walkRelatedNode(typeParams, depth + 1);
+        walkExportedNode(typeParams, depth + 1);
       }
     }
     if (ts.isTypeAliasDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
-        walkRelatedNode(typeParam, depth + 1);
+        walkExportedNode(typeParam, depth + 1);
       }
       if (node.type) {
-        walkRelatedNode(node.type, depth + 1);
+        walkExportedNode(node.type, depth + 1);
       }
     }
     if (ts.isInterfaceDeclaration(node)) {
       // TODO
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          walkRelatedNode(type.expression, depth + 1);
+          walkExportedNode(type.expression, depth + 1);
         }
       }
       for (const typeParam of node.typeParameters ?? []) {
-        walkRelatedNode(typeParam, depth + 1);
+        walkExportedNode(typeParam, depth + 1);
       }
       for (const member of node.members) {
-        walkRelatedNode(member, depth + 1);
+        walkExportedNode(member, depth + 1);
       }
     }
 
     if (ts.isClassDeclaration(node)) {
       for (const typeParam of node.typeParameters ?? []) {
-        walkRelatedNode(typeParam, depth + 1);
+        walkExportedNode(typeParam, depth + 1);
       }
       // for (const member of node.members) {
       //   visitNode(member, depth + 1);
       // }
       for (const heritageClause of node.heritageClauses ?? []) {
         for (const type of heritageClause.types) {
-          walkRelatedNode(type.expression, depth + 1);
+          walkExportedNode(type.expression, depth + 1);
         }
       }
     }
     if (ts.isTypeLiteralNode(node)) {
       for (const member of node.members) {
-        walkRelatedNode(member, depth + 1);
+        walkExportedNode(member, depth + 1);
       }
     }
     if (ts.isParameter(node) || ts.isPropertySignature(node)) {
       if (node.type) {
-        walkRelatedNode(node.type, depth + 1);
+        walkExportedNode(node.type, depth + 1);
       }
     }
     if (ts.isMethodSignature(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) {
       for (const param of node.parameters) {
-        walkRelatedNode(param, depth + 1);
+        walkExportedNode(param, depth + 1);
       }
     }
     if (ts.isObjectLiteralExpression(node)) {
       for (const prop of node.properties) {
-        walkRelatedNode(prop, depth + 1);
+        walkExportedNode(prop, depth + 1);
       }
     }
     if (ts.isPropertyAssignment(node)) {
-      walkRelatedNode(node.name, depth + 1);
+      walkExportedNode(node.name, depth + 1);
     }
 
     // walk types
     if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
       for (const type of node.types) {
-        walkRelatedNode(type, depth + 1);
+        walkExportedNode(type, depth + 1);
       }
     }
   }

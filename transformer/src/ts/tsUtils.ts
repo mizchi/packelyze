@@ -86,6 +86,7 @@ const circularSymbol = Symbol("circular");
 export type ReadbleNode = {
   kind: ts.SyntaxKind[keyof ts.SyntaxKind][];
   text: string;
+  /**@external*/
   flags?: ts.NodeFlags[keyof ts.NodeFlags][];
 } & {
   [key: string]: ReadbleNodeOrSymbol;

@@ -16,11 +16,10 @@ export { createMinifier, aggressiveMangleValidator, withTerserMangleValidator } 
 export { getPlugin as tsMinify } from "./rollup";
 
 // ---- to keep internal interfaces ---
-export type { ReadableSymbol, ReadbleNode } from "./ts/tsUtils";
+export type { ReadableSymbol } from "./ts/tsUtils";
 export type {
   LocalExported,
   ProjectExported,
-  MangleActionsWithInvalidated,
 } from "./transform/transformTypes";
 export type { MinifierStep } from "./types";
 export type { SymbolWalkerResult } from "./ts/types";

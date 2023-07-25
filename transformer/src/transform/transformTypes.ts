@@ -5,6 +5,7 @@ export type ProjectExported = {
   symbols: ReadonlyArray<ts.Symbol>;
   types: ReadonlyArray<ts.Type>;
   nodes: ReadonlyArray<MangleTargetNode>;
+  bindings: ReadonlyArray<BindingNode>;
 };
 
 export type LocalExported = {
@@ -59,7 +60,7 @@ export type CodeAction = {
   to: string;
   start: number;
   annotation: BindingAnnotation | undefined;
-  originalTrial: MangleTrial;
+  node: ts.Node;
 };
 
 /**
@@ -70,47 +71,3 @@ export type BatchRenameLocationWithSource = BatchRenameLocation & {
 };
 
 export type BindingNode = ts.Identifier | ts.PrivateIdentifier;
-
-export enum MangleReason {
-  Local = "Local",
-  Inferred = "Inferred",
-  Internal = "Internal",
-}
-
-export enum MangleStopReason {
-  TypeOnly = "TypeOnly",
-  External = "External",
-  Exported = "Exported",
-  UnsupportedInference = "UnsupportedInference",
-  CustomValidatorResult = "CustomValidatorResult",
-}
-
-export type MangleTrial =
-  | {
-      mangle: true;
-      node: ts.Node;
-      reason: MangleReason;
-    }
-  | {
-      mangle: false;
-      node: ts.Node;
-      reason: MangleStopReason;
-    }
-  | {
-      mangle: false;
-      node: ts.Node;
-      relatedSymbol?: ts.Symbol;
-      relatedNode?: ts.Node;
-      reason: MangleStopReason.Exported;
-    }
-  | {
-      mangle: false;
-      node: ts.Node;
-      reason: MangleStopReason.CustomValidatorResult;
-      message?: string;
-    };
-
-export type MangleActionsWithInvalidated = {
-  actions: CodeAction[];
-  invalidated: MangleTrial[];
-};

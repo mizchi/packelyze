@@ -8,7 +8,7 @@ import type {
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, getCodeActionsFromTrials, getMangleTrialsInFile } from "./transform/mangler";
+import { expandToSafeRenameLocations, getCodeActionsFromBindings, getMangleNodesInFile } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
@@ -145,15 +145,16 @@ export function createMinifier(
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const trials = getMangleTrialsInFile(checker, visited, file, validator);
-      const actions = getCodeActionsFromTrials(checker, trials, withOriginalComment);
+      const isRoot = rootFiles.includes(file);
+      const nodes = getMangleNodesInFile(checker, visited, file, isRoot, validator);
+      const actions = getCodeActionsFromBindings(checker, nodes, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
-        actions: actions.actions,
+        actions: actions,
         fileName: file.fileName,
-        invalidated: actions.invalidated,
+        // invalidated: actions.invalidated,
       };
-      allActions.push(...actions.actions);
+      allActions.push(...actions);
     }
 
     yield { stepName: MinifierProcessStep.AllActionsCreated, actions: allActions };

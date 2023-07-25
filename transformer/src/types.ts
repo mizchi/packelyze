@@ -4,7 +4,6 @@ import {
   BindingNode,
   CodeAction,
   FileChangeResult,
-  MangleTrial,
   ProjectExported,
 } from "./transform/transformTypes";
 
@@ -62,7 +61,6 @@ type AnalyzeStep = {
 type CreateActionsForFileStep = {
   stepName: MinifierProcessStep.CreateActionsForFile;
   actions: CodeAction[];
-  invalidated: MangleTrial[];
   fileName: string;
 };
 

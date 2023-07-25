@@ -41,16 +41,14 @@ const minifier = createMinifier(
 const processor = minifier.createProcess();
 
 function actionToDebug(action: CodeAction) {
-  const {
-    originalTrial: { node, reason },
-  } = action;
+  const { node } = action;
   const file = node.getSourceFile();
   const { character, line } = file.getLineAndCharacterOfPosition(node.getStart());
   const codePos = `${action.fileName}:${line + 1}:${character + 1}`;
   return {
     text: node.getText(),
     kind: ts.SyntaxKind[node.parent.kind],
-    reason: reason,
+    // reason: reason,
     at: codePos,
   };
 }
@@ -67,7 +65,6 @@ function renameToDebug(rename: BatchRenameLocationWithSource) {
   const renameAt = `${rename.fileName}:${line + 1}:${character + 1}`;
   return {
     original: rename.original,
-    length: rename.textSpan.length,
     renameAt,
     from: actionDebug.at,
   };
@@ -96,26 +93,26 @@ for (const step of processor) {
       console.log(
         // types
         "[symbols]",
-        step.visited.symbols
-          .filter((x) => {
-            const file = x.declarations?.[0].getSourceFile();
-            return !file?.isDeclarationFile;
-          })
-          .map((x) => x.name),
+        // step.visited.symbols
+        //   .filter((x) => {
+        //     const file = x.declarations?.[0].getSourceFile();
+        //     return !file?.isDeclarationFile;
+        //   })
+        //   .map((x) => x.name),
         "[types]",
-        step.visited.types
-          .filter((x) => {
-            const file = x.symbol?.declarations?.[0].getSourceFile();
-            return !file?.isDeclarationFile;
-          })
-          .map((x) => x.symbol?.name),
+        // step.visited.types
+        //   .filter((x) => {
+        //     const file = x.symbol?.declarations?.[0].getSourceFile();
+        //     return !file?.isDeclarationFile;
+        //   })
+        //   .map((x) => x.symbol?.name),
         "[nodes]",
-        step.visited.nodes
-          .filter((x) => {
-            const file = x.getSourceFile();
-            return !file?.isDeclarationFile;
-          })
-          .map((x) => x.getText()),
+        // step.visited.nodes
+        //   .filter((x) => {
+        //     const file = x.getSourceFile();
+        //     return !file?.isDeclarationFile;
+        //   })
+        //   .map((x) => x.getText()),
       );
       // throw "stop";
       break;
