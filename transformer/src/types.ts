@@ -50,6 +50,19 @@ export type ProjectExported = {
   external: ReadonlyArray<BindingNode>;
 };
 
+// export type FileExported = {
+//   // symbolsFromRoot: ReadonlyArray<ts.Symbol>;
+//   symbols: ReadonlyArray<ts.Symbol>;
+//   types: ReadonlyArray<ts.Type>;
+//   nodes: ReadonlyArray<ts.NamedDeclaration>;
+
+//   // symbols: ReadonlyArray<ts.Symbol>;
+//   // types: ReadonlyArray<ts.Type>;
+//   // nodes: ReadonlyArray<ts.NamedDeclaration>;
+//   // internal: ReadonlyArray<BindingNode>;
+//   // external: ReadonlyArray<BindingNode>;
+// };
+
 export type ChangeResult = {
   content: string;
   start?: number;

@@ -2,7 +2,7 @@ import ts from "typescript";
 import { getAnnotationAtNode } from "../ts/comment";
 import { findBatchRenameLocations } from "../ts/renamer";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
-import { composeWalkers, isNamedDeclaration } from "../ts/tsUtils";
+import { composeWalkers, isNamedDeclaration, toReadableSymbol } from "../ts/tsUtils";
 import { sortBy } from "../utils";
 import {
   MangleValidator,
@@ -16,6 +16,7 @@ import {
 } from "./../types";
 import { getEffectDetectorWalker, getExternalDetectorWalker } from "./detector";
 import { createSymbolBuilder } from "./symbolBuilder";
+import { sub } from "../../fixtures/case01-basic/sub";
 
 const enum NodePriority {
   VeryHigh = 0,
@@ -155,6 +156,33 @@ export function isExportedCreator(
       return true;
     }
 
+    if (node.getSourceFile().fileName.includes("mangler.ts") && node.getText() === "symbols") {
+      const subWalker = createGetSymbolWalker(checker)();
+      subWalker.walkModuleSymbol(checker.getSymbolAtLocation(node.getSourceFile())!);
+      const exported = subWalker.getVisited();
+      const type = checker.getTypeAtLocation(node);
+      const symbol = checker.getSymbolAtLocation(node);
+      console.log(
+        "[type includes]",
+        exported.types.includes === Array.prototype.includes,
+        exported.types.includes(type),
+        // exported.symbols.includes(symbol!), // side effect to ↑ by comment out
+      );
+
+      // exported.types.map((x) => x.symbol?.name),
+      // exported.nodes.map((x) => x.getText()),
+      // exported.types.map((x) => x.symbol?.name),
+      // localExportedSymbols.map((x) => x.name),
+      // exportedSymbol && toReadableSymbol(exportedSymbol),
+      // exportedSymbol,
+      // exportedSymbol && projectExported.symbols.includes(exportedSymbol!),
+      // projectExported.types.includes(type),
+
+      // contextSymbols.map((x) => x.name),
+
+      // throw "stop";
+    }
+
     // special case for property assignment
     if (ts.isPropertyAssignment(node.parent) && node.parent.name === node) {
       const type = checker.getTypeAtLocation(node.parent);
@@ -182,6 +210,10 @@ export function isExportedCreator(
     if (type.symbol && projectExported.symbols.includes(type.symbol)) {
       return false;
     }
+    if (type && projectExported.types.includes(type)) {
+      return false;
+    }
+
     return true;
   };
   function isTypeDecralation(binding: BindingNode) {
@@ -239,7 +271,7 @@ export function getLocalsInFile(file: ts.Node): BindingNode[] {
     if (
       ts.isFunctionDeclaration(node) ||
       ts.isClassDeclaration(node) ||
-      ts.isEnumDeclaration(node) ||
+      // ts.isEnumDeclaration(node) ||
       ts.isModuleDeclaration(node) ||
       ts.isVariableDeclaration(node) ||
       ts.isTypeAliasDeclaration(node) ||

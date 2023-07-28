@@ -51,7 +51,7 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
     const visitedTypes: ts.Type[] = visited?.types ? [...visited.types] : []; // Sparse array from id to type
     const visitedSymbols: ts.Symbol[] = visited?.symbols ? [...visited.symbols] : []; // Sparse array from id to symbol
-    const visitedNodes: ts.Node[] = []; // Sparse array from id to node
+    const visitedNodes: ts.Node[] = [...(visited?.nodes ?? [])]; // Sparse array from id to node
     // cached symbol id incrementer
     let symbolId = 0;
 
