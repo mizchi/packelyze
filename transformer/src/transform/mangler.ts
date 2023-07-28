@@ -175,35 +175,7 @@ export function isExportedCreator(
   }
 }
 
-export function getLocalNodesInFile(
-  // checker: ts.TypeChecker,
-  // projectExported: ProjectExported,
-  file: ts.SourceFile,
-  isExported: (node: BindingNode) => boolean,
-  // validator?: MangleValidator,
-): BindingNode[] {
-  const bindings = getLocalsInFile(file);
-  return bindings.filter(isExported);
-  //   const validatorRejected = validator?.(binding) === false;
-  //   // TODO: why first hidden is skipped by case24-annotations
-  //   if (validatorRejected) {
-  //     return false;
-  //   }
-  //   if (isTypeDecralation(binding)) {
-  //     return false;
-  //   }
-  //   if (projectExported.internal.includes(binding)) {
-  //     return true;
-  //   }
-  //   const exported = isExported(binding);
-  //   if (exported) {
-  //     return false;
-  //   }
-  //   return true;
-  // });
-}
-
-export function getCodeActionsFromBindings(
+export function getActionsAtNodes(
   checker: ts.TypeChecker,
   bindings: BindingNode[],
   withOriginalComment: boolean = false,

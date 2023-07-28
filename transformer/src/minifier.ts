@@ -10,9 +10,9 @@ import ts from "typescript";
 import path from "node:path";
 import {
   expandToSafeRenameLocations,
-  getCodeActionsFromBindings,
+  getActionsAtNodes,
   getExportedInProject,
-  getLocalNodesInFile,
+  getLocalsInFile,
   isExportedCreator,
 } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
@@ -147,8 +147,8 @@ export function createMinifier(
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const nodes = getLocalNodesInFile(file, isExported);
-      const actions = getCodeActionsFromBindings(checker, nodes, withOriginalComment);
+      const nodes = getLocalsInFile(file).filter(isExported);
+      const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,
         actions: actions,

@@ -4,9 +4,9 @@ import { getRenamedFileChanges } from "../ts/renamer";
 import { expect, test } from "vitest";
 import {
   expandToSafeRenameLocations,
-  getCodeActionsFromBindings,
+  getActionsAtNodes,
   getExportedInProject,
-  getLocalNodesInFile,
+  getLocalsInFile,
   isExportedCreator,
 } from "./mangler";
 import { aggressiveMangleValidator } from "..";
@@ -29,8 +29,8 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const isExported = isExportedCreator(checker, visited, aggressiveMangleValidator);
 
   const actions = [root].flatMap((target) => {
-    const trials = getLocalNodesInFile(target, isExported);
-    return getCodeActionsFromBindings(checker, trials);
+    const trials = getLocalsInFile(target).filter(isExported);
+    return getActionsAtNodes(checker, trials);
   });
 
   const renames = expandToSafeRenameLocations(service.findRenameLocations, actions);
