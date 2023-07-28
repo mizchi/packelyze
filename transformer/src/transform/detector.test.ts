@@ -3,7 +3,7 @@ import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../.
 import ts from "typescript";
 import { getEffectDetectorWalker } from "./detector";
 import { composeWalkers, formatCode } from "../ts/tsUtils";
-import { getExportedInProject } from "./relation";
+import { getExportedInProject } from "./mangler";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();

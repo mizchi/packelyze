@@ -8,11 +8,15 @@ import type {
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, getCodeActionsFromBindings, getLocalNodesInFile } from "./transform/mangler";
+import {
+  expandToSafeRenameLocations,
+  getCodeActionsFromBindings,
+  getExportedInProject,
+  getLocalNodesInFile,
+} from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
-import { getExportedInProject } from "./transform/relation";
 
 export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;

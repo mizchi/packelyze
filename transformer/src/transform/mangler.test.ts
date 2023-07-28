@@ -2,8 +2,13 @@ import "../../test/globals";
 import { initTestLanguageServiceWithFiles } from "../../test/testHarness";
 import { getRenamedFileChanges } from "../ts/renamer";
 import { expect, test } from "vitest";
-import { expandToSafeRenameLocations, getCodeActionsFromBindings, getLocalNodesInFile } from "./mangler";
-import { getExportedInProject } from "./relation";
+import {
+  expandToSafeRenameLocations,
+  getCodeActionsFromBindings,
+  getExportedInProject,
+  getLocalNodesInFile,
+} from "./mangler";
+// import { getExportedInProject } from "./relation";
 
 // assert expected mangle results
 function assertExpectedMangleResult(entry: string, files: Record<string, string>, expected: Record<string, string>) {

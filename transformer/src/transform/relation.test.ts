@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { getLocalsInFile, getExportedInProject } from "./relation";
 import ts from "typescript";
 import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
+import { getExportedInProject, getLocalsInFile } from "./mangler";
 
 test("findFileBindings # complex", () => {
   const { file, checker } = createOneshotTestProgram(`

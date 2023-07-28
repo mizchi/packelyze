@@ -165,16 +165,11 @@ export function toReadableSymbol(
   useFlags: boolean = false,
   includeParent: number = 0,
 ): ReadableSymbol {
-  let ret: ReadableSymbol;
-  ret = {
+  const ret: ReadableSymbol = {
     symbolName: symbol.name,
     flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
     declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
   };
-
-  if (useFlags) {
-    ret.flags = toReadabelSymbolFlags(symbol.flags);
-  }
   return toDefinedObject(ret) as ReadableSymbol;
 
   function toReadabelSymbolFlags(flags: ts.SymbolFlags) {
