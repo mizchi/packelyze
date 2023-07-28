@@ -7,7 +7,9 @@ import {
   getCodeActionsFromBindings,
   getExportedInProject,
   getLocalNodesInFile,
+  isExportedCreator,
 } from "./mangler";
+import { aggressiveMangleValidator } from "..";
 // import { getExportedInProject } from "./relation";
 
 // assert expected mangle results
@@ -24,9 +26,10 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
 
   const checker = service.getProgram()!.getTypeChecker();
   const visited = getExportedInProject(checker, [root], [root]);
+  const isExported = isExportedCreator(checker, visited, aggressiveMangleValidator);
 
   const actions = [root].flatMap((target) => {
-    const trials = getLocalNodesInFile(checker, visited, target);
+    const trials = getLocalNodesInFile(target, isExported);
     return getCodeActionsFromBindings(checker, trials);
   });
 

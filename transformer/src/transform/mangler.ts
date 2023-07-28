@@ -120,68 +120,87 @@ export function getExportedInProject(
   }
 }
 
-export function getLocalNodesInFile(
+export function isExportedCreator(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
-  file: ts.SourceFile,
-  validator?: MangleValidator,
-): BindingNode[] {
-  const bindings = getLocalsInFile(file);
-  return bindings.filter((binding) => {
-    const validatorRejected = validator?.(binding) === false;
+  validator: MangleValidator,
+) {
+  return (node: BindingNode) => {
+    const validatorRejected = validator?.(node) === false;
     // TODO: why first hidden is skipped by case24-annotations
     if (validatorRejected) {
       return false;
     }
-    if (isTypeDecralation(binding)) {
+    if (isTypeDecralation(node)) {
       return false;
     }
-    if (projectExported.internal.includes(binding)) {
+    if (projectExported.internal.includes(node)) {
       return true;
     }
-    const isExported = isExportedNode(binding);
-    if (isExported) {
-      return false;
-    }
-    return true;
-  });
-  function isExportedNode(node: BindingNode) {
+
     // special case for property assignment
     if (ts.isPropertyAssignment(node.parent) && node.parent.name === node) {
       const type = checker.getTypeAtLocation(node.parent);
       if (projectExported.types.includes(type)) {
-        return true;
+        return false;
       }
       if (type.symbol && projectExported.symbols.includes(type.symbol)) {
-        return true;
+        return false;
       }
       // inferred object type member will skip mangle: ex. const x = {vvv: 1};
       const objectType = checker.getTypeAtLocation(node.parent.parent);
       if (objectType.symbol?.name === "__object") {
-        return true;
+        return false;
       }
     }
     const parent = node.parent as ts.NamedDeclaration;
     const symbol = checker.getSymbolAtLocation(node);
     const type = checker.getTypeAtLocation(node);
     if (projectExported.nodes.includes(parent)) {
-      return true;
+      return false;
     }
     if (symbol && projectExported.symbols.includes(symbol)) {
-      return true;
+      return false;
     }
     if (type.symbol && projectExported.symbols.includes(type.symbol)) {
-      return true;
+      return false;
     }
-    return false;
-  }
-
+    return true;
+  };
   function isTypeDecralation(binding: BindingNode) {
     return (
       (ts.isTypeAliasDeclaration(binding.parent) || ts.isInterfaceDeclaration(binding.parent)) &&
       binding.parent.name === binding
     );
   }
+}
+
+export function getLocalNodesInFile(
+  // checker: ts.TypeChecker,
+  // projectExported: ProjectExported,
+  file: ts.SourceFile,
+  isExported: (node: BindingNode) => boolean,
+  // validator?: MangleValidator,
+): BindingNode[] {
+  const bindings = getLocalsInFile(file);
+  return bindings.filter(isExported);
+  //   const validatorRejected = validator?.(binding) === false;
+  //   // TODO: why first hidden is skipped by case24-annotations
+  //   if (validatorRejected) {
+  //     return false;
+  //   }
+  //   if (isTypeDecralation(binding)) {
+  //     return false;
+  //   }
+  //   if (projectExported.internal.includes(binding)) {
+  //     return true;
+  //   }
+  //   const exported = isExported(binding);
+  //   if (exported) {
+  //     return false;
+  //   }
+  //   return true;
+  // });
 }
 
 export function getCodeActionsFromBindings(
