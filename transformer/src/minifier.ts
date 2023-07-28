@@ -9,7 +9,7 @@ import type {
 import ts from "typescript";
 import path from "node:path";
 import {
-  expandToSafeRenameLocations,
+  expandToSafeRenames,
   getActionsAtNodes,
   getExportedInProjectCreator,
   getLocalsInFile,
@@ -92,7 +92,7 @@ export function createMinifier(
     const isExported = getExportedInProjectCreator(checker, rootFiles, files, validator);
     const nodes = files.flatMap(getLocalsInFile).filter(isExported);
     const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
-    const renames = expandToSafeRenameLocations(service.findRenameLocations, actions, onwarn);
+    const renames = expandToSafeRenames(service.findRenameLocations, actions, onwarn);
 
     const fileChanges: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
 

@@ -41,7 +41,7 @@ export function getExportedInProject(
     if (decl && isNamedDeclaration(decl) && decl.name && ts.isIdentifier(decl.name)) {
       const annotation = getAnnotationAtNode(decl.name);
       if (annotation?.internal === true) {
-        console.log("[walker:accept] force internal", decl.name.getText(), annotation);
+        // console.log("[walker:accept] force internal", decl.name.getText(), annotation);
         internalNodes.push(decl.name);
         return false;
       }
@@ -217,17 +217,14 @@ export function getActionsAtNodes(
       // stop by external
       return;
     }
-    const action: CodeAction = {
-      parentKind: node.parent.kind,
+    return {
       actionType: "replace",
       fileName: node.getSourceFile().fileName,
       original: originalName,
       to,
       annotation: annotation,
-      start: node.getStart(),
       node,
-    };
-    return action;
+    } as CodeAction;
     function isComponentFunctionName(name: string) {
       return !/[a-z]/.test(name[0]);
     }
@@ -326,7 +323,7 @@ export function getLocalsInFile(file: ts.Node): BindingNode[] {
 }
 
 // exclude duplicated rename locations
-export function expandToSafeRenameLocations(
+export function expandToSafeRenames(
   findRenameLocations: FindRenameLocations,
   actions: CodeAction[],
   onWarning?: OnWarning,
@@ -340,7 +337,7 @@ export function expandToSafeRenameLocations(
     const locations = findBatchRenameLocations(
       findRenameLocations,
       action.fileName,
-      action.start,
+      action.node.getStart(),
       action.original,
       action.to,
     );
@@ -363,7 +360,7 @@ export function expandToSafeRenameLocations(
   }
 
   function actionToKey(action: CodeAction): string {
-    return `${action.fileName}-${action.start}`;
+    return `${action.fileName}-${action.node.getStart()}`;
   }
 
   function renameToKey(rename: BatchRenameLocation): string {

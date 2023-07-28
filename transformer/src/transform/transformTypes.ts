@@ -50,11 +50,9 @@ export type SymbolBuilder = {
 
 export type CodeAction = {
   actionType: "replace" | "remove" | "add";
-  parentKind: ts.SyntaxKind;
   fileName: string;
   original: string;
   to: string;
-  start: number;
   annotation: BindingAnnotation | undefined;
   node: ts.Node;
 };
