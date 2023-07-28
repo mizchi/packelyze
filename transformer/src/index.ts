@@ -13,3 +13,11 @@ export {
 } from "./ts/services";
 export { createMinifier, aggressiveMangleValidator, withTerserMangleValidator } from "./minifier";
 export { tsMinifyPlugin as tsMinify } from "./rollup";
+
+type Local = {
+  $value: number;
+};
+
+const local: Local = {
+  $value: 1,
+};

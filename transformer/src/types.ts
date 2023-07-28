@@ -29,7 +29,7 @@ export type TsMinifyOptions = {
 };
 
 export enum WarningCode {
-  MANGLE_STOP_BY_LOCATION_CONFLICT = 1,
+  RENAME_CONFLICT = 1,
   MANGLE_STOP_BY_EXTERNAL,
 }
 
@@ -92,9 +92,6 @@ export type BatchRenameLocationWithSource = BatchRenameLocation & {
 
 export type BindingNode = ts.Identifier | ts.PrivateIdentifier;
 
-// import type TS from "typescript";
-// export type { TS };
-
 export type SymbolWalkerResult = {
   types: ReadonlyArray<ts.Type>;
   symbols: ReadonlyArray<ts.Symbol>;
@@ -120,18 +117,12 @@ export type BatchRenameLocation = ts.RenameLocation & {
   to: string;
 };
 
-/**
- * Node annotation with comments
- * ex. internal or external
- */
 export type BindingAnnotation = {
   internal?: boolean;
   external?: boolean;
 };
 
 // ---- TypeScript internal types ----
-// annotated by external for mangle safe
-
 // An instantiated anonymous type has a target and a mapper
 export interface AnonymousType extends ts.ObjectType {
   /** @external */ target?: AnonymousType; // Instantiation target

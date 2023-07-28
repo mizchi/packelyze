@@ -341,7 +341,7 @@ export function expandToSafeRenames(
     if (tryingKeys.some((key) => touchings.has(key))) {
       const conflicts = tryingKeys.filter((key) => touchings.has(key));
       onWarning?.({
-        code: WarningCode.MANGLE_STOP_BY_LOCATION_CONFLICT,
+        code: WarningCode.RENAME_CONFLICT,
         message: conflicts.join("\n"),
       });
       return [];
