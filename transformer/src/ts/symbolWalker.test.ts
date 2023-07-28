@@ -2,8 +2,6 @@ import "../../test/globals";
 import { test, expect } from "vitest";
 import { createOneshotTestProgram, createTestLanguageService } from "../../test/testHarness";
 import { createGetSymbolWalker } from "./symbolWalker";
-import { toReadableNode, toReadableSymbol, toReadableType } from "./tsUtils";
-import ts from "typescript";
 import { isSymbolInferredFromValueDeclaration } from "./tsUtils";
 import path from "path";
 

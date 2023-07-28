@@ -2,7 +2,7 @@
 
 import ts from "typescript";
 import { getOwnValues } from "../utils";
-import type { MappedType, SymbolWalkerResult, SymbolWalker } from "./types";
+import { MappedType, SymbolWalker, SymbolWalkerResult } from "../types";
 
 // original hidden member
 interface TypeWithId extends ts.Type {

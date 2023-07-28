@@ -3,11 +3,18 @@ import { getAnnotationAtNode } from "../ts/comment";
 import { findBatchRenameLocations } from "../ts/renamer";
 import { createGetSymbolWalker } from "../ts/symbolWalker";
 import { composeWalkers, isNamedDeclaration } from "../ts/tsUtils";
-import type { BatchRenameLocation, FindRenameLocations } from "../ts/types";
 import { sortBy } from "../utils";
-import { MangleValidator, WarningCode, type OnWarning } from "./../types";
+import {
+  MangleValidator,
+  WarningCode,
+  type OnWarning,
+  ProjectExported,
+  BindingNode,
+  BatchRenameLocationWithSource,
+  FindRenameLocations,
+  BatchRenameLocation,
+} from "./../types";
 import { getEffectDetectorWalker, getExternalDetectorWalker } from "./detector";
-import { BatchRenameLocationWithSource, BindingNode, ProjectExported } from "./transformTypes";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 const enum NodePriority {

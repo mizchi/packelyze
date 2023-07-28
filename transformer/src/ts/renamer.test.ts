@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { applyBatchRenameLocations, findBatchRenameLocations, getChangesAfterRename } from "./renamer";
 import { createTestLanguageService } from "../../test/testHarness";
 import { findFirstNode } from "./tsUtils";
-import { type BatchRenameLocation } from "./types";
+import { BatchRenameLocation } from "../types";
 
 test("batch renaming", () => {
   const { service, normalizePath } = createTestLanguageService();

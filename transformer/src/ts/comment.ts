@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { BindingAnnotation } from "./types";
+import { BindingAnnotation } from "../types";
 
 // special comment tags for bundler and terser
 // https://github.com/terser/terser#annotations

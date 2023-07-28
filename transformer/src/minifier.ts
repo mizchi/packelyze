@@ -1,11 +1,10 @@
-import type { MangleValidator, Minifier, OnWarning } from "./types";
-import type { BindingNode, FileChangeResult } from "./transform/transformTypes";
+import type { BindingNode, MangleValidator, Minifier, OnWarning } from "./types";
 
 import ts from "typescript";
 import path from "node:path";
 import { canNodeRename, expandToSafeRenames, getExportedInProjectCreator, getLocalsInFile } from "./transform/mangler";
 import { IncrementalLanguageService } from "./ts/services";
-import { getChangesAfterRename as getChangesAfterRename } from "./ts/renamer";
+import { getChangesAfterRename } from "./ts/renamer";
 
 export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;

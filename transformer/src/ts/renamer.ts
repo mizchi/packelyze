@@ -1,8 +1,7 @@
 import ts from "typescript";
-import { BatchRenameLocation, FindRenameLocations } from "./types";
-import { ChangeResult, FileChangeResult } from "../transform/transformTypes";
 import MagicString from "magic-string";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map";
+import { BatchRenameLocation, ChangeResult, FileChangeResult, FindRenameLocations } from "../types";
 
 /** wrap service.findRenameLocations */
 export function findBatchRenameLocations(
