@@ -5,6 +5,7 @@ import ts from "typescript";
 export type SymbolWalkerResult = {
   types: ReadonlyArray<ts.Type>;
   symbols: ReadonlyArray<ts.Symbol>;
+  nodes: ReadonlyArray<ts.Node>;
 };
 
 export interface SymbolWalker {

@@ -25,5 +25,10 @@ function createObj() {
 const indirect = {
   indirect: 1,
 };
+const items = [
+  {
+    item: 1,
+  },
+];
 
-export { createObj, indirect };
+export { createObj, indirect, items };

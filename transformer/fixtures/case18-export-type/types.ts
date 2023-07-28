@@ -17,3 +17,7 @@ export interface Obj {
 export type Indirect = {
   indirect: number;
 };
+
+export type IndirectArrayItem = {
+  item: number;
+};

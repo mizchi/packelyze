@@ -14,6 +14,35 @@ interface SymbolWithId extends ts.Symbol {
   /** @external */ id: number;
 }
 
+// original hidden member
+interface NodeWithId extends ts.Node {
+  /** @external */ id: number;
+}
+function isRelatedNode(node: ts.Node): node is ts.NamedDeclaration {
+  return (
+    // types
+    ts.isTypeNode(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeLiteralNode(node) ||
+    // classes
+    ts.isClassDeclaration(node) ||
+    ts.isClassExpression(node) ||
+    ts.isPropertySignature(node) ||
+    ts.isMethodSignature(node) ||
+    ts.isObjectLiteralExpression(node) ||
+    ts.isMethodDeclaration(node) ||
+    ts.isPropertyDeclaration(node) ||
+    ts.isParameter(node) ||
+    ts.isGetAccessor(node) ||
+    ts.isSetAccessor(node) ||
+    ts.isPropertyAssignment(node) ||
+    // advanced type literals
+    ts.isIntersectionTypeNode(node) ||
+    ts.isUnionTypeNode(node)
+  );
+}
+
 // rebuild symbolWalker with ts.TypeChecker
 // with resolved types (expected)
 // added: skip private/hard-private declaration in class
@@ -22,6 +51,7 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
   function getSymbolWalker(accept: (symbol: ts.Symbol) => boolean = () => true): SymbolWalker {
     const visitedTypes: ts.Type[] = visited?.types ? [...visited.types] : []; // Sparse array from id to type
     const visitedSymbols: ts.Symbol[] = visited?.symbols ? [...visited.symbols] : []; // Sparse array from id to symbol
+    const visitedNodes: ts.Node[] = []; // Sparse array from id to node
     // cached symbol id incrementer
     let symbolId = 0;
 
@@ -31,7 +61,11 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
         clear(visitedSymbols);
       },
       getVisited: (): SymbolWalkerResult => {
-        return { types: getOwnValues(visitedTypes), symbols: getOwnValues(visitedSymbols) } as SymbolWalkerResult;
+        return {
+          types: getOwnValues(visitedTypes),
+          symbols: getOwnValues(visitedSymbols),
+          nodes: visitedNodes,
+        } as SymbolWalkerResult;
       },
       walkType: (type) => {
         visitType(type);
@@ -71,6 +105,148 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
       },
     };
 
+    // function visitNode(node: ts.Node) {
+    //   if (visitedNodes.includes(node)) {
+    //     return;
+    //   }
+    //   visitedNodes.push(node);
+    //   // if (ts.isTypeNode(node)) {
+    //   //   const type = checker.getTypeFromTypeNode(node);
+    //   //   visitType(type);
+    //   // }
+    //   // if (ts.isTypeAliasDeclaration(node)) {
+    //   //   const type = checker.getTypeFromTypeNode(node.type);
+    //   //   visitType(type);
+    //   // }
+    // }
+    function visitNode(
+      node: ts.Node,
+      // checker: ts.TypeChecker,
+      // visited: SymbolWalkerResult,
+      // debug: boolean = false,
+    ) {
+      if (visitedNodes.includes(node)) {
+        return;
+      }
+      visitedNodes.push(node);
+
+      // const log = debug ? console.log : () => {};
+      // const exportedNodes = new Set<ts.NamedDeclaration>();
+
+      // for (const node of visited.nodes) {
+      //   walkExportedNode(node, 0);
+      // }
+      // return [...exportedNodes];
+
+      // function walkExportedNode(node: ts.Node, depth: number) {
+      // log(
+      //   "  ".repeat(depth) + "[Related:" + ts.SyntaxKind[node.kind] + "]",
+      //   // formatCode(node.getText()).slice(0, 20) + "...",
+      // );
+
+      if (!isRelatedNode(node)) return;
+      // if (!isNamedDeclaration(node)) return;
+      // if (exportedNodes.has(node)) return;
+      // exportedNodes.add(node);
+
+      // now only for classes
+      const isClassMember = !!(
+        node.parent &&
+        (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent))
+      );
+      if (ts.isPropertyDeclaration(node) && isClassMember) {
+        if (node.type) {
+          visitNode(node.type);
+        }
+      }
+
+      // now only for classes
+      if (ts.isMethodDeclaration(node) && isClassMember) {
+        for (const param of node.parameters) {
+          visitNode(param);
+        }
+        for (const typeParams of node.typeParameters ?? []) {
+          visitNode(typeParams);
+        }
+      }
+      if (ts.isTypeAliasDeclaration(node)) {
+        for (const typeParam of node.typeParameters ?? []) {
+          visitNode(typeParam);
+        }
+        if (node.type) {
+          // const typeFromTypeNode = checker.getTypeFromTypeNode(node.type);
+          // visitType(typeFromTypeNode);
+          // if (!visited.types.includes(typeFromTypeNode)) {
+          //   // @ts-expect-error
+          //   visited.types.push(typeFromTypeNode);
+          //   // console.log("typeFromTypeNode", typeFromTypeNode);
+          //   // throw "stop";
+          // }
+          visitNode(node.type);
+        }
+      }
+      if (ts.isInterfaceDeclaration(node)) {
+        // TODO
+        for (const heritageClause of node.heritageClauses ?? []) {
+          for (const type of heritageClause.types) {
+            visitNode(type.expression);
+          }
+        }
+        for (const typeParam of node.typeParameters ?? []) {
+          visitNode(typeParam);
+        }
+        for (const member of node.members) {
+          visitNode(member);
+        }
+      }
+
+      if (ts.isClassDeclaration(node)) {
+        for (const typeParam of node.typeParameters ?? []) {
+          visitNode(typeParam);
+        }
+        // for (const member of node.members) {
+        //   visitNode(member, depth + 1);
+        // }
+        for (const heritageClause of node.heritageClauses ?? []) {
+          for (const type of heritageClause.types) {
+            visitNode(type.expression);
+          }
+        }
+      }
+      if (ts.isTypeLiteralNode(node)) {
+        for (const member of node.members) {
+          visitNode(member);
+        }
+      }
+      if (ts.isParameter(node) || ts.isPropertySignature(node)) {
+        if (node.type) {
+          visitNode(node.type);
+        }
+      }
+      if (ts.isMethodSignature(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) {
+        for (const param of node.parameters) {
+          visitNode(param);
+        }
+      }
+      if (ts.isObjectLiteralExpression(node)) {
+        for (const prop of node.properties) {
+          visitNode(prop);
+        }
+      }
+      if (ts.isPropertyAssignment(node)) {
+        visitNode(node.name);
+      }
+
+      // walk types
+      if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
+        for (const type of node.types) {
+          visitNode(type);
+        }
+      }
+    }
+    // }
+    //
+
     function visitType(type: ts.Type | undefined): void {
       if (!type) {
         return;
@@ -85,6 +261,7 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
       //  but be sure to bail on recuring into the type if accept declines the symbol.
       const shouldBail = visitSymbol(type.symbol);
       if (shouldBail) return;
+      type.symbol?.declarations?.forEach(visitNode);
 
       // Visit the type's related types, if any
       if (type.flags & ts.TypeFlags.Object) {
@@ -238,10 +415,13 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
       if (visitedSymbols[symbolId]) {
         return false;
       }
+
       visitedSymbols[symbolId] = symbol;
       if (!accept(symbol)) {
         return true;
       }
+      symbol?.declarations?.forEach(visitNode);
+
       const t = checker.getTypeOfSymbol(symbol);
       visitType(t); // Should handle members on classes and such
       if (symbol.exports) {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { aggressiveMangleValidator, createMinifier } from "../src/minifier";
+import { aggressiveMangleValidator, createMinifier, withTerserMangleValidator } from "../src/minifier";
 import ts from "typescript";
 import { MinifierProcessStep, OnWarning, Warning, WarningCode } from "../src/types";
 import { BatchRenameLocationWithSource, CodeAction } from "../src/transform/transformTypes";
@@ -34,7 +34,8 @@ const minifier = createMinifier(
   parsed.options,
   undefined,
   true,
-  aggressiveMangleValidator,
+  // aggressiveMangleValidator,
+  withTerserMangleValidator,
   onwarn,
 );
 

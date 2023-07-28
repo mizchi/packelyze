@@ -37,12 +37,13 @@ test("effect with builtins", () => {
     }),
   ).toEqual([
     //
+    "(VariableDeclaration)ref1: Ref1 = { local: 1 }",
     "(TypeLiteral){ local: number }",
     "(PropertySignature)local: number",
     "(NumberKeyword)number",
+    "(TypeLiteral){ yyy: number }",
     "(PropertySignature)yyy: number",
     "(NumberKeyword)number",
-    "(TypeLiteral){ yyy: number }",
   ]);
 });
 
@@ -72,6 +73,7 @@ test("effect to global assign", () => {
     }),
   ).toEqual([
     //
+    "(VariableDeclaration)t: Value = { x: 1 }",
     `(TypeLiteral){ x: number; }`,
     "(PropertySignature)x: number;",
     "(NumberKeyword)number",
@@ -106,11 +108,13 @@ test("detect object rest spread", () => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
     }),
   ).toEqual([
+    "(VariableDeclaration)foo: Foo = { ...bar, y: 2 }",
     "(TypeLiteral){ x: number; y: number; }",
     "(PropertySignature)x: number;",
     "(NumberKeyword)number",
     "(PropertySignature)y: number;",
     "(NumberKeyword)number",
+    "(VariableDeclaration)bar: Bar = { x: 1 }",
     "(TypeLiteral){ x: number; }",
     "(PropertySignature)x: number;",
     "(NumberKeyword)number",

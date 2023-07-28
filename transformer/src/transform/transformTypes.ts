@@ -5,7 +5,7 @@ export type ProjectExported = {
   symbols: ReadonlyArray<ts.Symbol>;
   types: ReadonlyArray<ts.Type>;
   nodes: ReadonlyArray<ts.NamedDeclaration>;
-  locals: ReadonlyArray<BindingNode>;
+  // locals: ReadonlyArray<BindingNode>;
   internal: ReadonlyArray<BindingNode>;
   external: ReadonlyArray<BindingNode>;
 };

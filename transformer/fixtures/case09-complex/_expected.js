@@ -28,19 +28,19 @@ function genericFunction(arg) {
   return arg;
 }
 // Enums and namespaces
-var k;
-(function (k) {
-  k[(k["Red"] = 0)] = "Red";
-  k[(k["Green"] = 1)] = "Green";
-  k[(k["Blue"] = 2)] = "Blue";
-})(k || (k = {}));
-var x;
-(function (x) {
+var Color;
+(function (Color) {
+  Color[(Color["Red"] = 0)] = "Red";
+  Color[(Color["Green"] = 1)] = "Green";
+  Color[(Color["Blue"] = 2)] = "Blue";
+})(Color || (Color = {}));
+var MyNamespace;
+(function (MyNamespace) {
   function foo() {}
-  x.foo = foo;
-})(x || (x = {}));
-/*Color*/ k.Red;
-/*MyNamespace*/ x.foo();
+  MyNamespace.foo = foo;
+})(MyNamespace || (MyNamespace = {}));
+Color.Red;
+MyNamespace.foo();
 const mapped = {
   propA: "propA",
   propB: "propB",
@@ -50,8 +50,15 @@ function log(target, propertyName) {
   console.log(`log: ${propertyName.toString()}`);
 }
 class DecoratorTest {
-  j = "property";
+  k = "property";
 }
-__decorate([log], DecoratorTest.prototype, "j", void 0);
+__decorate([log], DecoratorTest.prototype, "k", void 0);
 
-export { DecoratorTest, GenericClass, genericFunction, k, mapped, x };
+export {
+  Color,
+  DecoratorTest,
+  GenericClass,
+  MyNamespace,
+  genericFunction,
+  mapped,
+};

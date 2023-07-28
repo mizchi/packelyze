@@ -157,51 +157,20 @@ export function toReadableNode(node: ts.Node, includeParentDepth: number = 0): R
 
 export type ReadableSymbol = {
   symbolName: string;
-  // isSingleSource: false;
-  // valueDeclaration?: ReadbleNode;
-  // declarations?: ReadbleNode[];
-  typeOnly: boolean;
   flags?: Array<ts.SymbolFlags[keyof ts.SymbolFlags]>;
-} & (
-  | {
-      isSingleSource: true;
-      declaration: ReadbleNode;
-    }
-  | {
-      isSingleSource: false;
-      valueDeclaration?: ReadbleNode;
-      declarations?: ReadbleNode[];
-    }
-);
-
+  declarations: ReadbleNode[] | undefined;
+};
 export function toReadableSymbol(
   symbol: ts.Symbol,
   useFlags: boolean = false,
   includeParent: number = 0,
 ): ReadableSymbol {
-  const isSingleSource =
-    symbol.declarations && symbol.declarations.length === 1 && symbol.declarations[0] === symbol.valueDeclaration;
-  const typeOnly =
-    !symbol.valueDeclaration && symbol.declarations && symbol.declarations.every((decl) => ts.isTypeNode(decl));
   let ret: ReadableSymbol;
-  if (isSingleSource) {
-    ret = {
-      symbolName: symbol.name,
-      isSingleSource: true,
-      declaration: toReadableNode(symbol.valueDeclaration!),
-      typeOnly: !!typeOnly,
-      flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
-    };
-  } else {
-    ret = {
-      symbolName: symbol.name,
-      isSingleSource: false,
-      typeOnly: !!typeOnly,
-      flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
-      valueDeclaration: symbol.valueDeclaration && toReadableNode(symbol.valueDeclaration, includeParent),
-      declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
-    };
-  }
+  ret = {
+    symbolName: symbol.name,
+    flags: useFlags ? toReadabelSymbolFlags(symbol.flags) : undefined,
+    declarations: symbol.declarations && symbol.declarations.map((decl) => toReadableNode(decl, includeParent)),
+  };
 
   if (useFlags) {
     ret.flags = toReadabelSymbolFlags(symbol.flags);
