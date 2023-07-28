@@ -2,15 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { InputOption, Plugin } from "rollup";
-import ts from "typescript";
+import ts, { createIncrementalCompilerHost } from "typescript";
 import { createMinifier } from "./minifier";
 import { sync as globSync } from "glob";
 import { Minifier, TsMinifyOptions } from "./types";
+import {
+  IncrementalLanguageService,
+  IncrementalLanguageServiceHost,
+  createIncrementalLanguageService,
+  createIncrementalLanguageServiceHost,
+} from "./ts/services";
 
 const BASE_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx", ".js", ".jsx", ".mjs", ".mjsx"];
 const TRANSFORM_EXTENSIONS = [".ts", ".tsx", ".mts", ".mtsx"];
 
-export function getPlugin(opts: TsMinifyOptions = {}) {
+export function tsMinifyPlugin(opts: TsMinifyOptions = {}) {
   const cwd = opts.cwd ?? process.cwd();
   const overrideCompilerOptions = opts.compilerOptions;
   const resolveIdFromSpecifier = createDefaultResolver(cwd, opts.extensions ?? BASE_EXTENSIONS);
@@ -28,6 +34,8 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
     if (includes?.includes(id)) return true;
     return TRANSFORM_EXTENSIONS.some((ext) => id.endsWith(ext));
   };
+  let service: IncrementalLanguageService;
+  let host: IncrementalLanguageServiceHost;
   const plugin: Plugin = {
     name: "test",
     options(options) {
@@ -46,12 +54,19 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       if (rootFileNames.length === 0) {
         throw new Error("[tsMinify] input is not specified");
       }
+      const mergedCompilerOptions: ts.CompilerOptions = {
+        ...parsed.options,
+        ...overrideCompilerOptions,
+      };
+
+      const registory = ts.createDocumentRegistry();
+      host = createIncrementalLanguageServiceHost(cwd, targetFileNames, mergedCompilerOptions);
+      service = createIncrementalLanguageService(host, registory);
       minifier = createMinifier(
+        service,
         cwd,
         rootFileNames,
         targetFileNames,
-        parsed.options,
-        overrideCompilerOptions,
         opts.withOriginalComment,
         opts.mangleValidator,
       );
@@ -93,10 +108,10 @@ export function getPlugin(opts: TsMinifyOptions = {}) {
       }
       // TODO: multiple sourceMap transforms
       const transpileOptions: ts.CompilerOptions = {
-        ...minifier.getCompilerOptions(),
+        ...service.getProgram()?.getCompilerOptions()!,
         ...opts.transpileOptions,
       };
-      if (minifier.exists(id)) {
+      if (host.fileExists(id)) {
         const result = ts.transpileModule(code, {
           fileName: id,
           compilerOptions: transpileOptions,

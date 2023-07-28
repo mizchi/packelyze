@@ -13,7 +13,7 @@ export {
   createIncrementalLanguageService,
 } from "./ts/services";
 export { createMinifier, aggressiveMangleValidator, withTerserMangleValidator } from "./minifier";
-export { getPlugin as tsMinify } from "./rollup";
+export { tsMinifyPlugin as tsMinify } from "./rollup";
 
 // ---- to keep internal interfaces ---
 export type { ReadableSymbol } from "./ts/tsUtils";

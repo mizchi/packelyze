@@ -1,4 +1,4 @@
-import type { MangleValidator, Minifier, MinifierStep, OnWarning } from "./types";
+import type { MangleValidator, Minifier, OnWarning } from "./types";
 import type {
   BatchRenameLocationWithSource,
   BindingNode,
@@ -14,9 +14,8 @@ import {
   getExportedInProjectCreator,
   getLocalsInFile,
 } from "./transform/mangler";
-import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
+import { IncrementalLanguageService } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
-import { MinifierProcessStep } from "./types";
 
 export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;
@@ -50,23 +49,15 @@ export const withTerserMangleValidator: MangleValidator = (binding: BindingNode)
 };
 
 export function createMinifier(
+  service: IncrementalLanguageService,
   projectPath: string,
   rootFileNames: string[],
   targetFileNames: string[],
-  compilerOptions: ts.CompilerOptions = {},
-  overrideCompilerOptions: ts.CompilerOptions = {},
   withOriginalComment: boolean = false,
   validator: MangleValidator = aggressiveMangleValidator,
   onwarn: OnWarning = () => {},
 ): Minifier {
-  const registory = ts.createDocumentRegistry();
-  const mergedCompilerOptions: ts.CompilerOptions = {
-    ...compilerOptions,
-    ...overrideCompilerOptions,
-  };
-
-  const host = createIncrementalLanguageServiceHost(projectPath, targetFileNames, mergedCompilerOptions);
-  const service = createIncrementalLanguageService(host, registory);
+  // const registory = ts.createDocumentRegistry();
   const normalizePath = (fname: string) => {
     if (fname.startsWith("/")) {
       return fname;
@@ -77,8 +68,7 @@ export function createMinifier(
   const sourceMaps = new Map<string, string>();
   return {
     process,
-    createProcess,
-    exists: host.fileExists,
+    // exists: host.fileExists,
     notifyChange(id, content) {
       service.writeSnapshotContent(id, content);
       // TODO: update only changed files
@@ -86,9 +76,6 @@ export function createMinifier(
     },
     getSourceMapForFile(id) {
       return sourceMaps.get(id);
-    },
-    getCompilerOptions() {
-      return mergedCompilerOptions;
     },
     readFile(id: string) {
       const content = service.readSnapshotContent(id);
@@ -99,83 +86,19 @@ export function createMinifier(
   };
 
   function process() {
-    const processor = createProcess();
-    // for debug step
-    for (const step of processor) {
-      switch (step.stepName) {
-        case MinifierProcessStep.PreDiagnostic: {
-          break;
-        }
-        case MinifierProcessStep.Analyze: {
-          break;
-        }
-        case MinifierProcessStep.CreateActionsForFile: {
-          break;
-        }
-        case MinifierProcessStep.AllActionsCreated: {
-          break;
-        }
-        case MinifierProcessStep.ExpandRenameLocations: {
-          break;
-        }
-        case MinifierProcessStep.ApplyFileChanges: {
-          break;
-        }
-        case MinifierProcessStep.PostDiagnostic: {
-          break;
-        }
-      }
-    }
-  }
-
-  function* createProcess(): Generator<MinifierStep> {
-    // {
-    //   const program = service.getProgram()!;
-    //   const preDiagnostics = program.getSemanticDiagnostics();
-    //   yield { name: "pre-diagnostic", diagnostics: preDiagnostics };
-    // }
-
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const checker = service.getProgram()!.getTypeChecker();
     const files = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const isExported = getExportedInProjectCreator(checker, rootFiles, files, validator);
-
-    yield { stepName: MinifierProcessStep.Analyze };
-
-    const allActions: CodeAction[] = [];
-
-    for (const file of files) {
-      const nodes = getLocalsInFile(file).filter(isExported);
-      const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
-      yield {
-        stepName: MinifierProcessStep.CreateActionsForFile,
-        actions: actions,
-        fileName: file.fileName,
-        // invalidated: actions.invalidated,
-      };
-      allActions.push(...actions);
-    }
-
-    yield { stepName: MinifierProcessStep.AllActionsCreated, actions: allActions };
-    const renames: BatchRenameLocationWithSource[] = expandToSafeRenameLocations(
-      service.findRenameLocations,
-      allActions,
-      onwarn,
-    );
-
-    yield { stepName: MinifierProcessStep.ExpandRenameLocations, renames };
+    const nodes = files.flatMap(getLocalsInFile).filter(isExported);
+    const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
+    const renames = expandToSafeRenameLocations(service.findRenameLocations, actions, onwarn);
 
     const fileChanges: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
 
-    yield { stepName: MinifierProcessStep.ApplyFileChanges, changes: fileChanges };
     for (const change of fileChanges) {
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);
     }
-    // {
-    //   const postProgram = service.getProgram()!;
-    //   const postDiagnostics = postProgram.getSemanticDiagnostics();
-    //   yield { name: "post-diagnostic", diagnostics: postDiagnostics };
-    // }
   }
 }

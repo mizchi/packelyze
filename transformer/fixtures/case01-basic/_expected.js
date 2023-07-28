@@ -6,7 +6,7 @@ function ext(a, b) {
 }
 
 const sub = {
-  /*subLocal*/ k: 1,
+  /*subLocal*/ x: 1,
 };
 
 function fff() {
@@ -16,6 +16,6 @@ function fff() {
   };
 }
 const x = fff();
-const subItem = sub./*subLocal*/ k;
+const subItem = sub./*subLocal*/ x;
 
 export { ext, subItem, x };

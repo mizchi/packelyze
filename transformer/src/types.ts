@@ -10,12 +10,9 @@ import {
 // subset of rollup plugin but not only for rollup
 export interface Minifier {
   process(): void;
-  createProcess(): Generator<MinifierStep>;
   readFile(fileName: string): string | undefined;
   notifyChange(fileName: string, content: string): void;
   getSourceMapForFile(id: string): string | undefined;
-  exists(fileName: string): boolean;
-  getCompilerOptions(): ts.CompilerOptions;
 }
 
 export type TsMinifyOptions = {
