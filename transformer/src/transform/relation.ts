@@ -1,7 +1,7 @@
 import ts from "typescript";
 import type { BindingNode, LocalExported, MangleTargetNode, ProjectExported } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
-import { composeWalkers, formatCode, isNamedDeclaration } from "../ts/tsUtils";
+import { composeWalkers, formatCode, isNamedDeclaration, toReadableNode } from "../ts/tsUtils";
 import {
   getEffectDetectorWalker as getEffectDetector,
   getExternalDetectorWalker as getExternalDetector,
@@ -9,49 +9,34 @@ import {
 import { createGetSymbolWalker } from "../ts/symbolWalker";
 import { getAnnotationAtNode } from "../ts/comment";
 
-export function findBindingsInFile(file: ts.Node): BindingNode[] {
-  const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
-  ts.forEachChild(file, visit);
-  return identifiers;
-  function visit(node: ts.Node) {
-    // console.log("[bindings]", ts.SyntaxKind[node.kind], "\n" + node.getText());
-    // stop if declare const ...
-    if (ts.isVariableStatement(node) && hasDeclareOrAbstractModifier(node)) {
-      return;
-    }
-
-    // only for classes
-    // ObjectLiteral's methodDeclaration will be broken
-    const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
-    if (isClassMember && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
-      if (hasDeclareOrAbstractModifier(node)) return;
-      visitNamedBinding(node.name);
-    }
-    // Supported named declarations
-    if (
-      ts.isFunctionDeclaration(node) ||
-      ts.isClassDeclaration(node) ||
-      ts.isEnumDeclaration(node) ||
-      ts.isModuleDeclaration(node) ||
-      ts.isVariableDeclaration(node) ||
-      ts.isTypeAliasDeclaration(node) ||
-      ts.isInterfaceDeclaration(node) ||
-      ts.isPropertySignature(node) ||
-      ts.isGetAccessorDeclaration(node) ||
-      ts.isSetAccessorDeclaration(node) ||
-      ts.isFunctionExpression(node) ||
-      ts.isClassExpression(node) ||
-      ts.isPropertyAssignment(node)
-    ) {
-      if (hasDeclareOrAbstractModifier(node)) return;
-      if (node.name) visitNamedBinding(node.name);
-    }
-    // if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
-    //   visitNamedBinding(node);
-    // }
-    ts.forEachChild(node, visit);
+function isSupportedNode(node: ts.Node): node is ts.NamedDeclaration {
+  const isClassMember = !!(node.parent && (ts.isClassDeclaration(node.parent) || ts.isClassExpression(node.parent)));
+  if (isClassMember && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))) {
+    return true;
   }
-  function visitNamedBinding(node: ts.DeclarationName | ts.BindingElement | ts.ArrayBindingElement) {
+  if (
+    ts.isFunctionDeclaration(node) ||
+    ts.isClassDeclaration(node) ||
+    ts.isEnumDeclaration(node) ||
+    ts.isModuleDeclaration(node) ||
+    ts.isVariableDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isPropertySignature(node) ||
+    ts.isGetAccessorDeclaration(node) ||
+    ts.isSetAccessorDeclaration(node) ||
+    ts.isFunctionExpression(node) ||
+    ts.isClassExpression(node) ||
+    ts.isPropertyAssignment(node)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function getDeclarationNames(node: ts.DeclarationName | ts.BindingElement | ts.ArrayBindingElement) {
+  const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
+  function walk(node: ts.DeclarationName | ts.BindingElement | ts.ArrayBindingElement) {
     if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
       identifiers.push(node);
     }
@@ -61,29 +46,42 @@ export function findBindingsInFile(file: ts.Node): BindingNode[] {
       // visitBinding(node.expression);
     }
     if (ts.isBindingElement(node)) {
-      visitNamedBinding(node.name);
+      walk(node.name);
       if (node.propertyName) {
-        visitNamedBinding(node.propertyName);
+        walk(node.propertyName);
       }
     }
     if (ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node)) {
       for (const element of node.elements) {
-        visitNamedBinding(element);
+        walk(element);
       }
     }
   }
+  walk(node);
+  return identifiers;
+}
 
-  type NamedDeclarationWithModifiers = ts.NamedDeclaration & {
-    /**@external*/
-    modifiers?: ts.NodeArray<ts.ModifierLike>;
-  };
-  function hasDeclareOrAbstractModifier<T extends NamedDeclarationWithModifiers | ts.VariableStatement,>(
-    node: T,
-  ): boolean {
+export function getLocalsInFile(file: ts.Node): BindingNode[] {
+  const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];
+  ts.forEachChild(file, visit);
+  return identifiers;
+  function visit(node: ts.Node) {
+    if (isDeclareOrAbstractModified(node)) return;
+    if (isNamedDeclaration(node) && isSupportedNode(node) && node.name) {
+      const names = getDeclarationNames(node.name);
+      identifiers.push(...names);
+    }
+    ts.forEachChild(node, visit);
+  }
+  function isDeclareOrAbstractModified(node: ts.Node): boolean {
     return (
-      node.modifiers?.some(
-        (m) => m.kind === ts.SyntaxKind.DeclareKeyword || m.kind === ts.SyntaxKind.AbstractKeyword,
-      ) ?? false
+      (
+        node as ts.Node & {
+          /**@external*/
+          modifiers?: ts.NodeArray<ts.ModifierLike>;
+        }
+      ).modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword || m.kind === ts.SyntaxKind.AbstractKeyword) ??
+      false
     );
   }
 }
@@ -188,7 +186,7 @@ export function walkProjectExported(
   const nodes = visitedToNodes(checker, visited);
 
   // TODO: check this is correct
-  const bindings = nodes.flatMap((node) => findBindingsInFile(node));
+  const bindings = nodes.flatMap((node) => getLocalsInFile(node));
   return {
     symbols: visited.symbols,
     types: visited.types,
@@ -198,32 +196,47 @@ export function walkProjectExported(
     external: externalNodes,
   } satisfies ProjectExported;
 
-  function walkSymbol(symbol: ts.Symbol) {
-    const type = checker.getTypeOfSymbol(symbol);
-    symbolWalker.walkSymbol(symbol);
-    symbolWalker.walkType(type);
-    if (type.symbol) {
-      symbolWalker.walkSymbol(type.symbol);
+  function walkExportedSymbol(symbol: ts.Symbol) {
+    if (symbol.valueDeclaration && ts.isImportSpecifier(symbol.valueDeclaration)) {
+      const importedType = checker.getTypeAtLocation(symbol.valueDeclaration);
+      symbolWalker.walkType(importedType);
+      symbolWalker.walkSymbol(importedType.symbol);
+    }
+
+    if (symbol.valueDeclaration && ts.isExportSpecifier(symbol.valueDeclaration)) {
+      // check exported
+      if (ts.isExportSpecifier(symbol.valueDeclaration)) {
+        const originalSymbol = checker.getExportSpecifierLocalTargetSymbol(symbol.valueDeclaration);
+        if (originalSymbol) {
+          for (const decl of originalSymbol?.declarations ?? []) {
+            const symbol = checker.getSymbolAtLocation(decl);
+            if (symbol) symbolWalker.walkSymbol(symbol);
+            // const type = checker.getTypeAtLocation(decl);
+            // walkAtDeclaration(decl);
+          }
+          // walkExportedSymbol(originalSymbol);
+        } else {
+          const specifierType = checker.getTypeAtLocation(symbol.valueDeclaration);
+          symbolWalker.walkType(specifierType);
+          specifierType.symbol && symbolWalker.walkSymbol(specifierType.symbol);
+        }
+      }
+    } else {
+      const type = checker.getTypeOfSymbol(symbol);
+      symbolWalker.walkSymbol(symbol);
+      symbolWalker.walkType(type);
+      if (type.symbol) {
+        symbolWalker.walkSymbol(type.symbol);
+      }
     }
   }
-
   function walkRootFile(root: ts.SourceFile) {
     const fileSymbol = checker.getSymbolAtLocation(root);
     if (!fileSymbol) return;
     const exportedSymbols = checker.getExportsOfModule(fileSymbol);
+
     for (const symbol of exportedSymbols) {
-      walkSymbol(symbol);
-      // check exported
-      // if it is any type and export type, typescript was lost type tracing
-      // ex. export type { MyType } from "./types";
-      if (isSymbolExported(checker, symbol)) continue;
-      const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
-      const maybeSpecifier = exportedSymbol?.declarations?.[0];
-      if (maybeSpecifier && ts.isExportSpecifier(maybeSpecifier)) {
-        const specifierType = checker.getTypeAtLocation(maybeSpecifier);
-        symbolWalker.walkType(specifierType);
-        specifierType.symbol && symbolWalker.walkSymbol(specifierType.symbol);
-      }
+      walkExportedSymbol(symbol);
     }
   }
 

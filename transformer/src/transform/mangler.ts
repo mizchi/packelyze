@@ -11,7 +11,7 @@ import {
   BindingNode,
   ProjectExported,
 } from "./transformTypes";
-import { findBindingsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
+import { getLocalsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
 import { getAnnotationAtNode as getAnnotationAtBinding } from "../ts/comment";
 import { sortBy } from "../utils";
 
@@ -29,7 +29,7 @@ export function getMangleNodesInFile(
   isRoot: boolean,
   validator?: MangleValidator,
 ): BindingNode[] {
-  const bindings = findBindingsInFile(file);
+  const bindings = getLocalsInFile(file);
   const localExported = getLocalExportedSymbols(checker, file);
   const isExportedFn = createIsBindingExported(checker, projectExported, localExported);
   return bindings.filter((binding) => {

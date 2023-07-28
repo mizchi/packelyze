@@ -13,3 +13,7 @@ export interface Obj {
   yyy(input: Partial<Input>): Result;
   zzz(): Array<Result>;
 }
+
+export type Indirect = {
+  indirect: number;
+};

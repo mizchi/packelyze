@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { findBindingsInFile, walkProjectExported } from "./relation";
+import { getLocalsInFile, walkProjectExported } from "./relation";
 import ts from "typescript";
 import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
 
@@ -36,7 +36,7 @@ test("findFileBindings # complex", () => {
   }
   module M {}
   `);
-  const idents = findBindingsInFile(file);
+  const idents = getLocalsInFile(file);
 
   const expected = new Set([
     "X",
@@ -78,7 +78,7 @@ test("findFileBindings # PropertyAssignment", () => {
     }
   };
   `);
-  const bindings = findBindingsInFile(file);
+  const bindings = getLocalsInFile(file);
   const expected = new Set(["obj", "foo", "nested", "bar"]);
   for (const ident of bindings) {
     expect(expected).includes(ident.getText());

@@ -22,4 +22,8 @@ function createObj() {
   function xxx() {}
 }
 
-export { createObj };
+const indirect = {
+  indirect: 1,
+};
+
+export { createObj, indirect };
