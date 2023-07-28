@@ -1,6 +1,5 @@
 import type { FindRenameLocations, BatchRenameLocation } from "../ts/types";
 import { WarningCode, type OnWarning, MangleValidator } from "./../types";
-
 import ts from "typescript";
 import { createSymbolBuilder } from "./symbolBuilder";
 import { findBatchRenameLocations } from "../ts/renamer";
@@ -11,8 +10,8 @@ import {
   BindingNode,
   ProjectExported,
 } from "./transformTypes";
-import { getLocalsInFile, createIsBindingExported, getLocalExportedSymbols } from "./relation";
-import { getAnnotationAtNode as getAnnotationAtBinding } from "../ts/comment";
+import { getLocalsInFile, createIsBindingExported } from "./relation";
+import { getAnnotationAtNode } from "../ts/comment";
 import { sortBy } from "../utils";
 
 function isTypeDecralation(binding: BindingNode) {
@@ -22,26 +21,21 @@ function isTypeDecralation(binding: BindingNode) {
   );
 }
 
-export function getMangleNodesInFile(
+export function getLocalNodesInFile(
   checker: ts.TypeChecker,
   projectExported: ProjectExported,
   file: ts.SourceFile,
-  isRoot: boolean,
   validator?: MangleValidator,
 ): BindingNode[] {
   const bindings = getLocalsInFile(file);
-  const localExported = getLocalExportedSymbols(checker, file);
-  const isExportedFn = createIsBindingExported(checker, projectExported, localExported);
+  const isExportedFn = createIsBindingExported(checker, projectExported);
   return bindings.filter((binding) => {
-    const isExported = isExportedFn(binding, isRoot);
+    const isExported = isExportedFn(binding);
     return isProjectInternal(binding, isExported, validator);
   });
   function isProjectInternal(binding: BindingNode, isExported: boolean, validator?: MangleValidator) {
     const validatorRejected = validator?.(binding) === false;
     // TODO: why first hidden is skipped by case24-annotations
-    // if (binding.getText() === "hidden") {
-    //   console.log("canMangle", projectExported.internal.includes(binding));
-    // }
     if (validatorRejected) {
       return false;
     }
@@ -88,7 +82,7 @@ export function getCodeActionsFromBindings(
     // TODO: renamer by ast kind
     const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
     const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
-    const annotation = getAnnotationAtBinding(node);
+    const annotation = getAnnotationAtNode(node);
 
     if (annotation?.external) {
       // stop by external

@@ -3,7 +3,7 @@ import { createOneshotTestProgram, initTestLanguageServiceWithFiles } from "../.
 import ts from "typescript";
 import { getEffectDetectorWalker } from "./detector";
 import { composeWalkers, formatCode } from "../ts/tsUtils";
-import { walkProjectExported } from "./relation";
+import { getExportedInProject } from "./relation";
 
 export function findEffectNodes(checker: ts.TypeChecker, node: ts.Node) {
   const nodes = new Set<ts.Node>();
@@ -30,7 +30,7 @@ test("effect with builtins", () => {
   export {}
 `);
 
-  const visited = walkProjectExported(checker, [file], [file]);
+  const visited = getExportedInProject(checker, [file], [file]);
   expect(
     visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -65,7 +65,7 @@ test("effect to global assign", () => {
   });
   const checker = service.getProgram()!.getTypeChecker();
   const file = service.getProgram()!.getSourceFile("src/index.ts")!;
-  const visited = walkProjectExported(checker, [file], [file]);
+  const visited = getExportedInProject(checker, [file], [file]);
   expect(
     visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());
@@ -100,7 +100,7 @@ test("detect object rest spread", () => {
   const checker = service.getProgram()!.getTypeChecker();
   const file = service.getProgram()!.getSourceFile("src/index.ts")!;
 
-  const visited = walkProjectExported(checker, [file], [file]);
+  const visited = getExportedInProject(checker, [file], [file]);
   expect(
     visited.nodes.map((node) => {
       return "(" + ts.SyntaxKind[node.kind] + ")" + formatCode(node.getText());

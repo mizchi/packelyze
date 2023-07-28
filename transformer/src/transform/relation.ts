@@ -1,5 +1,5 @@
 import ts from "typescript";
-import type { BindingNode, LocalExported, MangleTargetNode, ProjectExported } from "./transformTypes";
+import type { BindingNode, ProjectExported } from "./transformTypes";
 import { SymbolWalkerResult } from "../ts/types";
 import { composeWalkers, formatCode, isNamedDeclaration, toReadableNode } from "../ts/tsUtils";
 import {
@@ -86,19 +86,8 @@ export function getLocalsInFile(file: ts.Node): BindingNode[] {
   }
 }
 
-export function getLocalExportedSymbols(checker: ts.TypeChecker, file: ts.SourceFile): LocalExported {
-  const fileSymbol = checker.getSymbolAtLocation(file);
-  return {
-    symbols: fileSymbol ? checker.getExportsOfModule(fileSymbol) : [],
-  };
-}
-
-export function createIsBindingExported(
-  checker: ts.TypeChecker,
-  projectExported: ProjectExported,
-  localExported: LocalExported,
-) {
-  return (binding: BindingNode, isRoot: boolean) => {
+export function createIsBindingExported(checker: ts.TypeChecker, projectExported: ProjectExported) {
+  return (binding: BindingNode) => {
     // special case for property assignment
     if (ts.isPropertyAssignment(binding.parent) && binding.parent.name === binding) {
       const type = checker.getTypeAtLocation(binding.parent);
@@ -114,10 +103,8 @@ export function createIsBindingExported(
         return true;
       }
     }
-    const symbol = checker.getSymbolAtLocation(binding);
-
     {
-      const parent = binding.parent as MangleTargetNode;
+      const parent = binding.parent as ts.NamedDeclaration;
       const symbol = checker.getSymbolAtLocation(binding);
       const type = checker.getTypeAtLocation(binding);
       if (projectExported.nodes.includes(parent)) {
@@ -130,15 +117,6 @@ export function createIsBindingExported(
         return true;
       }
     }
-
-    // TODO: remove this
-    // check local exported
-    {
-      // checker.getExports
-      if (symbol && localExported.symbols.includes(symbol)) {
-        return true;
-      }
-    }
     return false;
   };
 }
@@ -148,13 +126,7 @@ function isSymbolExported(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
   return exportedSymbol !== symbol;
 }
 
-function isSymbolExportedFromRoot(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
-  // WIP
-  const exportedSymbol = checker.getExportSymbolOfSymbol(symbol);
-  return exportedSymbol !== symbol;
-}
-
-export function walkProjectExported(
+export function getExportedInProject(
   checker: ts.TypeChecker,
   exportedFiles: ts.SourceFile[],
   localFiles: ts.SourceFile[],
@@ -186,12 +158,12 @@ export function walkProjectExported(
   const nodes = visitedToNodes(checker, visited);
 
   // TODO: check this is correct
-  const bindings = nodes.flatMap((node) => getLocalsInFile(node));
+  const locals = nodes.flatMap((node) => getLocalsInFile(node));
   return {
     symbols: visited.symbols,
     types: visited.types,
     nodes,
-    bindings,
+    locals: locals,
     internal: internalNodes,
     external: externalNodes,
   } satisfies ProjectExported;
@@ -254,7 +226,8 @@ export function walkProjectExported(
         }
       }),
     );
-    walk(file);
+    ts.forEachChild(file, walk);
+    // walk(file);
 
     for (const node of effectNodes) {
       const symbol = checker.getSymbolAtLocation(node);
@@ -270,9 +243,9 @@ function visitedToNodes(
   checker: ts.TypeChecker,
   visited: SymbolWalkerResult,
   debug: boolean = false,
-): MangleTargetNode[] {
+): ts.NamedDeclaration[] {
   const log = debug ? console.log : () => {};
-  const relatedNodes = new Set<MangleTargetNode>();
+  const relatedNodes = new Set<ts.NamedDeclaration>();
   for (const symbol of visited.symbols) {
     // register symbol declaration
     for (const declaration of symbol.getDeclarations() ?? []) {
@@ -301,7 +274,7 @@ function visitedToNodes(
 
   return [...relatedNodes];
 
-  function isRelatedNode(node: ts.Node): node is MangleTargetNode {
+  function isRelatedNode(node: ts.Node): node is ts.NamedDeclaration {
     return (
       // types
       ts.isTypeNode(node) ||

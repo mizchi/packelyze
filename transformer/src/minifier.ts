@@ -8,11 +8,11 @@ import type {
 
 import ts from "typescript";
 import path from "node:path";
-import { expandToSafeRenameLocations, getCodeActionsFromBindings, getMangleNodesInFile } from "./transform/mangler";
+import { expandToSafeRenameLocations, getCodeActionsFromBindings, getLocalNodesInFile } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
 import { MinifierProcessStep } from "./types";
-import { walkProjectExported } from "./transform/relation";
+import { getExportedInProject } from "./transform/relation";
 
 export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;
@@ -30,10 +30,6 @@ export const withTerserMangleValidator: MangleValidator = (binding: BindingNode)
     if (underModule) {
       return true;
     }
-    // if (ts.isModuleBody(node.parent)) {
-    //   return true;
-    // }
-
     if (ts.isVariableDeclaration(node) && !underModule) {
       return false;
     }
@@ -138,15 +134,14 @@ export function createMinifier(
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const checker = service.getProgram()!.getTypeChecker();
     const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const visited = walkProjectExported(checker, rootFiles, targetsFiles);
+    const visited = getExportedInProject(checker, rootFiles, targetsFiles);
 
     yield { stepName: MinifierProcessStep.Analyze, visited };
 
     const allActions: CodeAction[] = [];
 
     for (const file of targetsFiles) {
-      const isRoot = rootFiles.includes(file);
-      const nodes = getMangleNodesInFile(checker, visited, file, isRoot, validator);
+      const nodes = getLocalNodesInFile(checker, visited, file, validator);
       const actions = getCodeActionsFromBindings(checker, nodes, withOriginalComment);
       yield {
         stepName: MinifierProcessStep.CreateActionsForFile,

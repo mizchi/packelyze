@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { createOneshotTestProgram } from "../../test/testHarness";
-import { getLocalsInFile, walkProjectExported } from "./relation";
+import { getLocalsInFile, getExportedInProject } from "./relation";
 import ts from "typescript";
 import { formatCode, isInferredNode, toReadableNode, toReadableType } from "../ts/tsUtils";
 
@@ -246,15 +246,7 @@ test("detect mangle nodes", () => {
   };
   `);
 
-  const visited = walkProjectExported(checker, [file], [file]);
-  // const walker = createGetSymbolWalker(checker)();
-  // const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(file)!);
-  // for (const symbol of symbols) {
-  //   walker.walkSymbol(symbol);
-  // }
-  // const visited = walker.getVisited();
-  // const nodes = visitedToNodes(checker, visited);
-  // const result = findRootRelatedNodesForTest(checker, file);
+  const visited = getExportedInProject(checker, [file], [file]);
   const result = visited.nodes.map((node) => {
     return {
       kind: ts.SyntaxKind[node.kind],
@@ -275,17 +267,6 @@ test("detect mangle nodes", () => {
     { kind: "PropertySignature", text: "av: number;" },
     { kind: "NumberKeyword", text: "number" },
   ]);
-  // console.log(
-  //   nodes.map((node) => {
-  //     const type = checker.getTypeAtLocation(node);
-  //     return {
-  //       kind: ts.SyntaxKind[node.kind],
-  //       typeName: checker.typeToString(type),
-  //       symbolName: type.symbol?.name,
-  //       inferred: isInferredNode(checker, node),
-  //     };
-  //   }),
-  // );
   expect(
     visited.nodes.map((node) => {
       const type = checker.getTypeAtLocation(node);
@@ -321,7 +302,7 @@ test("detect mangle nodes", () => {
 });
 
 function findRootRelatedNodesForTest(checker: ts.TypeChecker, root: ts.SourceFile) {
-  const visited = walkProjectExported(checker, [root], [root]);
+  const visited = getExportedInProject(checker, [root], [root]);
   // const walker = createGetSymbolWalker(checker)();
   // const symbols = checker.getExportsOfModule(checker.getSymbolAtLocation(root)!);
   // for (const symbol of symbols) {

@@ -4,16 +4,10 @@ import ts from "typescript";
 export type ProjectExported = {
   symbols: ReadonlyArray<ts.Symbol>;
   types: ReadonlyArray<ts.Type>;
-  nodes: ReadonlyArray<MangleTargetNode>;
-  bindings: ReadonlyArray<BindingNode>;
+  nodes: ReadonlyArray<ts.NamedDeclaration>;
+  locals: ReadonlyArray<BindingNode>;
   internal: ReadonlyArray<BindingNode>;
   external: ReadonlyArray<BindingNode>;
-};
-
-export type LocalExported = {
-  symbols: ReadonlyArray<ts.Symbol>;
-  // types: ReadonlyArray<ts.Type>;
-  // nodes: ReadonlyArray<MangleTargetNode>;
 };
 
 export type ChangeResult = {
