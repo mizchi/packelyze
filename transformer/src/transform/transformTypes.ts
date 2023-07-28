@@ -49,11 +49,7 @@ export type SymbolBuilder = {
 };
 
 export type CodeAction = {
-  // actionType: "replace" | "remove" | "add";
-  // fileName: string;
-  // original: string;
   to: string;
-  annotation: BindingAnnotation | undefined;
   node: ts.Node;
 };
 

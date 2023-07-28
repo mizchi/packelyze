@@ -217,12 +217,9 @@ export function getActionsAtNodes(
       // stop by external
       return;
     }
+
     return {
-      actionType: "replace",
-      fileName: node.getSourceFile().fileName,
-      original: originalName,
       to,
-      annotation: annotation,
       node,
     } as CodeAction;
     function isComponentFunctionName(name: string) {
