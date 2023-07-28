@@ -2,7 +2,8 @@ import { expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { Plugin, rollup } from "rollup";
-import { TsMinifyOptions, tsMinify, withTerserMangleValidator, aggressiveMangleValidator } from "../src";
+import { TsMinifyOptions, tsMinify, withTerserMangleValidator } from "../src";
+
 import ts from "typescript";
 import prettier from "prettier";
 
@@ -21,7 +22,7 @@ export async function assertRollupWithFixture(projectPath: string) {
   if (!!process.env.SELFHOST) {
     try {
       // @ts-ignore
-      tsMinifyPlugin = ((await import("../lib/index.js")) as any).tsMinify;
+      tsMinifyPlugin = ((await import("../__src/index")) as any).tsMinify;
     } catch (err) {
       throw err;
     }

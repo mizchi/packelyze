@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { aggressiveMangleValidator, createMinifier, withTerserMangleValidator } from "../src/minifier";
 import ts from "typescript";
-import { MinifierProcessStep, OnWarning, Warning, WarningCode } from "../src/types";
-import { BatchRenameLocationWithSource, CodeAction } from "../src/transform/transformTypes";
+import { createMinifier, withTerserMangleValidator } from "../src/minifier";
+import { OnWarning, Warning } from "../src/types";
+// import { BatchRenameLocationWithSource, CodeAction } from "../src/transform/transformTypes";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../src/ts/services";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
@@ -21,7 +21,7 @@ const targets = parsed.fileNames.filter(
   (fname) => fname.startsWith(srcRoot) && !fname.endsWith(".d.ts") && !fname.endsWith(".test.ts"),
 );
 
-const rootFileNames = [path.join(cwd, "./src/index.ts")];
+const rootFileNames = [path.join(cwd, "./src/index.ts"), path.join(cwd, "./src/types.ts")];
 
 const warnings: Warning[] = [];
 const onwarn: OnWarning = (waring) => {
@@ -34,49 +34,49 @@ const service = createIncrementalLanguageService(host, registory);
 
 const minifier = createMinifier(service, cwd, rootFileNames, targets, true, withTerserMangleValidator, onwarn);
 
-function actionToDebug(action: CodeAction) {
-  const { node } = action;
-  const file = node.getSourceFile();
-  const { character, line } = file.getLineAndCharacterOfPosition(node.getStart());
-  const fileName = action.node.getSourceFile().fileName;
-  const codePos = `${fileName}:${line + 1}:${character + 1}`;
-  return {
-    text: node.getText(),
-    kind: ts.SyntaxKind[node.parent.kind],
-    // reason: reason,
-    at: codePos,
-  };
-}
+// function actionToDebug(action: CodeAction) {
+//   const { node } = action;
+//   const file = node.getSourceFile();
+//   const { character, line } = file.getLineAndCharacterOfPosition(node.getStart());
+//   const fileName = action.node.getSourceFile().fileName;
+//   const codePos = `${fileName}:${line + 1}:${character + 1}`;
+//   return {
+//     text: node.getText(),
+//     kind: ts.SyntaxKind[node.parent.kind],
+//     // reason: reason,
+//     at: codePos,
+//   };
+// }
 
-function renameToDebug(rename: BatchRenameLocationWithSource) {
-  const actionDebug = actionToDebug(rename.action);
-  const source = ts.createSourceFile(
-    rename.fileName,
-    fs.readFileSync(rename.fileName, "utf-8"),
-    ts.ScriptTarget.ESNext,
-    true,
-  );
-  const { character, line } = source.getLineAndCharacterOfPosition(rename.textSpan.start);
-  const renameAt = `${rename.fileName}:${line + 1}:${character + 1}`;
-  return {
-    original: rename.original,
-    renameAt,
-    from: actionDebug.at,
-  };
-}
+// function renameToDebug(rename: BatchRenameLocationWithSource) {
+//   const actionDebug = actionToDebug(rename.action);
+//   const source = ts.createSourceFile(
+//     rename.fileName,
+//     fs.readFileSync(rename.fileName, "utf-8"),
+//     ts.ScriptTarget.ESNext,
+//     true,
+//   );
+//   const { character, line } = source.getLineAndCharacterOfPosition(rename.textSpan.start);
+//   const renameAt = `${rename.fileName}:${line + 1}:${character + 1}`;
+//   return {
+//     original: rename.original,
+//     renameAt,
+//     from: actionDebug.at,
+//   };
+// }
 
-function debugBySymbolName(renames: BatchRenameLocationWithSource[], symbolName: string) {
-  console.log(
-    renames
-      .filter((x) => {
-        return x.original === symbolName;
-      })
-      .filter((action) => !action.fileName.includes("__experimental"))
-      .map((rename) => {
-        return renameToDebug(rename);
-      }),
-  );
-}
+// function debugBySymbolName(renames: BatchRenameLocationWithSource[], symbolName: string) {
+//   console.log(
+//     renames
+//       .filter((x) => {
+//         return x.original === symbolName;
+//       })
+//       .filter((action) => !action.fileName.includes("__experimental"))
+//       .map((rename) => {
+//         return renameToDebug(rename);
+//       }),
+//   );
+// }
 
 minifier.process();
 
