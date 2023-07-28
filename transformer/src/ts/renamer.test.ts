@@ -1,7 +1,7 @@
 import "../../test/globals";
 import ts from "typescript";
 import { expect, test } from "vitest";
-import { applyBatchRenameLocations, findBatchRenameLocations, getRenamedFileChanges } from "./renamer";
+import { applyBatchRenameLocations, findBatchRenameLocations, getChangesAfterRename } from "./renamer";
 import { createTestLanguageService } from "../../test/testHarness";
 import { findFirstNode } from "./tsUtils";
 import { type BatchRenameLocation } from "./types";
@@ -34,7 +34,7 @@ test("batch renaming", () => {
     return { ...loc, original: "y", to: "y_changed" };
   });
 
-  const changedFiles = getRenamedFileChanges(
+  const changedFiles = getChangesAfterRename(
     [
       ...xRenameLocs!.map((loc) => ({
         ...loc,
@@ -259,7 +259,7 @@ test("TS: rename multi file", () => {
 
   if (!renameItems) throw new Error("unexpected");
 
-  const state = getRenamedFileChanges(
+  const state = getChangesAfterRename(
     renameItems,
     (fname) => {
       const source = program.getSourceFile(fname);

@@ -17,7 +17,7 @@ export function findBatchRenameLocations(
   return findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
 }
 
-export function getRenamedFileChanges(
+export function getChangesAfterRename(
   renames: BatchRenameLocation[],
   readCurrentFile: (fname: string) => string | undefined,
   normalizePath: (fname: string) => string,

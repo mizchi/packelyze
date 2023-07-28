@@ -185,53 +185,32 @@ export function isExportedCreator(
   }
 }
 
-export function getActionsAtNodes(checker: ts.TypeChecker, bindings: BindingNode[]): BindingNode[] {
-  return bindings.filter(canRename);
+export function canNodeRename(node: BindingNode): boolean {
+  const originalName = node.text;
+  // maybe react component name
+  // TODO: const Foo = ...;
+  const maybeFunctionComponentNode =
+    (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
+    isComponentFunctionName(originalName);
+  if (maybeFunctionComponentNode) {
+    return false;
+  }
+  const annotation = getAnnotationAtNode(node);
 
-  function canRename(node: BindingNode): boolean {
-    const validate = createNameValidator(checker, node);
-    const originalName = node.text;
+  if (annotation?.external) {
+    // stop by external
+    return false;
+  }
 
-    // maybe react component name
-    // TODO: const Foo = ...;
-    const maybeFunctionComponentNode =
-      (ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent)) &&
-      isComponentFunctionName(originalName);
-    if (maybeFunctionComponentNode) {
-      return false;
-    }
-
-    // TODO: renamer by ast kind
-    // const newName = (originalName.startsWith("#") ? "#" : "") + symbolBuilder.create(validate);
-    // const to = withOriginalComment ? `/*${originalName}*/${newName}` : newName;
-    const annotation = getAnnotationAtNode(node);
-
-    if (annotation?.external) {
-      // stop by external
-      return false;
-    }
-
-    return true;
-    function isComponentFunctionName(name: string) {
-      return !/[a-z]/.test(name[0]);
-    }
-    function createNameValidator(checker: ts.TypeChecker, node: ts.Node) {
-      // TODO: check is valid query
-      const locals = checker.getSymbolsInScope(node, ts.SymbolFlags.BlockScopedVariable);
-      const localNames = new Set(locals.map((x) => x.name));
-      const usedNames = new Set<string>();
-      return (newName: string) => {
-        const conflicted = localNames.has(newName);
-        const used = usedNames.has(newName);
-        if (!conflicted && !used) {
-          usedNames.add(newName);
-          return true;
-        }
-        return false;
-      };
-    }
+  return true;
+  function isComponentFunctionName(name: string) {
+    return !/[a-z]/.test(name[0]);
   }
 }
+
+// export function getActionsAtNodes(bindings: BindingNode[]): BindingNode[] {
+//   return bindings.filter(canNodeRename);
+// }
 
 export function getLocalsInFile(file: ts.Node): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];

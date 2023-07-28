@@ -3,14 +3,9 @@ import type { BindingNode, FileChangeResult } from "./transform/transformTypes";
 
 import ts from "typescript";
 import path from "node:path";
-import {
-  expandToSafeRenames,
-  getActionsAtNodes,
-  getExportedInProjectCreator,
-  getLocalsInFile,
-} from "./transform/mangler";
+import { canNodeRename, expandToSafeRenames, getExportedInProjectCreator, getLocalsInFile } from "./transform/mangler";
 import { IncrementalLanguageService } from "./ts/services";
-import { getRenamedFileChanges } from "./ts/renamer";
+import { getChangesAfterRename as getChangesAfterRename } from "./ts/renamer";
 
 export const aggressiveMangleValidator: MangleValidator = (_binding: BindingNode) => {
   return true;
@@ -73,26 +68,20 @@ export function createMinifier(
       return sourceMaps.get(id);
     },
     readFile(id: string) {
-      const content = service.readSnapshotContent(id);
-      if (content) {
-        return content;
-      }
+      return service.readSnapshotContent(id);
     },
   };
 
   function process() {
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const checker = service.getProgram()!.getTypeChecker();
     const files = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const isExported = getExportedInProjectCreator(checker, rootFiles, files, validator);
-    const nodes = files.flatMap(getLocalsInFile).filter(isExported);
-    const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
 
-    const renames = expandToSafeRenames(service.findRenameLocations, actions, onwarn);
-
-    const fileChanges: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
-
-    for (const change of fileChanges) {
+    const checker = service.getProgram()!.getTypeChecker();
+    const isExportedNode = getExportedInProjectCreator(checker, rootFiles, files, validator);
+    const nodes = files.flatMap(getLocalsInFile).filter(isExportedNode).filter(canNodeRename);
+    const renames = expandToSafeRenames(service.findRenameLocations, nodes, onwarn);
+    const changes = getChangesAfterRename(renames, service.readSnapshotContent, normalizePath);
+    for (const change of changes) {
       service.writeSnapshotContent(change.fileName, change.content);
       if (change.map) sourceMaps.set(change.fileName, change.map);
     }

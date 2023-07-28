@@ -1,8 +1,8 @@
 import "../../test/globals";
 import { initTestLanguageServiceWithFiles } from "../../test/testHarness";
-import { getRenamedFileChanges } from "../ts/renamer";
+import { getChangesAfterRename } from "../ts/renamer";
 import { expect, test } from "vitest";
-import { expandToSafeRenames, getActionsAtNodes, getExportedInProjectCreator, getLocalsInFile } from "./mangler";
+import { canNodeRename, expandToSafeRenames, getExportedInProjectCreator, getLocalsInFile } from "./mangler";
 import { aggressiveMangleValidator } from "..";
 // import { getExportedInProject } from "./relation";
 
@@ -15,12 +15,11 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const isExported = getExportedInProjectCreator(checker, [root], [root], aggressiveMangleValidator);
 
   const actions = [root].flatMap((target) => {
-    const trials = getLocalsInFile(target).filter(isExported);
-    return getActionsAtNodes(checker, trials);
+    return getLocalsInFile(target).filter(isExported).filter(canNodeRename);
   });
 
   const renames = expandToSafeRenames(service.findRenameLocations, actions);
-  const rawChanges = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);
+  const rawChanges = getChangesAfterRename(renames, service.readSnapshotContent, normalizePath);
 
   // rename for assert
   const changes = rawChanges.map((x) => {
