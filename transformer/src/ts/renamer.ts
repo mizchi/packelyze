@@ -9,23 +9,12 @@ export function findBatchRenameLocations(
   findRenameLocations: FindRenameLocations,
   fileName: string,
   pos: number,
-  original: string,
-  to: string,
   prefs: ts.UserPreferences = {
     providePrefixAndSuffixTextForRename: true,
     allowRenameOfImportPath: true,
   },
-): BatchRenameLocation[] | undefined {
-  const renames = findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
-  if (!renames) return;
-  return renames.map((r) => {
-    const toWithPrefixAndSuffix = `${r.prefixText ?? ""}${to}${r.suffixText ?? ""}`;
-    return {
-      ...r,
-      original,
-      to: toWithPrefixAndSuffix,
-    };
-  });
+): ts.RenameLocation[] | undefined {
+  return findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
 }
 
 export function getRenamedFileChanges(

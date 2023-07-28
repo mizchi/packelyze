@@ -48,16 +48,16 @@ export type SymbolBuilder = {
   reset: (next?: number) => void;
 };
 
-export type CodeAction = {
-  to: string;
-  node: ts.Node;
-};
+// export type CodeAction = {
+//   to: string;
+//   node: ts.Node;
+// };
 
 /**
  * to batch rename, we need to know the original text and the new text.
  */
 export type BatchRenameLocationWithSource = BatchRenameLocation & {
-  action: CodeAction;
+  node: ts.Node;
 };
 
 export type BindingNode = ts.Identifier | ts.PrivateIdentifier;
