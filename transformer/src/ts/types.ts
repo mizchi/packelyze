@@ -10,6 +10,7 @@ export type SymbolWalkerResult = {
 export interface SymbolWalker {
   walkType(root: ts.Type): void;
   walkSymbol(root: ts.Symbol): void;
+  walkModuleSymbol(root: ts.Symbol): void;
   getVisited(): SymbolWalkerResult;
   clear(): void;
 }

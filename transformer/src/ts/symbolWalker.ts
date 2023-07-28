@@ -39,6 +39,36 @@ export function createGetSymbolWalker(checker: ts.TypeChecker, visited?: SymbolW
       walkSymbol: (symbol) => {
         visitSymbol(symbol);
       },
+      // walk to getExportsOfModule
+      walkModuleSymbol(fileSymbol: ts.Symbol) {
+        // const decls = checker.getExportsOfModule(fileSymbol)?.flatMap((s) => s.getDeclarations() ?? []) ?? [];
+        for (const exportedSymbol of checker.getExportsOfModule(fileSymbol) ?? []) {
+          for (const decl of exportedSymbol.getDeclarations() ?? []) {
+            walkAtDeclaration(decl);
+          }
+        }
+        function walkAtDeclaration(decl: ts.Declaration) {
+          const exportedType = checker.getTypeAtLocation(decl);
+          if (ts.isImportSpecifier(decl)) {
+            visitType(exportedType);
+            visitSymbol(exportedType.symbol);
+          }
+          if (ts.isExportSpecifier(decl)) {
+            const originalSymbol = checker.getExportSpecifierLocalTargetSymbol(decl);
+            if (originalSymbol) {
+              for (const decl of originalSymbol?.declarations ?? []) {
+                walkAtDeclaration(decl);
+              }
+            } else {
+              visitType(exportedType);
+              visitSymbol(exportedType.symbol);
+            }
+          } else {
+            visitType(exportedType);
+            visitSymbol(exportedType.symbol);
+          }
+        }
+      },
     };
 
     function visitType(type: ts.Type | undefined): void {
