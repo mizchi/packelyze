@@ -45,53 +45,6 @@ export const enum MinifierProcessStep {
   PostDiagnostic,
 }
 
-type PreDiagnosticStep = {
-  stepName: MinifierProcessStep.PreDiagnostic;
-  diagnostics: ReadonlyArray<ts.Diagnostic>;
-};
-
-type AnalyzeStep = {
-  stepName: MinifierProcessStep.Analyze;
-  // visited: ProjectExported;
-};
-
-type CreateActionsForFileStep = {
-  stepName: MinifierProcessStep.CreateActionsForFile;
-  actions: CodeAction[];
-  fileName: string;
-};
-
-type AllActionsCreatedStep = {
-  stepName: MinifierProcessStep.AllActionsCreated;
-  actions: CodeAction[];
-};
-
-type ExpandRenamesStep = {
-  stepName: MinifierProcessStep.ExpandRenameLocations;
-  renames: BatchRenameLocationWithSource[];
-};
-
-type ApplyFileChangesStep = {
-  stepName: MinifierProcessStep.ApplyFileChanges;
-  changes: FileChangeResult[];
-};
-
-type PostDiagnosticStep = {
-  stepName: MinifierProcessStep.PostDiagnostic;
-  diagnostics: ReadonlyArray<ts.Diagnostic>;
-};
-
-export type MinifierStep =
-  | PreDiagnosticStep
-  | AnalyzeStep
-  | CreateActionsForFileStep
-  | AllActionsCreatedStep
-  | ExpandRenamesStep
-  | ApplyFileChangesStep
-  | PostDiagnosticStep;
-
-// export type MinifierProcessGenerator = Generator<MinifierStep>;
-
 export enum WarningCode {
   MANGLE_STOP_BY_LOCATION_CONFLICT = 1,
   MANGLE_STOP_BY_EXTERNAL,

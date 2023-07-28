@@ -1,10 +1,5 @@
 import type { MangleValidator, Minifier, OnWarning } from "./types";
-import type {
-  BatchRenameLocationWithSource,
-  BindingNode,
-  CodeAction,
-  FileChangeResult,
-} from "./transform/transformTypes";
+import type { BindingNode, FileChangeResult } from "./transform/transformTypes";
 
 import ts from "typescript";
 import path from "node:path";
@@ -92,6 +87,7 @@ export function createMinifier(
     const isExported = getExportedInProjectCreator(checker, rootFiles, files, validator);
     const nodes = files.flatMap(getLocalsInFile).filter(isExported);
     const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
+
     const renames = expandToSafeRenames(service.findRenameLocations, actions, onwarn);
 
     const fileChanges: FileChangeResult[] = getRenamedFileChanges(renames, service.readSnapshotContent, normalizePath);

@@ -334,11 +334,13 @@ export function expandToSafeRenames(
   function toSafeRenameLocations(action: CodeAction): BatchRenameLocationWithSource[] {
     const touchKey = actionToKey(action);
     if (touchings.has(touchKey)) return [];
+    const fileName = action.node.getSourceFile().fileName;
+    const original = action.node.getText();
     const locations = findBatchRenameLocations(
       findRenameLocations,
-      action.fileName,
+      fileName,
       action.node.getStart(),
-      action.original,
+      original,
       action.to,
     );
     if (!locations) return [];
@@ -360,7 +362,8 @@ export function expandToSafeRenames(
   }
 
   function actionToKey(action: CodeAction): string {
-    return `${action.fileName}-${action.node.getStart()}`;
+    const fileName = action.node.getSourceFile().fileName;
+    return `${fileName}-${action.node.getStart()}`;
   }
 
   function renameToKey(rename: BatchRenameLocation): string {

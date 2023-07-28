@@ -38,7 +38,8 @@ function actionToDebug(action: CodeAction) {
   const { node } = action;
   const file = node.getSourceFile();
   const { character, line } = file.getLineAndCharacterOfPosition(node.getStart());
-  const codePos = `${action.fileName}:${line + 1}:${character + 1}`;
+  const fileName = action.node.getSourceFile().fileName;
+  const codePos = `${fileName}:${line + 1}:${character + 1}`;
   return {
     text: node.getText(),
     kind: ts.SyntaxKind[node.parent.kind],
