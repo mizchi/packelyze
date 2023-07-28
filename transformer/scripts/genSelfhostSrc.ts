@@ -4,6 +4,7 @@ import { aggressiveMangleValidator, createMinifier, withTerserMangleValidator } 
 import ts from "typescript";
 import { MinifierProcessStep, OnWarning, Warning, WarningCode } from "../src/types";
 import { BatchRenameLocationWithSource, CodeAction } from "../src/transform/transformTypes";
+import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "../src/ts/services";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -27,19 +28,11 @@ const onwarn: OnWarning = (waring) => {
   warnings.push(waring);
 };
 
-const minifier = createMinifier(
-  cwd,
-  rootFileNames,
-  targets,
-  parsed.options,
-  undefined,
-  true,
-  // aggressiveMangleValidator,
-  withTerserMangleValidator,
-  onwarn,
-);
+const host = createIncrementalLanguageServiceHost(cwd, rootFileNames, parsed.options);
+const registory = ts.createDocumentRegistry();
+const service = createIncrementalLanguageService(host, registory);
 
-const processor = minifier.createProcess();
+const minifier = createMinifier(service, cwd, rootFileNames, targets, true, withTerserMangleValidator, onwarn);
 
 function actionToDebug(action: CodeAction) {
   const { node } = action;
@@ -84,76 +77,7 @@ function debugBySymbolName(renames: BatchRenameLocationWithSource[], symbolName:
   );
 }
 
-for (const step of processor) {
-  // console.log("---[", MinifierProcessStep[step.stepName], "]---");
-  switch (step.stepName) {
-    case MinifierProcessStep.PreDiagnostic: {
-      break;
-    }
-    case MinifierProcessStep.Analyze: {
-      console.log(
-        // types
-        "[symbols]",
-        // step.visited.symbols
-        //   .filter((x) => {
-        //     const file = x.declarations?.[0].getSourceFile();
-        //     return !file?.isDeclarationFile;
-        //   })
-        //   .map((x) => x.name),
-        "[types]",
-        // step.visited.types
-        //   .filter((x) => {
-        //     const file = x.symbol?.declarations?.[0].getSourceFile();
-        //     return !file?.isDeclarationFile;
-        //   })
-        //   .map((x) => x.symbol?.name),
-        "[nodes]",
-        // step.visited.nodes
-        //   .filter((x) => {
-        //     const file = x.getSourceFile();
-        //     return !file?.isDeclarationFile;
-        //   })
-        //   .map((x) => x.getText()),
-      );
-      // throw "stop";
-      break;
-    }
-    case MinifierProcessStep.CreateActionsForFile: {
-      // console.log(
-      //   "[",
-      //   MinifierProcessStep[step.stepName],
-      //   "]",
-      //   // xx
-      //   // "[selfhost:file-actions]",
-      //   // step.fileName.replace(srcRoot + "/", ""),
-      //   // step.actions
-      //   //   .filter((action) => action.originalTrial.node.getText() === "symbols")
-      //   //   .filter((action) => !action.fileName.includes("__experimental"))
-      //   //   .map((action) => {
-      //   //     return actionToDebug(action);
-      //   //   }),
-      // );
-      break;
-    }
-    case MinifierProcessStep.AllActionsCreated: {
-      // console.log(
-      //   "[minifier:all-actions]",
-      //   step.actions.length,
-      // );
-      break;
-    }
-    case MinifierProcessStep.ExpandRenameLocations: {
-      debugBySymbolName(step.renames, "actions");
-      break;
-    }
-    case MinifierProcessStep.ApplyFileChanges: {
-      break;
-    }
-    case MinifierProcessStep.PostDiagnostic: {
-      break;
-    }
-  }
-}
+minifier.process();
 
 for (const fileName of targets) {
   const content = minifier.readFile(fileName);
