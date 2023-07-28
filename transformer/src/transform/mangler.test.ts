@@ -5,9 +5,8 @@ import { expect, test } from "vitest";
 import {
   expandToSafeRenameLocations,
   getActionsAtNodes,
-  getExportedInProject,
+  getExportedInProjectCreator,
   getLocalsInFile,
-  isExportedCreator,
 } from "./mangler";
 import { aggressiveMangleValidator } from "..";
 // import { getExportedInProject } from "./relation";
@@ -17,16 +16,8 @@ function assertExpectedMangleResult(entry: string, files: Record<string, string>
   const { service, normalizePath, projectPath } = initTestLanguageServiceWithFiles(files);
   entry = normalizePath(entry);
   const root = service.getProgram()!.getSourceFile(entry)!;
-  // const fileNames = service
-  //   .getProgram()!
-  //   .getRootFileNames()
-  //   .filter((fname) => !fname.endsWith(".d.ts"));
-
-  // const targetFiles = fileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-
   const checker = service.getProgram()!.getTypeChecker();
-  const visited = getExportedInProject(checker, [root], [root]);
-  const isExported = isExportedCreator(checker, visited, aggressiveMangleValidator);
+  const isExported = getExportedInProjectCreator(checker, [root], [root], aggressiveMangleValidator);
 
   const actions = [root].flatMap((target) => {
     const trials = getLocalsInFile(target).filter(isExported);

@@ -18,6 +18,16 @@ const enum NodePriority {
   VeryLow = 20,
 }
 
+export function getExportedInProjectCreator(
+  checker: ts.TypeChecker,
+  exportedFiles: ts.SourceFile[],
+  localFiles: ts.SourceFile[],
+  validator: MangleValidator,
+) {
+  const projectExported = getExportedInProject(checker, exportedFiles, localFiles);
+  return isExportedCreator(checker, projectExported, validator);
+}
+
 export function getExportedInProject(
   checker: ts.TypeChecker,
   exportedFiles: ts.SourceFile[],

@@ -11,9 +11,8 @@ import path from "node:path";
 import {
   expandToSafeRenameLocations,
   getActionsAtNodes,
-  getExportedInProject,
+  getExportedInProjectCreator,
   getLocalsInFile,
-  isExportedCreator,
 } from "./transform/mangler";
 import { createIncrementalLanguageService, createIncrementalLanguageServiceHost } from "./ts/services";
 import { getRenamedFileChanges } from "./ts/renamer";
@@ -138,15 +137,14 @@ export function createMinifier(
 
     const rootFiles = rootFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
     const checker = service.getProgram()!.getTypeChecker();
-    const targetsFiles = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
-    const projectExported = getExportedInProject(checker, rootFiles, targetsFiles);
-    const isExported = isExportedCreator(checker, projectExported, validator);
+    const files = targetFileNames.map((fname) => service.getCurrentSourceFile(fname)!);
+    const isExported = getExportedInProjectCreator(checker, rootFiles, files, validator);
 
-    yield { stepName: MinifierProcessStep.Analyze, visited: projectExported };
+    yield { stepName: MinifierProcessStep.Analyze };
 
     const allActions: CodeAction[] = [];
 
-    for (const file of targetsFiles) {
+    for (const file of files) {
       const nodes = getLocalsInFile(file).filter(isExported);
       const actions = getActionsAtNodes(checker, nodes, withOriginalComment);
       yield {

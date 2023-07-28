@@ -55,7 +55,7 @@ type PreDiagnosticStep = {
 
 type AnalyzeStep = {
   stepName: MinifierProcessStep.Analyze;
-  visited: ProjectExported;
+  // visited: ProjectExported;
 };
 
 type CreateActionsForFileStep = {
