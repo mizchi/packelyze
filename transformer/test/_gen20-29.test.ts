@@ -18,3 +18,6 @@ test("rollup #case23-higher-chain", async () => {
 test("rollup #case24-annotations", async () => {
   await assertRollupWithFixture(path.join(__dirname, "../fixtures/case24-annotations"));
 });
+test("rollup #case25-sublocal", async () => {
+  await assertRollupWithFixture(path.join(__dirname, "../fixtures/case25-sublocal"));
+});

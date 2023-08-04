@@ -5,14 +5,12 @@ import { getAnnotationAtNode } from "../ts/comment";
 export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
   return (node: ts.Node) => {
     if (ts.isBinaryExpression(node)) {
-      // TODO: modifing node
+      // TODO: other modifing opertors
       const modifying = node.operatorToken.kind === ts.SyntaxKind.EqualsToken;
       if (modifying) {
+        // TODO: right node
         const leftType = checker.getTypeAtLocation(node.left);
-        if (
-          leftType.symbol?.declarations?.every((x) => x.getSourceFile().isDeclarationFile) ||
-          leftType.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile
-        ) {
+        if (leftType.symbol?.declarations?.every((x) => x.getSourceFile().isDeclarationFile)) {
           onEnter(node.right);
         }
       }

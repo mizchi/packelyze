@@ -21,3 +21,7 @@ export type Indirect = {
 export type IndirectArrayItem = {
   item: number;
 };
+
+export type LocalObj = {
+  local: number;
+};

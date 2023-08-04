@@ -22,6 +22,16 @@ function createObj() {
   function xxx() {}
 }
 
+const createLocalObj = () => {
+  return {
+    /*local*/ j: 1,
+  };
+};
+function runLocal() {
+  const localObj = createLocalObj();
+  console.log(localObj./*local*/ j);
+}
+
 const indirect = {
   indirect: 1,
 };
@@ -31,4 +41,4 @@ const items = [
   },
 ];
 
-export { createObj, indirect, items };
+export { createObj, indirect, items, runLocal };

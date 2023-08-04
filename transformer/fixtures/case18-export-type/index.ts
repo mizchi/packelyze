@@ -18,3 +18,5 @@ export const items: Array<IndirectArrayItem> = [
     item: 1,
   },
 ];
+
+export { runLocal } from "./localObj";
