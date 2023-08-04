@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { getAnnotationAtFunction, getAnnotationAtNode, getLeadingComments } from "../ts/comment";
+import { getAnnotationAtCallable, getAnnotationAtNode, getLeadingComments } from "../ts/comment";
 
 // for composeVisitors
 export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
@@ -17,24 +17,22 @@ export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node:
     }
     // call external calling is not safe for mangle
     if (ts.isCallExpression(node)) {
+      // TODO: use __PURE__
+
       const type = checker.getTypeAtLocation(node.expression);
-      const decl = type.symbol?.valueDeclaration;
-
-      console.log(
-        "call",
-        node.getText(),
-        type.symbol?.declarations?.map((x) => x.getText()),
-      );
-
       const isPureCaller = type.symbol?.declarations?.some((decl) => {
-        // console.log("decl!", ts.SyntaxKind[decl.kind], decl.getText());
-        if (ts.isFunctionDeclaration(decl)) {
-          const ann = getAnnotationAtFunction(decl);
+        if (ts.isFunctionTypeNode(decl) && ts.isPropertySignature(decl.parent)) {
+          const ann = getAnnotationAtCallable(decl.parent);
+          return ann.NO_SIDE_EFFECT;
+        }
+        if (ts.isFunctionDeclaration(decl) || ts.isMethodDeclaration(decl) || ts.isMethodSignature(decl)) {
+          const ann = getAnnotationAtCallable(decl);
           return ann.NO_SIDE_EFFECT;
         }
         return false;
       });
-      if (!isPureCaller && decl?.getSourceFile().isDeclarationFile) {
+      const isDeclarationFile = type.symbol?.declarations?.every((x) => x.getSourceFile().isDeclarationFile);
+      if (!isPureCaller && isDeclarationFile) {
         for (const typeArg of node.typeArguments ?? []) {
           onEnter(typeArg);
         }

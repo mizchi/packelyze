@@ -4,11 +4,12 @@
     "module": "esnext",
     "noEmit": true,
     "strict": true,
-    "typeRoots": ["../../node_modules/@types"],
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "typeRoots": ["../../node_modules/@types"],
+    "skipLibCheck": true,
   },
   "include": ["./*.ts", "./*.tsx"],
 }

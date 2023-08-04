@@ -84,8 +84,14 @@ export function getAnnotationAtNode(
   return ann;
 }
 
-export function getAnnotationAtFunction(
-  node: ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration,
+export function getAnnotationAtCallable(
+  node:
+    | ts.FunctionDeclaration
+    | ts.FunctionExpression
+    | ts.ArrowFunction
+    | ts.MethodDeclaration
+    | ts.MethodSignature
+    | ts.PropertySignature,
 ): {
   NO_SIDE_EFFECT: boolean;
 } {
