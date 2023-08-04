@@ -22,6 +22,10 @@ export const withTerserMangleValidator: MangleValidator = (binding: BindingNode)
     if (underModule) {
       return true;
     }
+
+    if (ts.isEnumDeclaration(node) || ts.isEnumMember(node)) {
+      return false;
+    }
     if (ts.isVariableDeclaration(node) && !underModule) {
       return false;
     }

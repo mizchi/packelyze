@@ -25,6 +25,23 @@ const enum NodePriority {
   VeryLow = 20,
 }
 
+type LocalExported = {
+  nodes: ts.NamedDeclaration[];
+  symbols: ts.Symbol[];
+  types: ts.Type[];
+};
+
+// type GetExportedInProject = (node: BindingNode) => boolean;
+export function getExportedInFile(
+  checker: ts.TypeChecker,
+  file: ts.SourceFile,
+  isExportedInProject: (node: BindingNode) => boolean,
+) {
+  // const locals = getLocalsInFile(file);
+  // const exported = locals.filter(isExportedInProject);
+  // return exported;
+}
+
 export function getExportedInProjectCreator(
   checker: ts.TypeChecker,
   exportedFiles: ts.SourceFile[],
@@ -125,14 +142,68 @@ export function getExportedInProject(
       }),
     );
     ts.forEachChild(file, walk);
-    // walk(file);
 
+    // ---------------- end
     for (const node of effectNodes) {
       const symbol = checker.getSymbolAtLocation(node);
       // if (symbol) walkSymbol(symbol);
       if (symbol) symbolWalker.walkSymbol(symbol);
       const type = checker.getTypeAtLocation(node);
       symbolWalker.walkType(type);
+    }
+    // ---------------- start
+    const fileSymbol = checker.getSymbolAtLocation(file);
+    if (!fileSymbol) return;
+    const exportedSymbols = checker.getExportsOfModule(fileSymbol);
+
+    for (const symbol of exportedSymbols) {
+      // if (symbol.valueDeclaration && ts.isImportSpecifier(symbol.valueDeclaration)) {
+      //   const importedType = checker.getTypeAtLocation(symbol.valueDeclaration);
+      //   if (false) {
+      //     symbolWalker.walkType(importedType);
+      //     symbolWalker.walkSymbol(importedType.symbol);
+      //   }
+      // }
+
+      // if (symbol.valueDeclaration && ts.isExportSpecifier(symbol.valueDeclaration)) {
+      //   // check exported
+      //   if (ts.isExportSpecifier(symbol.valueDeclaration)) {
+      //     const originalSymbol = checker.getExportSpecifierLocalTargetSymbol(symbol.valueDeclaration);
+      //     if (originalSymbol) {
+      //       for (const decl of originalSymbol?.declarations ?? []) {
+      //         if (false) {
+      //           const symbol = checker.getSymbolAtLocation(decl);
+      //           if (symbol) symbolWalker.walkSymbol(symbol);
+      //         }
+      //       }
+      //     } else {
+      //       const specifierType = checker.getTypeAtLocation(symbol.valueDeclaration);
+      //       if (false) {
+      //         symbolWalker.walkType(specifierType);
+      //         specifierType.symbol && symbolWalker.walkSymbol(specifierType.symbol);
+      //       }
+      //     }
+      //   }
+      // } else {
+      const type = checker.getTypeOfSymbol(symbol);
+      const visited = symbolWalker.getVisited();
+      if (visited.symbols.includes(symbol)) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      if (visited.types.includes(type)) {
+        symbolWalker.walkSymbol(symbol);
+      }
+      if (type.symbol && visited.symbols.includes(type.symbol)) {
+        symbolWalker.walkSymbol(type.symbol);
+      }
+      // if (false) {
+      //   symbolWalker.walkSymbol(symbol);
+      //   symbolWalker.walkType(type);
+      //   if (type.symbol) {
+      //     symbolWalker.walkSymbol(type.symbol);
+      //   }
+      // }
+      // }
     }
   }
 }
@@ -214,10 +285,6 @@ export function canNodeRename(node: BindingNode): boolean {
     return !/[a-z]/.test(name[0]);
   }
 }
-
-// export function getActionsAtNodes(bindings: BindingNode[]): BindingNode[] {
-//   return bindings.filter(canNodeRename);
-// }
 
 export function getLocalsInFile(file: ts.Node): BindingNode[] {
   const identifiers: (ts.Identifier | ts.PrivateIdentifier)[] = [];

@@ -21,7 +21,11 @@ const targets = parsed.fileNames.filter(
   (fname) => fname.startsWith(srcRoot) && !fname.endsWith(".d.ts") && !fname.endsWith(".test.ts"),
 );
 
-const rootFileNames = [path.join(cwd, "./src/index.ts"), path.join(cwd, "./src/types.ts")];
+const rootFileNames = [
+  // files
+  path.join(cwd, "./src/index.ts"),
+  // path.join(cwd, "./src/types.ts")
+];
 
 const warnings: Warning[] = [];
 const onwarn: OnWarning = (waring) => {

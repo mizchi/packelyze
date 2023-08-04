@@ -11,6 +11,7 @@ export function findBatchRenameLocations(
   prefs: ts.UserPreferences = {
     providePrefixAndSuffixTextForRename: true,
     allowRenameOfImportPath: true,
+    provideRefactorNotApplicableReason: true,
   },
 ): ts.RenameLocation[] | undefined {
   return findRenameLocations(fileName, pos, false, false, prefs) as BatchRenameLocation[] | undefined;
