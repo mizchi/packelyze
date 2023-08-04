@@ -83,3 +83,23 @@ export function getAnnotationAtNode(
   }
   return ann;
 }
+
+export function getAnnotationAtFunction(
+  node: ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration,
+): {
+  NO_SIDE_EFFECT: boolean;
+} {
+  const ann: {
+    NO_SIDE_EFFECT: boolean;
+  } = {
+    NO_SIDE_EFFECT: false,
+  };
+  const code = node.getSourceFile().getFullText();
+  const comments = getLeadingComments(node, code);
+  for (const commentText of comments ?? []) {
+    if (commentText.includes(NO_SIDE_EFFECT_TAG)) {
+      ann.NO_SIDE_EFFECT = true;
+    }
+  }
+  return ann;
+}

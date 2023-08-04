@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { InputOption, Plugin } from "rollup";
-import ts, { createIncrementalCompilerHost } from "typescript";
+import ts from "typescript";
 import { createMinifier } from "./minifier";
 import { sync as globSync } from "glob";
 import { Minifier, TsMinifyOptions } from "./types";

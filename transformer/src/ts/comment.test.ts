@@ -175,3 +175,16 @@ test("getAnnotationsAtBinding # 1", () => {
     });
   }
 });
+
+test("__NO_SIDE_EFFECT__", () => {
+  const code = `
+  /*#__NO_SIDE_EFFECT__*/
+  function pure(a: any) {
+    console.log(a);
+  }
+  `;
+  const file = ts.createSourceFile("test.ts", code, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+  const node = getFirstNodeFromMatcher(file, /function pure/)!;
+  const comment = getLeadingComments(node, code);
+  expect(comment).toEqual(["/*#__NO_SIDE_EFFECT__*/"]);
+});

@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { getAnnotationAtNode } from "../ts/comment";
+import { getAnnotationAtFunction, getAnnotationAtNode, getLeadingComments } from "../ts/comment";
 
 // for composeVisitors
 export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node: ts.Node) => void = () => {}) {
@@ -18,7 +18,23 @@ export function getEffectDetectorWalker(checker: ts.TypeChecker, onEnter: (node:
     // call external calling is not safe for mangle
     if (ts.isCallExpression(node)) {
       const type = checker.getTypeAtLocation(node.expression);
-      if (type.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile) {
+      const decl = type.symbol?.valueDeclaration;
+
+      console.log(
+        "call",
+        node.getText(),
+        type.symbol?.declarations?.map((x) => x.getText()),
+      );
+
+      const isPureCaller = type.symbol?.declarations?.some((decl) => {
+        // console.log("decl!", ts.SyntaxKind[decl.kind], decl.getText());
+        if (ts.isFunctionDeclaration(decl)) {
+          const ann = getAnnotationAtFunction(decl);
+          return ann.NO_SIDE_EFFECT;
+        }
+        return false;
+      });
+      if (!isPureCaller && decl?.getSourceFile().isDeclarationFile) {
         for (const typeArg of node.typeArguments ?? []) {
           onEnter(typeArg);
         }
