@@ -25,6 +25,15 @@ for (let i = 0; i < testFileCount; i++) {
     pre +
       cases
         .slice(start, end)
+        .filter((x) => {
+          console.log("filtering", x, cases.includes(x));
+          return cases.includes(x);
+          // const exists = fs.existsSync(path.join(__dirname, `../test/_gen${start}-${end - 1}.test.ts`));
+          // if (exists) {
+          //   return x.includes("rollup #case");
+          // }
+          // return true;
+        })
         .map(genCase)
         .join("\n"),
   );

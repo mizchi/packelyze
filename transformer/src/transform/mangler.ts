@@ -14,7 +14,7 @@ import {
   FindRenameLocations,
   BatchRenameLocation,
 } from "./../types";
-import { getEffectDetectorWalker, getExternalDetectorWalker } from "./detector";
+import { getEffectDetectorWalker, getExternalDetectorWalker } from "./pure";
 import { createSymbolBuilder } from "./symbolBuilder";
 
 const enum NodePriority {
@@ -30,17 +30,6 @@ type LocalExported = {
   symbols: ts.Symbol[];
   types: ts.Type[];
 };
-
-// type GetExportedInProject = (node: BindingNode) => boolean;
-export function getExportedInFile(
-  checker: ts.TypeChecker,
-  file: ts.SourceFile,
-  isExportedInProject: (node: BindingNode) => boolean,
-) {
-  // const locals = getLocalsInFile(file);
-  // const exported = locals.filter(isExportedInProject);
-  // return exported;
-}
 
 export function getExportedInProjectCreator(
   checker: ts.TypeChecker,
@@ -131,7 +120,7 @@ export function getExportedInProject(
     const effectNodes: Set<ts.Node> = new Set();
     const walk = composeWalkers(
       // collect effect nodes
-      getEffectDetectorWalker(checker, (node) => {
+      getEffectDetectorWalker(checker, file, (node) => {
         effectNodes.add(node);
       }),
       getExternalDetectorWalker((node) => {
@@ -157,34 +146,7 @@ export function getExportedInProject(
     const exportedSymbols = checker.getExportsOfModule(fileSymbol);
 
     for (const symbol of exportedSymbols) {
-      // if (symbol.valueDeclaration && ts.isImportSpecifier(symbol.valueDeclaration)) {
-      //   const importedType = checker.getTypeAtLocation(symbol.valueDeclaration);
-      //   if (false) {
-      //     symbolWalker.walkType(importedType);
-      //     symbolWalker.walkSymbol(importedType.symbol);
-      //   }
-      // }
-
-      // if (symbol.valueDeclaration && ts.isExportSpecifier(symbol.valueDeclaration)) {
-      //   // check exported
-      //   if (ts.isExportSpecifier(symbol.valueDeclaration)) {
-      //     const originalSymbol = checker.getExportSpecifierLocalTargetSymbol(symbol.valueDeclaration);
-      //     if (originalSymbol) {
-      //       for (const decl of originalSymbol?.declarations ?? []) {
-      //         if (false) {
-      //           const symbol = checker.getSymbolAtLocation(decl);
-      //           if (symbol) symbolWalker.walkSymbol(symbol);
-      //         }
-      //       }
-      //     } else {
-      //       const specifierType = checker.getTypeAtLocation(symbol.valueDeclaration);
-      //       if (false) {
-      //         symbolWalker.walkType(specifierType);
-      //         specifierType.symbol && symbolWalker.walkSymbol(specifierType.symbol);
-      //       }
-      //     }
-      //   }
-      // } else {
+      // TODO: Check it is correct
       const type = checker.getTypeOfSymbol(symbol);
       const visited = symbolWalker.getVisited();
       if (visited.symbols.includes(symbol)) {
@@ -196,14 +158,6 @@ export function getExportedInProject(
       if (type.symbol && visited.symbols.includes(type.symbol)) {
         symbolWalker.walkSymbol(type.symbol);
       }
-      // if (false) {
-      //   symbolWalker.walkSymbol(symbol);
-      //   symbolWalker.walkType(type);
-      //   if (type.symbol) {
-      //     symbolWalker.walkSymbol(type.symbol);
-      //   }
-      // }
-      // }
     }
   }
 }

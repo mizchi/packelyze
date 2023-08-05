@@ -4,7 +4,7 @@ function fetchData(id) {
     setTimeout(() => {
       if (id >= 0) {
         // TODO: resolve is no mangle-related function
-        resolve({ __id: id, __value: `Value ${id}` });
+        resolve({ /*__id*/ k: id, /*__value*/ x: `Value ${id}` });
       } else {
         reject(new Error("Invalid ID"));
       }
@@ -23,14 +23,14 @@ async function run() {
   const results = await Promise.all([p1, p2, pAll, pRace]);
   // Flatten the results (the Promise.all result is an array of Data)
   return results.flat().map((result) => ({
-    id: result.__id,
-    value: result.__value,
+    id: result./*__id*/ k,
+    value: result./*__value*/ x,
   }));
 }
 async function fetchData2(id) {
   return {
-    /*__id*/ k: id,
-    /*__value*/ x: `Value ${id}`,
+    /*__id*/ j: id,
+    /*__value*/ q: `Value ${id}`,
   };
 }
 async function run2() {
@@ -38,8 +38,8 @@ async function run2() {
   for (let i = 0; i < 10; i++) {
     const result = await fetchData2(i);
     data.push({
-      id: result./*__id*/ k,
-      value: result./*__value*/ x,
+      id: result./*__id*/ j,
+      value: result./*__value*/ q,
     });
   }
   return data;
