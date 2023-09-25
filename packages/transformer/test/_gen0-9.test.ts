@@ -1,6 +1,6 @@
-import "./globals";
 import path from "node:path";
 import { test } from "vitest";
+import "./globals";
 import { assertRollupWithFixture } from "./testUtils";
 
 test("rollup #case00-simple", async () => {

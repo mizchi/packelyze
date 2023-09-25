@@ -240,18 +240,6 @@ importers:
         specifier: ^5.0.4
         version: 5.1.3
 
-  packages/cli/bench/hono: {}
-
-  packages/cli/bench/simple: {}
-
-  packages/cli/bench/ts: {}
-
-  packages/cli/tests/node-lib: {}
-
-  packages/cli/tests/react-lib: {}
-
-  packages/cli/tests/simple: {}
-
   packages/declass:
     dependencies:
       typescript:

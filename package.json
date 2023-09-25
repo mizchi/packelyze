@@ -2,9 +2,11 @@
   "private": true,
   "packageManager": "pnpm@8.6.12",
   "scripts": {
-    "format": "biome format **/*.ts --write",
-    "format-unsafe": "biome format **/*.ts --write && biome check **/*.ts --apply-unsafe",
-    "check": "biome check **/*.ts"
+    "format": "biome format . --write",
+    "format-unsafe": "biome format . --write && biome check . --apply-unsafe",
+    "check": "biome check .",
+    "test": "turbo test",
+    "build": "biome build"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.2.2",

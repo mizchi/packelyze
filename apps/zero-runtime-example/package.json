@@ -1,11 +1,12 @@
 {
   "private": true,
   "version": "1.0.0",
+  "name": "zero-runtime-example",
   "description": "",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "exit 0",
     "dts": "rm -r test-dts-lib && tsc -p tsconfig.dts.json && rollup -c rollup.config.test-dts.js"
   },
   "keywords": [],

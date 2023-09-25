@@ -1,6 +1,7 @@
 {
   "private": true,
   "version": "1.0.0",
+  "name": "tsminify-example",
   "type": "module",
   "main": "index.js",
   "scripts": {

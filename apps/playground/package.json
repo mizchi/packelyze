@@ -1,14 +1,11 @@
 {
   "private": true,
+  "name": "playground",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "scripts": {
     "analyze": "tsc -p tsconfig.packelyze.json && packelyze analyze-dts",
     "build": "npm run analyze && rollup -c"
   },
-  "keywords": [],
-  "author": "",
   "license": "MIT",
   "devDependencies": {
     "@mizchi/declass": "workspace:*",
