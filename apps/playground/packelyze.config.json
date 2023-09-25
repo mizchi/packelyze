@@ -1,0 +1,7 @@
+{
+  "input": "lib/index.d.ts",
+  "output": "_packelyze-analyzed.json",
+  "builtins": ["es", "dom", "worker"],
+  "writeDts": "_bundled.d.ts",
+  "external": []
+}

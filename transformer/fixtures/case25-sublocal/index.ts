@@ -1,1 +1,0 @@
-export { subItem } from "./expose";
