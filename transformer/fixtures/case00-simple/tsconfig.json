@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "typeRoots": ["../../node_modules/@types"],
+    "typeRoots": ["../../node_modules/@types"]
   },
   "include": ["./*.ts"]
 }

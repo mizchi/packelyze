@@ -11,7 +11,7 @@
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["__src/**/*.ts"],
   "exclude": ["lib", "dist", "__src/__experimental"]

@@ -11,8 +11,8 @@
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*", "test/**/*", "fixtures", "scripts/gen.mjs"],
+  "include": ["src/**/*", "test/**/*", "fixtures", "scripts/gen.mjs", "vitest.config.ts"],
   "exclude": ["lib", "dist"]
 }
