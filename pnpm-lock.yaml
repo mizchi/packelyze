@@ -1868,6 +1868,7 @@ packages:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
+    dev: false
 
   /chardet@0.7.0:
     resolution: {integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==}
@@ -2834,7 +2835,7 @@ packages:
     engines: {node: '>=12.0.0'}
     dependencies:
       ansi-escapes: 4.3.2
-      chalk: 4.1.2
+      chalk: 4.1.1
       cli-cursor: 3.1.0
       cli-width: 3.0.0
       external-editor: 3.1.0
@@ -3067,7 +3068,7 @@ packages:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
     engines: {node: '>=10'}
     dependencies:
-      chalk: 4.1.2
+      chalk: 4.1.1
       is-unicode-supported: 0.1.0
     dev: true
 
@@ -3340,7 +3341,7 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       bl: 4.1.0
-      chalk: 4.1.2
+      chalk: 4.1.1
       cli-cursor: 3.1.0
       cli-spinners: 2.9.1
       is-interactive: 1.0.0
@@ -4420,7 +4421,7 @@ packages:
       '@types/node': 20.6.5
       esbuild: 0.18.20
       postcss: 8.4.30
-      rollup: 3.29.3
+      rollup: 3.26.2
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
