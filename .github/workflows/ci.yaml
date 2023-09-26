@@ -21,12 +21,12 @@ jobs:
     - run: corepack enable pnpm
     - run: pnpm install
     - run: pnpm build
-      working-directory: cli
+      working-directory: packages/cli
     - run: pnpm tsc -p . --noEmit
-      working-directory: cli
+      working-directory: packages/cli
     - run: pnpm test:full
-      working-directory: cli
+      working-directory: packages/cli
     - run: pnpm test
-      working-directory: zero-runtime
+      working-directory: packages/zero-runtime
     - run: pnpm test:ci
-      working-directory: transformer
+      working-directory: packages/transformer
