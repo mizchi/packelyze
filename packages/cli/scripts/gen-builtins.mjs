@@ -22,7 +22,7 @@ function getHttpHeadersReserved() {
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 export async function dumpReservedWords() {
-  const tsPath = path.join(__dirname, "../../node_modules/typescript/lib/typescript.js");
+  const tsPath = path.join(__dirname, "../node_modules/typescript/lib/typescript.js");
   const terserMainPath = path.join(__dirname, "../node_modules/terser/dist/bundle.min.js");
   const cfWorkersTypesPath = path.join(__dirname, "../node_modules/@cloudflare/workers-types/index.d.ts");
   const cssDtsPath = path.join(__dirname, "../node_modules/csstype/index.d.ts");
